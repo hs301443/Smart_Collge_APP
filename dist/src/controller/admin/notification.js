@@ -9,83 +9,61 @@ const Errors_2 = require("../../Errors");
 const User_1 = require("../../models/shema/auth/User");
 const firebase_1 = require("../../utils/firebase");
 const sendNotificationToAll = async (req, res) => {
-    try {
-        const { title, body } = req.body;
-        if (!title || !body) {
-            throw new BadRequest_1.BadRequest("Title and body are required");
-        }
-        const newNotification = await notification_1.NotificationModels.create({
-            title,
-            body,
-        });
-        const allUsersWithTokens = await User_1.UserModel.find({}, { _id: 1, fcmtoken: 1 }).lean();
-        if (!allUsersWithTokens.length) {
-            throw new Errors_2.NotFound("No users found");
-        }
-        console.log(`📊 Total users found: ${allUsersWithTokens.length}`);
-        const userNotificationsData = allUsersWithTokens.map(user => ({
-            userId: user._id,
-            notificationId: newNotification._id,
-            status: "unseen",
-        }));
-        await notification_1.UserNotificationModel.insertMany(userNotificationsData);
-        console.log(`✅ Created ${userNotificationsData.length} user-notification relationships`);
-        const tokens = allUsersWithTokens
-            .map(user => user.fcmtoken)
-            .filter(token => token && typeof token === "string" && token.trim() && token !== "null" && token !== "undefined");
-        console.log(`📊 Users with valid FCM tokens: ${tokens.length}`);
-        console.log(`🔍 Sample tokens:`, tokens.slice(0, 2).map(t => `${t.substring(0, 20)}...`));
-        if (!tokens.length) {
-            return res.json({
-                success: true,
-                message: "Notification saved but no valid FCM tokens found",
-                notificationId: newNotification._id,
-                stats: {
-                    totalUsers: allUsersWithTokens.length,
-                    validTokens: 0,
-                    usersWithTokens: allUsersWithTokens.filter(u => u.fcmtoken).length,
-                },
-            });
-        }
-        const message = {
-            notification: { title, body },
-            tokens,
-        };
-        const response = await firebase_1.messaging.sendEachForMulticast(message);
-        console.log("✅ FCM Response received:");
-        console.log(`✅ Success: ${response.successCount}`);
-        console.log(`❌ Failures: ${response.failureCount}`);
-        if (response.failureCount > 0) {
-            response.responses.forEach((resp, index) => {
-                if (!resp.success && resp.error) {
-                    console.log(`  Token ${index}: ${resp.error.code} - ${resp.error.message}`);
-                }
-            });
-        }
+    const { title, body } = req.body;
+    if (!title || !body) {
+        throw new BadRequest_1.BadRequest("Title and body are required");
+    }
+    // هات كل اليوزر ومعاهم fcmtoken
+    const allUsers = await User_1.UserModel.find({}, { _id: 1, fcmtoken: 1 }).lean();
+    if (!allUsers.length) {
+        throw new Errors_2.NotFound("No users found");
+    }
+    // فلترة اليوزر اللي عندهم fcmtoken صالح
+    const validUsers = allUsers.filter(user => user.fcmtoken &&
+        typeof user.fcmtoken === "string" &&
+        user.fcmtoken.trim() &&
+        user.fcmtoken !== "null" &&
+        user.fcmtoken !== "undefined");
+    if (!validUsers.length) {
         return res.json({
-            success: true,
-            message: "Notification sent successfully",
-            notificationId: newNotification._id,
-            results: {
-                successCount: response.successCount,
-                failureCount: response.failureCount,
-                totalTokens: tokens.length,
-            },
+            success: false,
+            message: "No valid FCM tokens found for users",
             stats: {
-                totalUsers: allUsersWithTokens.length,
-                validTokens: tokens.length,
-                usersWithTokens: allUsersWithTokens.filter(u => u.fcmtoken).length,
+                totalUsers: allUsers.length,
+                validTokens: 0,
             },
         });
     }
-    catch (error) {
-        console.error("❌ Error in sendNotificationToAll:", error);
-        if (error instanceof Error) {
-            console.error("Error message:", error.message);
-            console.error("Error stack:", error.stack);
-        }
-        throw error;
-    }
+    // هنا بس لو فيه validUsers نعمل Notification
+    const newNotification = await notification_1.NotificationModels.create({ title, body });
+    // نربطها باليوزر اللي معاهم fcmtoken
+    const userNotificationsData = validUsers.map(user => ({
+        user: user._id,
+        notification: newNotification._id,
+    }));
+    await notification_1.UserNotificationModel.insertMany(userNotificationsData);
+    // جمع التوكنات
+    const tokens = validUsers.map(user => user.fcmtoken);
+    // إرسال الرسالة
+    const message = {
+        notification: { title, body },
+        tokens,
+    };
+    const response = await firebase_1.messaging.sendEachForMulticast(message);
+    return res.json({
+        success: true,
+        message: "Notification sent successfully",
+        notificationId: newNotification._id,
+        results: {
+            successCount: response.successCount,
+            failureCount: response.failureCount,
+            totalTokens: tokens.length,
+        },
+        stats: {
+            totalUsers: allUsers.length,
+            validTokens: tokens.length,
+        },
+    });
 };
 exports.sendNotificationToAll = sendNotificationToAll;
 const getallNotification = async (req, res) => {
