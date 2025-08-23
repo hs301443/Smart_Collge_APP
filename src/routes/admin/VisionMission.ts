@@ -8,8 +8,8 @@ import { visionMissionSchema, visionMissionUpdateSchema } from "../../validation
 export const route = Router();
 
 route.post('/',authenticated,authorizeRoles('admin'),validate(visionMissionSchema),catchAsync(createVisionMission))
-route.get('/',authenticated,authorizeRoles('admin'),catchAsync(getVisionMission))
-route.get('/:id',authenticated,authorizeRoles('admin'),catchAsync(getVisionMissionById))
+route.get('/',catchAsync(getVisionMission))
+route.get('/:id',catchAsync(getVisionMissionById))
 route.put('/:id',authenticated,authorizeRoles('admin'),validate(visionMissionUpdateSchema),catchAsync(updateVisionMission))
 route.delete('/:id',authenticated,authorizeRoles('admin'),catchAsync(deleteVisionMission))
 

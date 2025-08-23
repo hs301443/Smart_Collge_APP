@@ -27,15 +27,13 @@ export const createVisionMission = async (req: Request, res: Response) => {
 };
 
 export const getVisionMission = async (req: Request, res: Response) => {
-  if(!req.user)
-        throw new UnauthorizedError("You are not authorized to perform this action");
+  
     const vm = await VisionMissionModel.find();
     SuccessResponse(res, vm);
 };
 
 export const getVisionMissionById = async (req: Request, res: Response) => {
-    if(!req.user)
-       throw new UnauthorizedError("You are not authorized to perform this action");
+    
     const { id } = req.params;
     if(!id)
         throw new BadRequest("Please provide id")
