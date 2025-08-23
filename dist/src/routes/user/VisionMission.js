@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.route = void 0;
+const express_1 = require("express");
+const VisionMission_1 = require("../../controller/admin/VisionMission");
+const catchAsync_1 = require("../../utils/catchAsync");
+exports.route = (0, express_1.Router)();
+exports.route.get('/', (0, catchAsync_1.catchAsync)(VisionMission_1.getVisionMission));
+exports.route.get('/:id', (0, catchAsync_1.catchAsync)(VisionMission_1.getVisionMissionById));
+exports.default = exports.route;

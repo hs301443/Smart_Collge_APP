@@ -1,0 +1,17 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.route = void 0;
+const express_1 = require("express");
+const authenticated_1 = require("../../middlewares/authenticated");
+const VisionMission_1 = require("../../controller/admin/VisionMission");
+const authorized_1 = require("../../middlewares/authorized");
+const catchAsync_1 = require("../../utils/catchAsync");
+const validation_1 = require("../../middlewares/validation");
+const VisionMission_2 = require("../../validation/admin/VisionMission");
+exports.route = (0, express_1.Router)();
+exports.route.post('/', authenticated_1.authenticated, (0, authorized_1.authorizeRoles)('admin'), (0, validation_1.validate)(VisionMission_2.visionMissionSchema), (0, catchAsync_1.catchAsync)(VisionMission_1.createVisionMission));
+exports.route.get('/', authenticated_1.authenticated, (0, authorized_1.authorizeRoles)('admin'), (0, catchAsync_1.catchAsync)(VisionMission_1.getVisionMission));
+exports.route.get('/:id', authenticated_1.authenticated, (0, authorized_1.authorizeRoles)('admin'), (0, catchAsync_1.catchAsync)(VisionMission_1.getVisionMissionById));
+exports.route.put('/:id', authenticated_1.authenticated, (0, authorized_1.authorizeRoles)('admin'), (0, validation_1.validate)(VisionMission_2.visionMissionUpdateSchema), (0, catchAsync_1.catchAsync)(VisionMission_1.updateVisionMission));
+exports.route.delete('/:id', authenticated_1.authenticated, (0, authorized_1.authorizeRoles)('admin'), (0, catchAsync_1.catchAsync)(VisionMission_1.deleteVisionMission));
+exports.default = exports.route;
