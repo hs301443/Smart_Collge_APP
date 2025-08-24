@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { signup, verifyEmail, login,resetPassword,verifyResetCode,sendResetCode, getFcmToken} from '../../../controller/users/auth';
+import { signup, verifyEmail, login,resetPassword,verifyResetCode,sendResetCode, getFcmToken, completeProfile} from '../../../controller/users/auth';
 import { validate } from '../../../middlewares/validation';
 import { authenticated } from '../../../middlewares/authenticated';
 import { catchAsync } from '../../../utils/catchAsync';
@@ -18,5 +18,7 @@ route.post("/forgot-password", validate(sendResetCodeSchema), sendResetCode);
 route.post("/verify-code", validate(checkResetCodeSchema), catchAsync(verifyResetCode));
 route.post("/reset-password", validate(resetPasswordSchema), resetPassword);
 route.post("/fcm-token",authenticated ,catchAsync(getFcmToken));
+route.post("/complete",authenticated ,catchAsync(completeProfile))
+
 
 export default route;

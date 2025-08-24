@@ -1,4 +1,4 @@
-import { Schema, Types } from "mongoose";
+import { model, Schema, Types } from "mongoose";
 import mongoose from "mongoose";
  const UserSchema = new Schema(
   {
@@ -6,16 +6,35 @@ import mongoose from "mongoose";
     name: { type: String, },
     phoneNumber: { type: String },
     email: { type: String, unique: true },
-    role:{ type: String, enum: ["member", "guest"], default: "member" },
     password: { type: String},
     dateOfBirth: { type: Date,},
     fcmtoken: { type: String },
     isVerified: { type: Boolean, default: false },
-    googleId: { type: String, unique: true, sparse: true }, // 👈 هنا كمان
+    googleId: { type: String, unique: true, sparse: true },   
+    role:{type: String, enum: ["Graduated", "Student"]} 
 
   },
   { timestamps: true, }
 );
 
-
 export const UserModel = mongoose.model('User', UserSchema);
+
+
+
+
+const GraduatedSchema = new Schema(
+  {
+    user: { type: Types.ObjectId, ref: "User", required: true, unique: true },
+    cv: { type: String },
+    employment_status: { type: String },
+    job_title: { type: String },
+    company_location: { type: String },
+    company_email: { type: String },
+    company_link: { type: String },
+    company_phone: { type: String },
+    about_company: { type: String },
+  },
+  { timestamps: true }
+);
+
+export const GraduatedModel = mongoose.model('Graduated', GraduatedSchema);

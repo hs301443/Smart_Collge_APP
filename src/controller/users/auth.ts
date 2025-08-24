@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { saveBase64Image } from "../../utils/handleImages";
 import { EmailVerificationModel} from "../../models/shema/auth/emailVerifications";
-import { UserModel } from "../../models/shema/auth/User";
+import { GraduatedModel, UserModel } from "../../models/shema/auth/User";
 import bcrypt from "bcrypt";
 import { SuccessResponse } from "../../utils/response";
 import { randomInt } from "crypto";
@@ -18,14 +18,26 @@ import { Types } from "mongoose";
 import { AuthenticatedRequest } from "../../types/custom";
 
 export const signup = async (req: Request, res: Response) => {
-  const { name, phoneNumber, email, password, dateOfBirth, purpose, imageBase64 } = req.body;
+  const {
+    name,
+    phoneNumber,
+    email,
+    password,
+    dateOfBirth,
+    type,           
+    imageBase64,
+    graduatedData, 
+  } = req.body;
 
+  // ✅ تحقق من وجود مستخدم مسبقًا
   const existing = await UserModel.findOne({ $or: [{ email }, { phoneNumber }] });
   if (existing) {
-    if (existing.email === email)
+    if (existing.email === email) {
       throw new UniqueConstrainError("Email", "User already signed up with this email");
-    if (existing.phoneNumber === phoneNumber)
+    }
+    if (existing.phoneNumber === phoneNumber) {
       throw new UniqueConstrainError("Phone Number", "User already signed up with this phone number");
+    }
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
@@ -34,15 +46,24 @@ export const signup = async (req: Request, res: Response) => {
     name,
     phoneNumber,
     email,
-    password: hashedPassword, // <- تخزين الباسورد صح
-    purpose,
-    imageBase64, // <- توحيد اسم الحقل مع الموديل
+    password: hashedPassword,
+    type,          
+    imageBase64,
     dateOfBirth,
     isVerified: false,
   });
 
+  await newUser.save();
+
+  if (type === "Graduated") {
+    await GraduatedModel.create({
+      user: newUser._id,
+      ...graduatedData,
+    });
+  }
+
   const code = randomInt(100000, 999999).toString();
-  const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000); // ساعتين
+  const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);   
 
   await new EmailVerificationModel({
     userId: newUser._id,
@@ -52,11 +73,12 @@ export const signup = async (req: Request, res: Response) => {
 
   await sendEmail(email, "Verify Your Email", `Your code is ${code}`);
 
-  await newUser.save();
-
-  SuccessResponse(res, { message: "Signup successful, check your email for code", userId: newUser._id }, 201);
+  SuccessResponse(
+    res,
+    { message: "Signup successful, check your email for code", userId: newUser._id },
+    201
+  );
 };
-
 
 export const verifyEmail = async (req: Request, res: Response) => {
   const { userId, code } = req.body;
@@ -117,7 +139,6 @@ export const login = async (req: Request, res: Response) => {
   const token = generateToken({
     id: user._id,
     name: user.name,
-    role: user.role === "member" ? "approved_member_user" : "approved_guest_user",
   });
 
   SuccessResponse(res, { message: "Login Successful", token }, 200);
@@ -203,4 +224,39 @@ export const resetPassword = async (req: Request, res: Response) => {
  SuccessResponse(res, { message: "Password reset successful" }, 200);
 };
 
+
+
+export const completeProfile = async (req: Request, res: Response) => {
+  if (!req.user) throw new UnauthorizedError("User not authenticated");
+
+  const userId = req.user.id;    
+  const { role, graduatedData } = req.body; 
+
+  if (!role || !["Student", "Graduated"].includes(role)) {
+    return res.status(400).json({ message: "Invalid role provided" });
+  }
+
+  const user = await UserModel.findById(userId);
+  if (!user) return res.status(404).json({ message: "User not found" });
+
+  user.role = role;
+  await user.save();
+
+  if (role === "Graduated" && graduatedData) {
+    let graduated = await GraduatedModel.findOne({ user: user._id });
+    if (!graduated) {
+      graduated = await GraduatedModel.create({
+        user: user._id,
+        ...graduatedData,
+      });
+    } else {
+      Object.assign(graduated, graduatedData);
+      await graduated.save();
+    }
+  }
+
+  const { password, ...userData } = user.toObject();
+
+  SuccessResponse(res,"complete profile successfuly")
+};
 
