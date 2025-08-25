@@ -8,7 +8,6 @@ import NewsRouter from "./News";
 export const route = Router();
 
 route.use("/auth", authRouter);
-route.use(authenticated,authorizeRoles("admin"));
 route.use("/notification", notificationRouter);
 route.use("/news", NewsRouter);
 route.use("/statics", StaticsRouter);
