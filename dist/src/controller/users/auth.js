@@ -55,7 +55,6 @@ const signup = async (req, res) => {
 Hello ${name},
 
 We received a request to verify your Smart College account.
-
 Your verification code is: ${code}
 (This code is valid for 2 hours only)
 
@@ -146,7 +145,7 @@ const sendResetCode = async (req, res) => {
     await (0, sendEmails_1.sendEmail)(email, "Verify Your Email", `
 Hello ${user.name},
 
-We received a request to verify your Smart College account.
+We received a request to reset the password for your Smart College account.
 
 Your verification code is: ${code}
 (This code is valid for 2 hours only)

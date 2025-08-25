@@ -78,7 +78,6 @@ await sendEmail(
 Hello ${name},
 
 We received a request to verify your Smart College account.
-
 Your verification code is: ${code}
 (This code is valid for 2 hours only)
 
@@ -206,7 +205,7 @@ export const sendResetCode = async (req: Request, res: Response) => {
   `
 Hello ${user.name},
 
-We received a request to verify your Smart College account.
+We received a request to reset the password for your Smart College account.
 
 Your verification code is: ${code}
 (This code is valid for 2 hours only)

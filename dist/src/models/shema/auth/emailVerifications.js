@@ -6,7 +6,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.EmailVerificationModel = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const EmailVerificationSchema = new mongoose_1.default.Schema({
-    userId: { type: mongoose_1.default.Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
     verificationCode: { type: String, required: true },
     expiresAt: { type: Date, required: true },
 }, { timestamps: true });
