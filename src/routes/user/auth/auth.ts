@@ -18,7 +18,7 @@ route.post("/forgot-password", validate(sendResetCodeSchema), sendResetCode);
 route.post("/verify-code", validate(checkResetCodeSchema), catchAsync(verifyResetCode));
 route.post("/reset-password", validate(resetPasswordSchema), resetPassword);
 route.post("/fcm-token",authenticated ,catchAsync(getFcmToken));
-route.post("/complete",authenticated ,catchAsync(completeProfile))
+route.post("/complete" ,catchAsync(completeProfile))
 
 
 export default route;

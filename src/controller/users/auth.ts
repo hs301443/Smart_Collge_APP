@@ -227,10 +227,8 @@ export const resetPassword = async (req: Request, res: Response) => {
 
 
 export const completeProfile = async (req: Request, res: Response) => {
-  if (!req.user) throw new UnauthorizedError("User not authenticated");
 
-  const userId = req.user.id;    
-  const { role, graduatedData } = req.body; 
+  const { userId,role, graduatedData } = req.body; 
 
   if (!role || !["Student", "Graduated"].includes(role)) {
     return res.status(400).json({ message: "Invalid role provided" });

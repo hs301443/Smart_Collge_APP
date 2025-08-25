@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resetPassword = exports.verifyResetCode = exports.sendResetCode = exports.getFcmToken = exports.login = exports.verifyEmail = exports.signup = void 0;
+exports.completeProfile = exports.resetPassword = exports.verifyResetCode = exports.sendResetCode = exports.getFcmToken = exports.login = exports.verifyEmail = exports.signup = void 0;
 const emailVerifications_1 = require("../../models/shema/auth/emailVerifications");
 const User_1 = require("../../models/shema/auth/User");
 const bcrypt_1 = __importDefault(require("bcrypt"));
@@ -15,34 +15,43 @@ const sendEmails_1 = require("../../utils/sendEmails");
 const BadRequest_1 = require("../../Errors/BadRequest");
 const mongoose_1 = require("mongoose");
 const signup = async (req, res) => {
-    const { name, phoneNumber, email, password, dateOfBirth, purpose, imageBase64 } = req.body;
+    const { name, phoneNumber, email, password, dateOfBirth, type, imageBase64, graduatedData, } = req.body;
+    // ✅ تحقق من وجود مستخدم مسبقًا
     const existing = await User_1.UserModel.findOne({ $or: [{ email }, { phoneNumber }] });
     if (existing) {
-        if (existing.email === email)
+        if (existing.email === email) {
             throw new Errors_1.UniqueConstrainError("Email", "User already signed up with this email");
-        if (existing.phoneNumber === phoneNumber)
+        }
+        if (existing.phoneNumber === phoneNumber) {
             throw new Errors_1.UniqueConstrainError("Phone Number", "User already signed up with this phone number");
+        }
     }
     const hashedPassword = await bcrypt_1.default.hash(password, 10);
     const newUser = new User_1.UserModel({
         name,
         phoneNumber,
         email,
-        password: hashedPassword, // <- تخزين الباسورد صح
-        purpose,
-        imageBase64, // <- توحيد اسم الحقل مع الموديل
+        password: hashedPassword,
+        type,
+        imageBase64,
         dateOfBirth,
         isVerified: false,
     });
+    await newUser.save();
+    if (type === "Graduated") {
+        await User_1.GraduatedModel.create({
+            user: newUser._id,
+            ...graduatedData,
+        });
+    }
     const code = (0, crypto_1.randomInt)(100000, 999999).toString();
-    const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000); // ساعتين
+    const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
     await new emailVerifications_1.EmailVerificationModel({
         userId: newUser._id,
         verificationCode: code,
         expiresAt,
     }).save();
     await (0, sendEmails_1.sendEmail)(email, "Verify Your Email", `Your code is ${code}`);
-    await newUser.save();
     (0, response_1.SuccessResponse)(res, { message: "Signup successful, check your email for code", userId: newUser._id }, 201);
 };
 exports.signup = signup;
@@ -90,7 +99,6 @@ const login = async (req, res) => {
     const token = (0, auth_1.generateToken)({
         id: user._id,
         name: user.name,
-        role: user.role === "member" ? "approved_member_user" : "approved_guest_user",
     });
     (0, response_1.SuccessResponse)(res, { message: "Login Successful", token }, 200);
 };
@@ -159,3 +167,30 @@ const resetPassword = async (req, res) => {
     (0, response_1.SuccessResponse)(res, { message: "Password reset successful" }, 200);
 };
 exports.resetPassword = resetPassword;
+const completeProfile = async (req, res) => {
+    const { userId, role, graduatedData } = req.body;
+    if (!role || !["Student", "Graduated"].includes(role)) {
+        return res.status(400).json({ message: "Invalid role provided" });
+    }
+    const user = await User_1.UserModel.findById(userId);
+    if (!user)
+        return res.status(404).json({ message: "User not found" });
+    user.role = role;
+    await user.save();
+    if (role === "Graduated" && graduatedData) {
+        let graduated = await User_1.GraduatedModel.findOne({ user: user._id });
+        if (!graduated) {
+            graduated = await User_1.GraduatedModel.create({
+                user: user._id,
+                ...graduatedData,
+            });
+        }
+        else {
+            Object.assign(graduated, graduatedData);
+            await graduated.save();
+        }
+    }
+    const { password, ...userData } = user.toObject();
+    (0, response_1.SuccessResponse)(res, "complete profile successfuly");
+};
+exports.completeProfile = completeProfile;

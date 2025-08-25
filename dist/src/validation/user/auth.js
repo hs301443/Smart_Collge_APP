@@ -9,7 +9,7 @@ exports.signupSchema = joi_1.default.object({
     name: joi_1.default.string().min(3).max(50).required(),
     email: joi_1.default.string().email().required(),
     password: joi_1.default.string().min(6).required(),
-    role: joi_1.default.string().valid("admin", "member", "user").default("member"),
+    role: joi_1.default.string().valid("Student", "Graduated").required(),
     imageBase64: joi_1.default.string().optional(),
     dateOfBirth: joi_1.default.date().iso().optional(),
     phoneNumber: joi_1.default.string().pattern(/^01[0-2,5]\d{8}$/).optional(),

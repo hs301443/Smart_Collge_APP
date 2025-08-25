@@ -4,7 +4,6 @@ import {createnotificationSchema,updatenotificationSchema} from '../../validatio
 import { validate } from '../../middlewares/validation';
 import { authenticated } from '../../middlewares/authenticated';
 import { authorizeRoles } from '../../middlewares/authorized';
-
 const router = Router();
 
 router.post('/',authenticated,authorizeRoles('admin'),validate(createnotificationSchema),sendNotificationToAll);
