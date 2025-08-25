@@ -15,7 +15,7 @@ const sendEmails_1 = require("../../utils/sendEmails");
 const BadRequest_1 = require("../../Errors/BadRequest");
 const mongoose_1 = require("mongoose");
 const signup = async (req, res) => {
-    const { name, phoneNumber, email, password, dateOfBirth, type, imageBase64, graduatedData, } = req.body;
+    const { name, phoneNumber, email, password, dateOfBirth, role, imageBase64, graduatedData, } = req.body;
     // ✅ تحقق من وجود مستخدم مسبقًا
     const existing = await User_1.UserModel.findOne({ $or: [{ email }, { phoneNumber }] });
     if (existing) {
@@ -32,13 +32,13 @@ const signup = async (req, res) => {
         phoneNumber,
         email,
         password: hashedPassword,
-        type,
+        role,
         imageBase64,
         dateOfBirth,
         isVerified: false,
     });
     await newUser.save();
-    if (type === "Graduated") {
+    if (role === "Graduated") {
         await User_1.GraduatedModel.create({
             user: newUser._id,
             ...graduatedData,
@@ -57,7 +57,7 @@ Hello ${name},
 We received a request to verify your Smart College account.
 
 Your verification code is: ${code}
-(This code is valid for 2 hour only)
+(This code is valid for 2 hours only)
 
 Best regards,  
 Smart College Team
@@ -149,7 +149,7 @@ Hello ${user.name},
 We received a request to verify your Smart College account.
 
 Your verification code is: ${code}
-(This code is valid for 2 hour only)
+(This code is valid for 2 hours only)
 
 Best regards,  
 Smart College Team

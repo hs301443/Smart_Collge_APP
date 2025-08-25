@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.authenticateAdmin = void 0;
+exports.requireGraduated = void 0;
 exports.authenticated = authenticated;
 const auth_1 = require("../utils/auth");
 const unauthorizedError_1 = require("../Errors/unauthorizedError");
@@ -14,15 +14,13 @@ function authenticated(req, res, next) {
     req.user = decoded;
     next();
 }
-const authenticateAdmin = (req, res, next) => {
-    const apiKey = req.headers['x-api-key'];
-    if (!apiKey || apiKey !== process.env.ADMIN_API_KEY) {
-        void res.status(401).json({
+const requireGraduated = (req, res, next) => {
+    if (req.user?.role !== 'Graduated') {
+        return res.status(403).json({
             success: false,
-            message: 'Unauthorized: Invalid API key'
+            message: 'Graduated user access required'
         });
-        return; // مهم بعد void
     }
     next();
 };
-exports.authenticateAdmin = authenticateAdmin;
+exports.requireGraduated = requireGraduated;

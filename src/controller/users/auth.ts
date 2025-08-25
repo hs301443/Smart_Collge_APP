@@ -24,7 +24,7 @@ export const signup = async (req: Request, res: Response) => {
     email,
     password,
     dateOfBirth,
-    type,           
+    role,           
     imageBase64,
     graduatedData, 
   } = req.body;
@@ -47,7 +47,7 @@ export const signup = async (req: Request, res: Response) => {
     phoneNumber,
     email,
     password: hashedPassword,
-    type,          
+    role,          
     imageBase64,
     dateOfBirth,
     isVerified: false,
@@ -55,7 +55,7 @@ export const signup = async (req: Request, res: Response) => {
 
   await newUser.save();
 
-  if (type === "Graduated") {
+  if (role === "Graduated") {
     await GraduatedModel.create({
       user: newUser._id,
       ...graduatedData,
@@ -80,7 +80,7 @@ Hello ${name},
 We received a request to verify your Smart College account.
 
 Your verification code is: ${code}
-(This code is valid for 2 hour only)
+(This code is valid for 2 hours only)
 
 Best regards,  
 Smart College Team
@@ -209,7 +209,7 @@ Hello ${user.name},
 We received a request to verify your Smart College account.
 
 Your verification code is: ${code}
-(This code is valid for 2 hour only)
+(This code is valid for 2 hours only)
 
 Best regards,  
 Smart College Team

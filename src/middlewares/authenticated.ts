@@ -15,17 +15,12 @@ export function authenticated(req: Request, res: Response, next: NextFunction) {
 
 
 
-
-export const authenticateAdmin: RequestHandler = (req, res, next) => {
-  const apiKey = req.headers['x-api-key'] as string;
-
-  if (!apiKey || apiKey !== process.env.ADMIN_API_KEY) {
-    void res.status(401).json({
-      success: false,
-      message: 'Unauthorized: Invalid API key'
+export const requireGraduated = (req: Request, res: Response, next: NextFunction) => {
+  if (req.user?.role !== 'Graduated') {
+    return res.status(403).json({ 
+      success: false, 
+      message: 'Graduated user access required' 
     });
-    return; // مهم بعد void
   }
-
   next();
 };

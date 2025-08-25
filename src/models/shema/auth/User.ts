@@ -26,7 +26,7 @@ const GraduatedSchema = new Schema(
   {
     user: { type: Types.ObjectId, ref: "User", required: true, unique: true },
     cv: { type: String },
-    employment_status: { type: String },
+    employment_status: { type: String,enum:["Employed", "Job Seeker", "Freelancer","Postgraduate Studies"] },
     job_title: { type: String },
     company_location: { type: String },
     company_email: { type: String },
