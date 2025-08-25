@@ -51,7 +51,17 @@ const signup = async (req, res) => {
         verificationCode: code,
         expiresAt,
     }).save();
-    await (0, sendEmails_1.sendEmail)(email, "Verify Your Email", `Your code is ${code}`);
+    await (0, sendEmails_1.sendEmail)(email, "Verify Your Email", `
+Hello ${name},
+
+We received a request to verify your Smart College account.
+
+Your verification code is: ${code}
+(This code is valid for 1 hour only)
+
+Best regards,  
+Smart College Team
+`);
     (0, response_1.SuccessResponse)(res, { message: "Signup successful, check your email for code", userId: newUser._id }, 201);
 };
 exports.signup = signup;
