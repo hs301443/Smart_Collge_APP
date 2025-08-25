@@ -80,7 +80,7 @@ Hello ${name},
 We received a request to verify your Smart College account.
 
 Your verification code is: ${code}
-(This code is valid for 1 hour only)
+(This code is valid for 2 hour only)
 
 Best regards,  
 Smart College Team
@@ -201,10 +201,20 @@ export const sendResetCode = async (req: Request, res: Response) => {
   });
 
   await sendEmail(
-    email,
-    "Password Reset Code",
-    `Your reset code is: ${code}\nIt will expire in 2 hours.`
-  );
+  email,
+  "Verify Your Email",
+  `
+Hello ${user.name},
+
+We received a request to verify your Smart College account.
+
+Your verification code is: ${code}
+(This code is valid for 2 hour only)
+
+Best regards,  
+Smart College Team
+`
+);
 
   SuccessResponse(res, { message: "Reset code sent to your email" }, 200);
 }
