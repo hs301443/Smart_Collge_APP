@@ -1,7 +1,10 @@
 "use strict";
 // import nodemailer from "nodemailer";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendEmail = sendEmail;
+exports.sendEmail = void 0;
 // export const sendEmail = async (to: string, subject: string, text: string) => {
 //   console.log("Email user:", process.env.EMAIL_USER);
 //   console.log("Email pass:", process.env.EMAIL_PASS ? "Exists" : "Missing");
@@ -24,19 +27,28 @@ exports.sendEmail = sendEmail;
 //     console.error("❌ Email error:", error);
 //   }
 // };
-const resend_1 = require("resend");
-const resend = new resend_1.Resend(process.env.RESEND_API_KEY);
-async function sendEmail(to, subject, text) {
+const nodemailer_1 = __importDefault(require("nodemailer"));
+const sendEmail = async (to, subject, text) => {
+    const transporter = nodemailer_1.default.createTransport({
+        host: process.env.EMAIL_HOST,
+        port: Number(process.env.EMAIL_PORT),
+        secure: false, // مع 587 لازم false
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS,
+        },
+    });
     try {
-        const data = await resend.emails.send({
-            from: "Smart College <noreply@smartcollege.com>",
+        const info = await transporter.sendMail({
+            from: `"Smart College" <${process.env.EMAIL_USER}>`,
             to,
             subject,
             text,
         });
-        console.log("✅ Email sent:", data);
+        console.log("✅ Email sent:", info.response);
     }
     catch (error) {
         console.error("❌ Email error:", error);
     }
-}
+};
+exports.sendEmail = sendEmail;
