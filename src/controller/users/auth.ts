@@ -110,6 +110,7 @@ export const verifyEmail = async (req: Request, res: Response) => {
   user.isVerified = true;
   await user.save();
 
+  // حذف سجل التحقق بعد النجاح
   await EmailVerificationModel.deleteOne({ userId });
 
   res.json({ success: true, message: "Email verified successfully" });
