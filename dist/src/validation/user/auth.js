@@ -11,8 +11,6 @@ exports.signupSchema = joi_1.default.object({
     password: joi_1.default.string().min(6).required(),
     role: joi_1.default.string().valid("Student", "Graduated").required(),
     imageBase64: joi_1.default.string().optional(),
-    dateOfBirth: joi_1.default.date().iso().optional(),
-    phoneNumber: joi_1.default.string().pattern(/^01[0-2,5]\d{8}$/).optional(),
 });
 exports.loginSchema = joi_1.default.object({
     email: joi_1.default.string().email().required(),

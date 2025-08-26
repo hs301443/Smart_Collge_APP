@@ -19,7 +19,7 @@ import { AuthenticatedRequest } from "../../types/custom";
 
 
 export const signup = async (req: Request, res: Response) => {
-  const { name, email, password, role,BaseImage64, graduatedData } = req.body;
+  const { name, email, password, role, graduatedData } = req.body;
 
   const existing = await UserModel.findOne({ email });
   if (existing) throw new UniqueConstrainError("Email", "User already signed up with this email");
@@ -29,7 +29,6 @@ export const signup = async (req: Request, res: Response) => {
   const newUser = new UserModel({
     name,
     email,
-    BaseImage64,
     password: hashedPassword,
     role,
     isVerified: false,
@@ -260,3 +259,23 @@ export const completeProfile = async (req: Request, res: Response) => {
   SuccessResponse(res,"complete profile successfuly")
 };
 
+
+export const updateProfileImage = async (req: AuthenticatedRequest, res: Response) => {
+  if(!req.user) throw new UnauthorizedError("User not found");
+
+  const { imageBase64 } = req.body;
+
+  if (!imageBase64) {
+    throw new BadRequest("Image not provided");
+  }
+
+  const user = await UserModel.findById(req.user?.id);
+  if (!user) throw new NotFound("User not found");
+
+  const imageUrl = await saveBase64Image(imageBase64, user._id.toString(), req, "profile_images");
+
+  user.BaseImage64 = imageUrl; 
+  await user.save();
+
+  SuccessResponse(res, { message: "Profile image updated successfully", imageUrl }, 200);
+};
