@@ -70,37 +70,67 @@ Smart College Team`
 
   SuccessResponse(res, { message: "Signup successful, check your email for code", userId: newUser._id }, 201);
 };
+
+
+
 export const verifyEmail = async (req: Request, res: Response) => {
   const { userId, code } = req.body;
 
   if (!userId || !code) {
-    return res.status(400).json({ success: false, error: { code: 400, message: "userId and code are required" } });
+    return res.status(400).json({
+      success: false,
+      error: { code: 400, message: "userId and code are required" },
+    });
   }
 
+  // التأكد من وجود المستخدم
   const user = await UserModel.findById(userId);
   if (!user) {
-    return res.status(404).json({ success: false, error: { code: 404, message: "User not found" } });
+    return res.status(404).json({
+      success: false,
+      error: { code: 404, message: "User not found" },
+    });
   }
 
-  const record = await EmailVerificationModel.findOne({ userId });
+  // البحث عن سجل التحقق وتحويل userId إلى ObjectId
+  const record = await EmailVerificationModel.findOne({
+    userId: new Types.ObjectId(userId),
+  });
+
   if (!record) {
-    return res.status(400).json({ success: false, error: { code: 400, message: "No verification record found" } });
+    return res.status(400).json({
+      success: false,
+      error: { code: 400, message: "No verification record found" },
+    });
   }
 
+  // التحقق من الكود
   if (record.verificationCode !== code) {
-    return res.status(400).json({ success: false, error: { code: 400, message: "Invalid verification code" } });
+    return res.status(400).json({
+      success: false,
+      error: { code: 400, message: "Invalid verification code" },
+    });
   }
 
+  // التحقق من صلاحية الكود
   if (record.expiresAt < new Date()) {
-    return res.status(400).json({ success: false, error: { code: 400, message: "Verification code expired" } });
+    return res.status(400).json({
+      success: false,
+      error: { code: 400, message: "Verification code expired" },
+    });
   }
 
+  // تفعيل المستخدم
   user.isVerified = true;
   await user.save();
 
-  await EmailVerificationModel.deleteOne({ userId });
+  // حذف السجل بعد التحقق
+  await record.deleteOne();
 
-  res.json({ success: true, message: "Email verified successfully" });
+  return res.json({
+    success: true,
+    message: "Email verified successfully",
+  });
 };
 
 
