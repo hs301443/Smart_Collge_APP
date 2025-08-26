@@ -19,30 +19,41 @@ import { AuthenticatedRequest } from "../../types/custom";
 
 
 export const signup = async (req: Request, res: Response) => {
-  const { name, email, password, role, graduatedData } = req.body;
+  const { name, email, password, role, BaseImage64, graduatedData } = req.body;
 
+  // التحقق من وجود المستخدم مسبقًا
   const existing = await UserModel.findOne({ email });
   if (existing) throw new UniqueConstrainError("Email", "User already signed up with this email");
 
+  // تشفير الباسورد
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  const newUser = new UserModel({
+  // إعداد البيانات العامة للمستخدم
+  const userData: any = {
     name,
     email,
     password: hashedPassword,
     role,
+    BaseImage64: BaseImage64 || null,
     isVerified: false,
-  });
+  };
 
-  await newUser.save();
-
-  if (role === "Graduated") {
-    await GraduatedModel.create({
-      user: newUser._id,
-      ...graduatedData,
-    });
+  // لو الدور Graduated أضف بيانات التخرج
+  if (role === "Graduated" && graduatedData) {
+    userData.cv = graduatedData.cv || null;
+    userData.employment_status = graduatedData.employment_status || null;
+    userData.job_title = graduatedData.job_title || null;
+    userData.company_location = graduatedData.company_location || null;
+    userData.company_email = graduatedData.company_email || null;
+    userData.company_link = graduatedData.company_link || null;
+    userData.company_phone = graduatedData.company_phone || null;
+    userData.about_company = graduatedData.about_company || null;
   }
 
+  const newUser = new UserModel(userData);
+  await newUser.save();
+
+  // إنشاء كود التحقق
   const code = randomInt(100000, 999999).toString();
   const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
 

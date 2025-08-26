@@ -16,25 +16,36 @@ const sendEmails_1 = require("../../utils/sendEmails");
 const BadRequest_1 = require("../../Errors/BadRequest");
 const mongoose_1 = require("mongoose");
 const signup = async (req, res) => {
-    const { name, email, password, role, graduatedData } = req.body;
+    const { name, email, password, role, BaseImage64, graduatedData } = req.body;
+    // التحقق من وجود المستخدم مسبقًا
     const existing = await User_1.UserModel.findOne({ email });
     if (existing)
         throw new Errors_1.UniqueConstrainError("Email", "User already signed up with this email");
+    // تشفير الباسورد
     const hashedPassword = await bcrypt_1.default.hash(password, 10);
-    const newUser = new User_1.UserModel({
+    // إعداد البيانات العامة للمستخدم
+    const userData = {
         name,
         email,
         password: hashedPassword,
         role,
+        BaseImage64: BaseImage64 || null,
         isVerified: false,
-    });
-    await newUser.save();
-    if (role === "Graduated") {
-        await User_1.GraduatedModel.create({
-            user: newUser._id,
-            ...graduatedData,
-        });
+    };
+    // لو الدور Graduated أضف بيانات التخرج
+    if (role === "Graduated" && graduatedData) {
+        userData.cv = graduatedData.cv || null;
+        userData.employment_status = graduatedData.employment_status || null;
+        userData.job_title = graduatedData.job_title || null;
+        userData.company_location = graduatedData.company_location || null;
+        userData.company_email = graduatedData.company_email || null;
+        userData.company_link = graduatedData.company_link || null;
+        userData.company_phone = graduatedData.company_phone || null;
+        userData.about_company = graduatedData.about_company || null;
     }
+    const newUser = new User_1.UserModel(userData);
+    await newUser.save();
+    // إنشاء كود التحقق
     const code = (0, crypto_1.randomInt)(100000, 999999).toString();
     const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
     await new emailVerifications_1.EmailVerificationModel({
