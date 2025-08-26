@@ -6,7 +6,6 @@ import mongoose from "mongoose";
     name: { type: String, },
     email: { type: String, unique: true },
     password: { type: String},
-    dateOfBirth: { type: Date,},
     fcmtoken: { type: String },
     isVerified: { type: Boolean, default: false },
     googleId: { type: String, unique: true, sparse: true },   
