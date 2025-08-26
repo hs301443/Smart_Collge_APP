@@ -15,13 +15,10 @@ const sendEmails_1 = require("../../utils/sendEmails");
 const BadRequest_1 = require("../../Errors/BadRequest");
 const mongoose_1 = require("mongoose");
 const signup = async (req, res) => {
-    const { name, email, password, dateOfBirth, role, imageBase64, graduatedData, } = req.body;
-    const existing = await User_1.UserModel.findOne({ $or: [{ email }] });
-    if (existing) {
-        if (existing.email === email) {
-            throw new Errors_1.UniqueConstrainError("Email", "User already signed up with this email");
-        }
-    }
+    const { name, email, password, dateOfBirth, role, imageBase64, graduatedData } = req.body;
+    const existing = await User_1.UserModel.findOne({ email });
+    if (existing)
+        throw new Errors_1.UniqueConstrainError("Email", "User already signed up with this email");
     const hashedPassword = await bcrypt_1.default.hash(password, 10);
     const newUser = new User_1.UserModel({
         name,
@@ -46,16 +43,15 @@ const signup = async (req, res) => {
         verificationCode: code,
         expiresAt,
     }).save();
-    await (0, sendEmails_1.sendEmail)(email, "Verify Your Email", `
-Hello ${name},
+    // إرسال الإيميل
+    await (0, sendEmails_1.sendEmail)(email, "Verify Your Email", `Hello ${name},
 
 We received a request to verify your Smart College account.
 Your verification code is: ${code}
 (This code is valid for 2 hours only)
 
-Best regards,  
-Smart College Team
-`);
+Best regards,
+Smart College Team`);
     (0, response_1.SuccessResponse)(res, { message: "Signup successful, check your email for code", userId: newUser._id }, 201);
 };
 exports.signup = signup;

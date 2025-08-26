@@ -17,22 +17,12 @@ import { BadRequest } from "../../Errors/BadRequest";
 import { Types } from "mongoose";
 import { AuthenticatedRequest } from "../../types/custom";
 
-export const signup = async (req: Request, res: Response) => {
-  const {
-    name,
-    email,
-    password,
-    dateOfBirth,
-    role,           
-    imageBase64,
-    graduatedData, 
-  } = req.body;
 
-  const existing = await UserModel.findOne({ $or: [{ email }] });
-  if (existing) {
-    if (existing.email === email) {
-      throw new UniqueConstrainError("Email", "User already signed up with this email");
-  }}
+export const signup = async (req: Request, res: Response) => {
+  const { name, email, password, dateOfBirth, role, imageBase64, graduatedData } = req.body;
+
+  const existing = await UserModel.findOne({ email });
+  if (existing) throw new UniqueConstrainError("Email", "User already signed up with this email");
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -40,7 +30,7 @@ export const signup = async (req: Request, res: Response) => {
     name,
     email,
     password: hashedPassword,
-    role,          
+    role,
     imageBase64,
     dateOfBirth,
     isVerified: false,
@@ -56,7 +46,7 @@ export const signup = async (req: Request, res: Response) => {
   }
 
   const code = randomInt(100000, 999999).toString();
-  const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);   
+  const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
 
   await new EmailVerificationModel({
     userId: newUser._id,
@@ -64,28 +54,22 @@ export const signup = async (req: Request, res: Response) => {
     expiresAt,
   }).save();
 
-await sendEmail(
-  email,
-  "Verify Your Email",
-  `
-Hello ${name},
+  // إرسال الإيميل
+  await sendEmail(
+    email,
+    "Verify Your Email",
+    `Hello ${name},
 
 We received a request to verify your Smart College account.
 Your verification code is: ${code}
 (This code is valid for 2 hours only)
 
-Best regards,  
-Smart College Team
-`
-);
-
-  SuccessResponse(
-    res,
-    { message: "Signup successful, check your email for code", userId: newUser._id },
-    201
+Best regards,
+Smart College Team`
   );
-};
 
+  SuccessResponse(res, { message: "Signup successful, check your email for code", userId: newUser._id }, 201);
+};
 export const verifyEmail = async (req: Request, res: Response) => {
   const { userId, code } = req.body;
 
