@@ -70,10 +70,6 @@ const verifyEmail = async (req, res) => {
     if (!userId || !code) {
         return res.status(400).json({ success: false, error: { code: 400, message: "userId and code are required" } });
     }
-    const user = await User_1.UserModel.findById(userId);
-    if (!user) {
-        return res.status(404).json({ success: false, error: { code: 404, message: "User not found" } });
-    }
     const record = await emailVerifications_1.EmailVerificationModel.findOne({ userId });
     if (!record) {
         return res.status(400).json({ success: false, error: { code: 400, message: "No verification record found" } });
@@ -84,11 +80,12 @@ const verifyEmail = async (req, res) => {
     if (record.expiresAt < new Date()) {
         return res.status(400).json({ success: false, error: { code: 400, message: "Verification code expired" } });
     }
-    user.isVerified = true;
-    await user.save();
-    // حذف سجل التحقق بعد النجاح
+    // تحديث المستخدم مباشرة بدون save()
+    const user = await User_1.UserModel.findByIdAndUpdate(userId, { isVerified: true }, { new: true } // يرجع النسخة المحدثة
+    );
+    // حذف سجل التحقق
     await emailVerifications_1.EmailVerificationModel.deleteOne({ userId });
-    res.json({ success: true, message: "Email verified successfully" });
+    res.json({ success: true, message: "Email verified successfully", user });
 };
 exports.verifyEmail = verifyEmail;
 const login = async (req, res) => {
