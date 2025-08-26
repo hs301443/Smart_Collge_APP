@@ -15,7 +15,7 @@ const sendEmails_1 = require("../../utils/sendEmails");
 const BadRequest_1 = require("../../Errors/BadRequest");
 const mongoose_1 = require("mongoose");
 const signup = async (req, res) => {
-    const { name, email, password, dateOfBirth, role, imageBase64, graduatedData } = req.body;
+    const { name, email, password, role, graduatedData } = req.body;
     const existing = await User_1.UserModel.findOne({ email });
     if (existing)
         throw new Errors_1.UniqueConstrainError("Email", "User already signed up with this email");
@@ -25,8 +25,6 @@ const signup = async (req, res) => {
         email,
         password: hashedPassword,
         role,
-        imageBase64,
-        dateOfBirth,
         isVerified: false,
     });
     await newUser.save();
