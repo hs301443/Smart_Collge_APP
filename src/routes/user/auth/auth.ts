@@ -19,7 +19,7 @@ route.post("/verify-code", validate(checkResetCodeSchema), catchAsync(verifyRese
 route.post("/reset-password", validate(resetPasswordSchema), resetPassword);
 route.post("/fcm-token",authenticated ,catchAsync(getFcmToken));
 route.post("/complete" ,catchAsync(completeProfile))
-route.post("/update-image",authenticated ,catchAsync(updateProfileImage))
+route.patch("/update-image",authenticated ,catchAsync(updateProfileImage))
 
 
 export default route;
