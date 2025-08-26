@@ -77,60 +77,33 @@ export const verifyEmail = async (req: Request, res: Response) => {
   const { userId, code } = req.body;
 
   if (!userId || !code) {
-    return res.status(400).json({
-      success: false,
-      error: { code: 400, message: "userId and code are required" },
-    });
+    return res.status(400).json({ success: false, error: { code: 400, message: "userId and code are required" } });
   }
 
-  // التأكد من وجود المستخدم
   const user = await UserModel.findById(userId);
   if (!user) {
-    return res.status(404).json({
-      success: false,
-      error: { code: 404, message: "User not found" },
-    });
+    return res.status(404).json({ success: false, error: { code: 404, message: "User not found" } });
   }
 
-  // البحث عن سجل التحقق وتحويل userId إلى ObjectId
-  const record = await EmailVerificationModel.findOne({
-    userId: new Types.ObjectId(userId),
-  });
-
+  const record = await EmailVerificationModel.findOne({ userId });
   if (!record) {
-    return res.status(400).json({
-      success: false,
-      error: { code: 400, message: "No verification record found" },
-    });
+    return res.status(400).json({ success: false, error: { code: 400, message: "No verification record found" } });
   }
 
-  // التحقق من الكود
   if (record.verificationCode !== code) {
-    return res.status(400).json({
-      success: false,
-      error: { code: 400, message: "Invalid verification code" },
-    });
+    return res.status(400).json({ success: false, error: { code: 400, message: "Invalid verification code" } });
   }
 
-  // التحقق من صلاحية الكود
   if (record.expiresAt < new Date()) {
-    return res.status(400).json({
-      success: false,
-      error: { code: 400, message: "Verification code expired" },
-    });
+    return res.status(400).json({ success: false, error: { code: 400, message: "Verification code expired" } });
   }
 
-  // تفعيل المستخدم
   user.isVerified = true;
   await user.save();
 
-  // حذف السجل بعد التحقق
-  await record.deleteOne();
+  await EmailVerificationModel.deleteOne({ userId });
 
-  return res.json({
-    success: true,
-    message: "Email verified successfully",
-  });
+  res.json({ success: true, message: "Email verified successfully" });
 };
 
 
@@ -189,71 +162,71 @@ export const sendResetCode = async (req: Request, res: Response) => {
   const { email } = req.body;
 
   const user = await UserModel.findOne({ email });
-  if (!user) return res.status(404).json({ message: "User not found" });
-  if (!user.isVerified )
-    return res.status(400).json({ message: "User is not verified or approved" });
+  if (!user) throw new NotFound("User not found");
+  if (!user.isVerified) throw new BadRequest("User is not verified");
 
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const code = randomInt(100000, 999999).toString();
 
   // حذف أي كود موجود مسبقًا
-  await EmailVerificationModel.deleteMany({ email });
+  await EmailVerificationModel.deleteMany({ userId: user._id });
 
-  // إضافة الكود الجديد
+  // إنشاء كود جديد
   const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000); // ساعتين
   await EmailVerificationModel.create({
-    email,
+    userId: user._id,
     verificationCode: code,
     expiresAt,
   });
 
   await sendEmail(
-  email,
-  "Verify Your Email",
-  `
-Hello ${user.name},
+    email,
+    "Reset Password Code",
+    `Hello ${user.name},
 
-We received a request to reset the password for your Smart College account.
+Your password reset code is: ${code}
+(This code is valid for 2 hours)
 
-Your verification code is: ${code}
-(This code is valid for 2 hours only)
-
-Best regards,  
-Smart College Team
-`
-);
+Best regards,
+Smart College Team`
+  );
 
   SuccessResponse(res, { message: "Reset code sent to your email" }, 200);
-}
-export const verifyResetCode = async (req: Request, res: Response) => {
-  const { email, code } = req.body;
-
-  const record = await EmailVerificationModel.findOne({ email });
-  if (!record) throw new BadRequest("No reset code found");
-  if (record.verificationCode !== code) throw new BadRequest("Invalid code");
-  if (record.expiresAt < new Date()) throw new BadRequest("Code expired");
-  
-  SuccessResponse(res, { message: "Reset code verified successfully" }, 200);
 };
 
-export const resetPassword = async (req: Request, res: Response) => {
-  const { email, code, newPassword } = req.body;
-
-  const record = await EmailVerificationModel.findOne({ email });
-  if (!record) throw new BadRequest("No reset code found");
-  if (record.verificationCode !== code) throw new BadRequest("Invalid code");
-  if (record.expiresAt < new Date()) throw new BadRequest("Code expired");
+// 2️⃣ التحقق من الكود
+export const verifyResetCode = async (req: Request, res: Response) => {
+  const { email, code } = req.body;
 
   const user = await UserModel.findOne({ email });
   if (!user) throw new NotFound("User not found");
 
+  const record = await EmailVerificationModel.findOne({ userId: user._id });
+  if (!record) throw new BadRequest("No reset code found");
+  if (record.verificationCode !== code) throw new BadRequest("Invalid code");
+  if (record.expiresAt < new Date()) throw new BadRequest("Code expired");
+
+  SuccessResponse(res, { message: "Reset code verified successfully" }, 200);
+};
+
+// 3️⃣ إعادة تعيين كلمة المرور
+export const resetPassword = async (req: Request, res: Response) => {
+  const { email, code, newPassword } = req.body;
+
+  const user = await UserModel.findOne({ email });
+  if (!user) throw new NotFound("User not found");
+
+  const record = await EmailVerificationModel.findOne({ userId: user._id });
+  if (!record) throw new BadRequest("No reset code found");
+  if (record.verificationCode !== code) throw new BadRequest("Invalid code");
+  if (record.expiresAt < new Date()) throw new BadRequest("Code expired");
+
   user.password = await bcrypt.hash(newPassword, 10);
   await user.save();
 
-  await EmailVerificationModel.deleteOne({ email });
+  await EmailVerificationModel.deleteOne({ userId: user._id });
 
- SuccessResponse(res, { message: "Password reset successful" }, 200);
+  SuccessResponse(res, { message: "Password reset successful" }, 200);
 };
-
 
 
 export const completeProfile = async (req: Request, res: Response) => {
