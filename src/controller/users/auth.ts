@@ -20,7 +20,7 @@ import { AuthenticatedRequest } from "../../types/custom";
 export const signup = async (req: Request, res: Response) => {
   const {
     name,
-    phoneNumber,
+    
     email,
     password,
     dateOfBirth,
@@ -29,22 +29,16 @@ export const signup = async (req: Request, res: Response) => {
     graduatedData, 
   } = req.body;
 
-  // ✅ تحقق من وجود مستخدم مسبقًا
-  const existing = await UserModel.findOne({ $or: [{ email }, { phoneNumber }] });
+  const existing = await UserModel.findOne({ $or: [{ email }] });
   if (existing) {
     if (existing.email === email) {
       throw new UniqueConstrainError("Email", "User already signed up with this email");
-    }
-    if (existing.phoneNumber === phoneNumber) {
-      throw new UniqueConstrainError("Phone Number", "User already signed up with this phone number");
-    }
-  }
+  }}
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
   const newUser = new UserModel({
     name,
-    phoneNumber,
     email,
     password: hashedPassword,
     role,          

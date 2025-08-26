@@ -4,7 +4,6 @@ import mongoose from "mongoose";
   {
     
     name: { type: String, },
-    phoneNumber: { type: String },
     email: { type: String, unique: true },
     password: { type: String},
     dateOfBirth: { type: Date,},
