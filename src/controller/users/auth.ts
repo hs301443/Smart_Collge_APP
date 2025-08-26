@@ -38,20 +38,27 @@ export const signup = async (req: Request, res: Response) => {
     isVerified: false,
   };
 
-  // لو الدور Graduated أضف بيانات التخرج
-  if (role === "Graduated" && graduatedData) {
-    userData.cv = graduatedData.cv || null;
-    userData.employment_status = graduatedData.employment_status || null;
-    userData.job_title = graduatedData.job_title || null;
-    userData.company_location = graduatedData.company_location || null;
-    userData.company_email = graduatedData.company_email || null;
-    userData.company_link = graduatedData.company_link || null;
-    userData.company_phone = graduatedData.company_phone || null;
-    userData.about_company = graduatedData.about_company || null;
-  }
-
+  // إنشاء الـ User أولًا
   const newUser = new UserModel(userData);
   await newUser.save();
+
+  // لو الدور Graduated أضف بيانات التخرج في جدول Graduated منفصل
+  if (role === "Graduated" && graduatedData) {
+    await GraduatedModel.create({
+      user: newUser._id,               // ربط بالـ User
+      name: newUser.name,
+      email: newUser.email,
+      BaseImage64: newUser.BaseImage64,
+      cv: graduatedData.cv || null,
+      employment_status: graduatedData.employment_status || null,
+      job_title: graduatedData.job_title || null,
+      company_location: graduatedData.company_location || null,
+      company_email: graduatedData.company_email || null,
+      company_link: graduatedData.company_link || null,
+      company_phone: graduatedData.company_phone || null,
+      about_company: graduatedData.about_company || null,
+    });
+  }
 
   // إنشاء كود التحقق
   const code = randomInt(100000, 999999).toString();
@@ -63,7 +70,7 @@ export const signup = async (req: Request, res: Response) => {
     expiresAt,
   }).save();
 
-  // إرسال الإيميل
+  // إرسال الإيميل بعد التأكد من حفظ كل البيانات
   await sendEmail(
     email,
     "Verify Your Email",
@@ -112,7 +119,7 @@ export const verifyEmail = async (req: Request, res: Response) => {
   // حذف سجل التحقق
   await EmailVerificationModel.deleteOne({ userId });
 
-  res.json({ success: true, message: "Email verified successfully", user });
+  res.json({ success: true, message: "Email verified successfully"});
 };
 
 
