@@ -15,4 +15,5 @@ route.post("/verify-code", (0, validation_1.validate)(auth_2.checkResetCodeSchem
 route.post("/reset-password", (0, validation_1.validate)(auth_2.resetPasswordSchema), auth_1.resetPassword);
 route.post("/fcm-token", authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(auth_1.getFcmToken));
 route.post("/complete", (0, catchAsync_1.catchAsync)(auth_1.completeProfile));
+route.patch("/update-image", authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(auth_1.updateProfileImage));
 exports.default = route;

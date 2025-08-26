@@ -3,7 +3,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.completeProfile = exports.resetPassword = exports.verifyResetCode = exports.sendResetCode = exports.getFcmToken = exports.login = exports.verifyEmail = exports.signup = void 0;
+exports.updateProfileImage = exports.completeProfile = exports.resetPassword = exports.verifyResetCode = exports.sendResetCode = exports.getFcmToken = exports.login = exports.verifyEmail = exports.signup = void 0;
+const handleImages_1 = require("../../utils/handleImages");
 const emailVerifications_1 = require("../../models/shema/auth/emailVerifications");
 const User_1 = require("../../models/shema/auth/User");
 const bcrypt_1 = __importDefault(require("bcrypt"));
@@ -15,7 +16,7 @@ const sendEmails_1 = require("../../utils/sendEmails");
 const BadRequest_1 = require("../../Errors/BadRequest");
 const mongoose_1 = require("mongoose");
 const signup = async (req, res) => {
-    const { name, email, password, role, BaseImage64, graduatedData } = req.body;
+    const { name, email, password, role, graduatedData } = req.body;
     const existing = await User_1.UserModel.findOne({ email });
     if (existing)
         throw new Errors_1.UniqueConstrainError("Email", "User already signed up with this email");
@@ -23,7 +24,6 @@ const signup = async (req, res) => {
     const newUser = new User_1.UserModel({
         name,
         email,
-        BaseImage64,
         password: hashedPassword,
         role,
         isVerified: false,
@@ -204,3 +204,19 @@ const completeProfile = async (req, res) => {
     (0, response_1.SuccessResponse)(res, "complete profile successfuly");
 };
 exports.completeProfile = completeProfile;
+const updateProfileImage = async (req, res) => {
+    if (!req.user)
+        throw new Errors_1.UnauthorizedError("User not found");
+    const { BaseImage64 } = req.body;
+    if (!BaseImage64) {
+        throw new BadRequest_1.BadRequest("Image not provided");
+    }
+    const user = await User_1.UserModel.findById(req.user?.id);
+    if (!user)
+        throw new Errors_1.NotFound("User not found");
+    const imageUrl = await (0, handleImages_1.saveBase64Image)(BaseImage64, user._id.toString(), req, "profile_images");
+    user.BaseImage64 = imageUrl;
+    await user.save();
+    (0, response_1.SuccessResponse)(res, { message: "Profile image updated successfully", imageUrl }, 200);
+};
+exports.updateProfileImage = updateProfileImage;

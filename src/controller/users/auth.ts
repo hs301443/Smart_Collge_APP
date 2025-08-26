@@ -263,16 +263,16 @@ export const completeProfile = async (req: Request, res: Response) => {
 export const updateProfileImage = async (req: AuthenticatedRequest, res: Response) => {
   if(!req.user) throw new UnauthorizedError("User not found");
 
-  const { imageBase64 } = req.body;
+  const { BaseImage64 } = req.body;
 
-  if (!imageBase64) {
+  if (!BaseImage64) {
     throw new BadRequest("Image not provided");
   }
 
   const user = await UserModel.findById(req.user?.id);
   if (!user) throw new NotFound("User not found");
 
-  const imageUrl = await saveBase64Image(imageBase64, user._id.toString(), req, "profile_images");
+  const imageUrl = await saveBase64Image(BaseImage64, user._id.toString(), req, "profile_images");
 
   user.BaseImage64 = imageUrl; 
   await user.save();
