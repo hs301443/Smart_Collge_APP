@@ -15,21 +15,16 @@ const sendEmails_1 = require("../../utils/sendEmails");
 const BadRequest_1 = require("../../Errors/BadRequest");
 const mongoose_1 = require("mongoose");
 const signup = async (req, res) => {
-    const { name, phoneNumber, email, password, dateOfBirth, role, imageBase64, graduatedData, } = req.body;
-    // ✅ تحقق من وجود مستخدم مسبقًا
-    const existing = await User_1.UserModel.findOne({ $or: [{ email }, { phoneNumber }] });
+    const { name, email, password, dateOfBirth, role, imageBase64, graduatedData, } = req.body;
+    const existing = await User_1.UserModel.findOne({ $or: [{ email }] });
     if (existing) {
         if (existing.email === email) {
             throw new Errors_1.UniqueConstrainError("Email", "User already signed up with this email");
-        }
-        if (existing.phoneNumber === phoneNumber) {
-            throw new Errors_1.UniqueConstrainError("Phone Number", "User already signed up with this phone number");
         }
     }
     const hashedPassword = await bcrypt_1.default.hash(password, 10);
     const newUser = new User_1.UserModel({
         name,
-        phoneNumber,
         email,
         password: hashedPassword,
         role,

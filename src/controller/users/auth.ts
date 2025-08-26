@@ -20,7 +20,6 @@ import { AuthenticatedRequest } from "../../types/custom";
 export const signup = async (req: Request, res: Response) => {
   const {
     name,
-    
     email,
     password,
     dateOfBirth,
