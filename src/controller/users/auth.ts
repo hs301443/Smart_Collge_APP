@@ -19,7 +19,7 @@ import { AuthenticatedRequest } from "../../types/custom";
 
 
 export const signup = async (req: Request, res: Response) => {
-  const { name, email, password, role, graduatedData } = req.body;
+  const { name, email, password, role,BaseImage64, graduatedData } = req.body;
 
   const existing = await UserModel.findOne({ email });
   if (existing) throw new UniqueConstrainError("Email", "User already signed up with this email");
@@ -29,6 +29,7 @@ export const signup = async (req: Request, res: Response) => {
   const newUser = new UserModel({
     name,
     email,
+    BaseImage64,
     password: hashedPassword,
     role,
     isVerified: false,
