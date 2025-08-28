@@ -176,7 +176,6 @@ const verifyResetCode = async (req, res) => {
     // ✅ 4. تحقق من الصلاحية
     if (record.expiresAt < new Date())
         throw new BadRequest_1.BadRequest("Code expired");
-    await emailVerifications_1.EmailVerificationModel.deleteOne({ userId });
     // ✅ 5. رجّع رد النجاح
     (0, response_1.SuccessResponse)(res, { message: "Reset code verified successfully" }, 200);
 };
