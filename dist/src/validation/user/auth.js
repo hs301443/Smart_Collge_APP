@@ -38,6 +38,6 @@ exports.checkResetCodeSchema = joi_1.default.object({
     code: joi_1.default.string().required(),
 });
 exports.resetPasswordSchema = joi_1.default.object({
-    userId: joi_1.default.string().required(),
+    email: joi_1.default.string().required(),
     newPassword: joi_1.default.string().min(6).max(30).required(),
 });
