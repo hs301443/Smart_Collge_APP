@@ -214,14 +214,21 @@ Smart College Team`
 export const verifyResetCode = async (req: Request, res: Response) => {
   const { email, code } = req.body;
 
+  // ✅ 1. دور على اليوزر
   const user = await UserModel.findOne({ email });
   if (!user) throw new NotFound("User not found");
 
+  // ✅ 2. دور على الكود باستخدام user._id
   const record = await EmailVerificationModel.findOne({ userId: user._id });
   if (!record) throw new BadRequest("No reset code found");
+
+  // ✅ 3. تحقق من الكود
   if (record.verificationCode !== code) throw new BadRequest("Invalid code");
+
+  // ✅ 4. تحقق من الصلاحية
   if (record.expiresAt < new Date()) throw new BadRequest("Code expired");
 
+  // ✅ 5. رجّع رد النجاح
   SuccessResponse(res, { message: "Reset code verified successfully" }, 200);
 };
 
