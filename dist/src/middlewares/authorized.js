@@ -15,10 +15,11 @@ const authorizeRoles = (...roles) => {
         if (!req.user) {
             return next(new unauthorizedError_1.UnauthorizedError("User not authenticated"));
         }
+        // ✅ Super Admin يدخل من غير شروط
         if (req.user.isSuperAdmin) {
             return next();
         }
-        // تحقق من الدور
+        // ✅ لو مفيش role أو الرول مش ضمن المسموح
         if (!req.user.role || !roles.includes(req.user.role)) {
             return next(new unauthorizedError_1.UnauthorizedError("You don't have permission"));
         }
@@ -38,10 +39,10 @@ const authorizePermissions = (...permissions) => {
             ...(req.user.rolePermissions || []),
             ...(req.user.customPermissions || []),
         ]);
-        for (const perm of permissions) {
-            if (!userPermissions.has(perm)) {
-                return next(new unauthorizedError_1.UnauthorizedError(`Missing permission: ${perm}`));
-            }
+        // ✅ لازم المستخدم يكون عنده كل البرميشنز المطلوبة
+        const missingPerms = permissions.filter((perm) => !userPermissions.has(perm));
+        if (missingPerms.length > 0) {
+            return next(new unauthorizedError_1.UnauthorizedError(`Missing permissions: ${missingPerms.join(", ")}`));
         }
         next();
     };
@@ -60,7 +61,7 @@ const auth = async (req, res, next) => {
             id: admin._id.toString(),
             name: admin.name,
             email: admin.email,
-            role: admin.role?.name || "admin",
+            role: admin.role?.name || null, // ✅ null مش "admin" افتراضي
             isSuperAdmin: admin.isSuperAdmin,
             customPermissions: admin.customPermissions || [],
             rolePermissions: admin.role?.permissions || [],

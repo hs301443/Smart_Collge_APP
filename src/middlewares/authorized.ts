@@ -37,11 +37,12 @@ export const authorizeRoles = (...roles: string[]): RequestHandler => {
       return next(new UnauthorizedError("User not authenticated"));
     }
 
+    // ✅ Super Admin يدخل من غير شروط
     if (req.user.isSuperAdmin) {
       return next();
     }
 
-    // تحقق من الدور
+    // ✅ لو مفيش role أو الرول مش ضمن المسموح
     if (!req.user.role || !roles.includes(req.user.role)) {
       return next(new UnauthorizedError("You don't have permission"));
     }
@@ -49,7 +50,6 @@ export const authorizeRoles = (...roles: string[]): RequestHandler => {
     next();
   };
 };
-
 
 export const authorizePermissions = (...permissions: string[]): RequestHandler => {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
@@ -66,10 +66,10 @@ export const authorizePermissions = (...permissions: string[]): RequestHandler =
       ...(req.user.customPermissions || []),
     ]);
 
-    for (const perm of permissions) {
-      if (!userPermissions.has(perm)) {
-        return next(new UnauthorizedError(`Missing permission: ${perm}`));
-      }
+    // ✅ لازم المستخدم يكون عنده كل البرميشنز المطلوبة
+    const missingPerms = permissions.filter((perm) => !userPermissions.has(perm));
+    if (missingPerms.length > 0) {
+      return next(new UnauthorizedError(`Missing permissions: ${missingPerms.join(", ")}`));
     }
 
     next();
@@ -91,7 +91,7 @@ export const auth = async (req: AuthenticatedRequest, res: Response, next: NextF
       id: admin._id.toString(),
       name: admin.name,
       email: admin.email,
-      role: (admin.role as any)?.name || "admin",
+      role: (admin.role as any)?.name || null, // ✅ null مش "admin" افتراضي
       isSuperAdmin: admin.isSuperAdmin,
       customPermissions: admin.customPermissions || [],
       rolePermissions: (admin.role as any)?.permissions || [],
