@@ -165,8 +165,9 @@ const verifyResetCode = async (req, res) => {
     const user = await User_1.UserModel.findOne({ email });
     if (!user)
         throw new Errors_1.NotFound("User not found");
+    const userId = user._id;
     // ✅ 2. دور على الكود باستخدام user._id
-    const record = await emailVerifications_1.EmailVerificationModel.findOne({ userId: user._id });
+    const record = await emailVerifications_1.EmailVerificationModel.findOne({ userId });
     if (!record)
         throw new BadRequest_1.BadRequest("No reset code found");
     // ✅ 3. تحقق من الكود
@@ -175,6 +176,7 @@ const verifyResetCode = async (req, res) => {
     // ✅ 4. تحقق من الصلاحية
     if (record.expiresAt < new Date())
         throw new BadRequest_1.BadRequest("Code expired");
+    await emailVerifications_1.EmailVerificationModel.deleteOne({ userId });
     // ✅ 5. رجّع رد النجاح
     (0, response_1.SuccessResponse)(res, { message: "Reset code verified successfully" }, 200);
 };
