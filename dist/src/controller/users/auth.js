@@ -161,16 +161,21 @@ exports.sendResetCode = sendResetCode;
 // 2️⃣ التحقق من الكود
 const verifyResetCode = async (req, res) => {
     const { email, code } = req.body;
+    // ✅ 1. دور على اليوزر
     const user = await User_1.UserModel.findOne({ email });
     if (!user)
         throw new Errors_1.NotFound("User not found");
+    // ✅ 2. دور على الكود باستخدام user._id
     const record = await emailVerifications_1.EmailVerificationModel.findOne({ userId: user._id });
     if (!record)
         throw new BadRequest_1.BadRequest("No reset code found");
+    // ✅ 3. تحقق من الكود
     if (record.verificationCode !== code)
         throw new BadRequest_1.BadRequest("Invalid code");
+    // ✅ 4. تحقق من الصلاحية
     if (record.expiresAt < new Date())
         throw new BadRequest_1.BadRequest("Code expired");
+    // ✅ 5. رجّع رد النجاح
     (0, response_1.SuccessResponse)(res, { message: "Reset code verified successfully" }, 200);
 };
 exports.verifyResetCode = verifyResetCode;
