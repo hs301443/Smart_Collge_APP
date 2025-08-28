@@ -1,10 +1,16 @@
 import { Request } from "express";
-import { Type } from "mongoose";
+import { Types } from "mongoose";
 export interface AppUser {
  _id?: Types.ObjectId; // خليها اختيارية
   id?: string;
-  name: string;
-  role: string;
+  email?: string;
+  name?: string;
+  role?: string;              // admin / superAdmin / ...
+  isSuperAdmin?: boolean;     // لو true يبقى معاه كل حاجة
+  customPermissions?: string[];
+  rolePermissions?: string[];
+
+  
 }
 
 // Extend Express Request with your custom user type

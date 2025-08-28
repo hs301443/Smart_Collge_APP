@@ -16,7 +16,7 @@ const login = async (req, res) => {
         throw new Errors_1.UnauthorizedError("Email and password are required");
     }
     // 2- شوف هل في admin بالـ email ده
-    const admin = await Admin_1.Adminmodel.findOne({ email });
+    const admin = await Admin_1.AdminModel.findOne({ email });
     if (!admin) {
         throw new Errors_1.UnauthorizedError("Invalid email or password");
     }

@@ -32,7 +32,7 @@ export const sendResetCodeSchema = Joi.object({
 }); 
 
 export const checkResetCodeSchema = Joi.object({
-  userId: Joi.string().required(),
+  email: Joi.string().required(),
   code: Joi.string().required(),
 });
 

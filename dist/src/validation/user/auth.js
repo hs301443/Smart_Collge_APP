@@ -34,7 +34,7 @@ exports.sendResetCodeSchema = joi_1.default.object({
     email: joi_1.default.string().email().required(),
 });
 exports.checkResetCodeSchema = joi_1.default.object({
-    userId: joi_1.default.string().required(),
+    email: joi_1.default.string().required(),
     code: joi_1.default.string().required(),
 });
 exports.resetPasswordSchema = joi_1.default.object({

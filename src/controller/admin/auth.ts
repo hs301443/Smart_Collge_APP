@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { Adminmodel } from "../../models/shema/auth/Admin";
+import { AdminModel } from "../../models/shema/auth/Admin";
 import bcrypt from "bcrypt";
 import { generateToken } from "../../utils/auth";
 import { UnauthorizedError } from "../../Errors";
@@ -16,7 +16,7 @@ export const login = async (req: Request, res: Response) => {
   }
 
   // 2- شوف هل في admin بالـ email ده
-  const admin = await Adminmodel.findOne({ email });
+  const admin = await AdminModel.findOne({ email });
   if (!admin) {
     throw new UnauthorizedError("Invalid email or password");
   }

@@ -3,40 +3,58 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const passport_1 = __importDefault(require("passport"));
-const passport_google_oauth20_1 = require("passport-google-oauth20");
-const User_1 = require("../models/shema/auth/User");
+exports.verifyGoogleToken = void 0;
+const google_auth_library_1 = require("google-auth-library");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-passport_1.default.use(new passport_google_oauth20_1.Strategy({
-    clientID: process.env.GOOGLE_CLIENT_ID,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: process.env.GOOGLE_REDIRECT_URL,
-}, async (accessToken, refreshToken, profile, done) => {
+const dotenv_1 = __importDefault(require("dotenv"));
+const User_1 = require("../models/shema/auth/User");
+dotenv_1.default.config();
+const client = new google_auth_library_1.OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const verifyGoogleToken = async (req, res) => {
+    const { token } = req.body;
     try {
-        let user = await User_1.UserModel.findOne({ $or: [{ googleId: profile.id }, { email: profile.emails?.[0].value }] });
+        const ticket = await client.verifyIdToken({
+            idToken: token,
+            audience: process.env.GOOGLE_CLIENT_ID,
+        });
+        const payload = ticket.getPayload();
+        if (!payload) {
+            return res
+                .status(400)
+                .json({ success: false, message: "Invalid Google payload" });
+        }
+        const email = payload.email;
+        const name = payload.name || "Unknown User";
+        const googleId = payload.sub;
+        // 🔍 check if user exists in MongoDB
+        let user = await User_1.UserModel.findOne({ googleId });
+        // ➕ create if not exists
         if (!user) {
-            user = await User_1.UserModel.create({
-                googleId: profile.id,
-                name: profile.displayName,
-                email: profile.emails?.[0].value,
-                role: "member",
+            user = new User_1.UserModel({
+                googleId,
+                email,
+                name,
                 isVerified: true,
-                imageBase64: profile.photos?.[0]?.value || "", // 
             });
+            await user.save();
         }
-        else {
-            if (!user.googleId) {
-                user.googleId = profile.id;
-                await user.save();
-            }
-        }
-        const token = jsonwebtoken_1.default.sign({ id: user._id }, process.env.JWT_SECRET, {
+        // 🔑 Generate JWT
+        const authToken = jsonwebtoken_1.default.sign({ id: user._id }, process.env.JWT_SECRET, {
             expiresIn: "7d",
         });
-        return done(null, { user, token });
+        return res.json({
+            success: true,
+            token: authToken,
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+            },
+        });
     }
-    catch (err) {
-        return done(err, undefined);
+    catch (error) {
+        console.error("Google login error:", error);
+        res.status(401).json({ success: false, message: "Invalid token" });
     }
-}));
-exports.default = passport_1.default;
+};
+exports.verifyGoogleToken = verifyGoogleToken;
