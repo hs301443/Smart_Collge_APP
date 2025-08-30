@@ -30,11 +30,11 @@ export const verifyGoogleToken = async (req: Request, res: Response) => {
     const name = payload.name || "Unknown User";
     const googleId = payload.sub;
 
-    // 🔍 check if user exists in MongoDB
-    let user = await UserModel.findOne({ googleId });
+    // 🔍 check if user exists by googleId OR email
+    let user = await UserModel.findOne({ $or: [{ googleId }, { email }] });
 
-    // ➕ create if not exists
     if (!user) {
+      // ➕ Signup (new user)
       user = new UserModel({
         googleId,
         email,
@@ -42,6 +42,13 @@ export const verifyGoogleToken = async (req: Request, res: Response) => {
         isVerified: true,
       });
       await user.save();
+    } else {
+      // 👤 Login (existing user)
+      // لو المستخدم كان موجود بالإيميل بس ومفيش googleId نخزنه
+      if (!user.googleId) {
+        user.googleId = googleId;
+        await user.save();
+      }
     }
 
     // 🔑 Generate JWT
