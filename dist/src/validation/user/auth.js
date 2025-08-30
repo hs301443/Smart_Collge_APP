@@ -39,5 +39,6 @@ exports.checkResetCodeSchema = joi_1.default.object({
 });
 exports.resetPasswordSchema = joi_1.default.object({
     email: joi_1.default.string().required(),
+    code: joi_1.default.string().required(),
     newPassword: joi_1.default.string().min(6).max(30).required(),
 });

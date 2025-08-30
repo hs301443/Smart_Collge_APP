@@ -8,15 +8,15 @@ import {
 } from "../../controller/admin/admin";
 
 import { authenticated } from "../../middlewares/authenticated";
-import { authorizeRoles } from "../../middlewares/authorized";
+import { auth, authorizeRoles } from "../../middlewares/authorized";
 
 const router = Router();
 
 // 🟢 SuperAdmin only
-router.post("/", authenticated, authorizeRoles("superAdmin"), createAdmin);
-router.get("/", authenticated, authorizeRoles("superAdmin"), getAdmins);
-router.get("/:id", authenticated, authorizeRoles("superAdmin"), getAdminById);
-router.put("/:id", authenticated, authorizeRoles("superAdmin"), updateAdmin);
-router.delete("/:id", authenticated, authorizeRoles("superAdmin"), deleteAdmin);
+router.post("/", auth, authorizeRoles("superAdmin"), createAdmin);
+router.get("/", auth, authorizeRoles("superAdmin"), getAdmins);
+router.get("/:id", auth, authorizeRoles("superAdmin"), getAdminById);
+router.put("/:id", auth, authorizeRoles("superAdmin"), updateAdmin);
+router.delete("/:id", auth, authorizeRoles("superAdmin"), deleteAdmin);
 
 export default router;

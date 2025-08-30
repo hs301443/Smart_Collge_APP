@@ -6,32 +6,29 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.login = void 0;
 const Admin_1 = require("../../models/shema/auth/Admin");
 const bcrypt_1 = __importDefault(require("bcrypt"));
-const auth_1 = require("../../utils/auth");
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const Errors_1 = require("../../Errors");
 const response_1 = require("../../utils/response");
 const login = async (req, res) => {
     const { email, password } = req.body;
-    // 1- تأكد من إن الحقول موجودة
     if (!email || !password) {
         throw new Errors_1.UnauthorizedError("Email and password are required");
     }
-    // 2- شوف هل في admin بالـ email ده
-    const admin = await Admin_1.AdminModel.findOne({ email });
+    const admin = await Admin_1.AdminModel.findOne({ email }).populate("role");
     if (!admin) {
         throw new Errors_1.UnauthorizedError("Invalid email or password");
     }
-    // 3- قارن الباسورد مع الهاش اللي متخزن
     const isPasswordValid = await bcrypt_1.default.compare(password, admin.hashedPassword);
     if (!isPasswordValid) {
         throw new Errors_1.UnauthorizedError("Invalid email or password");
     }
-    // 4- لو كله تمام → اعمل generate JWT
-    const token = (0, auth_1.generateToken)({
-        id: admin._id,
+    // توليد التوكن يدويًا
+    const token = jsonwebtoken_1.default.sign({
+        sub: admin._id.toString(),
         name: admin.name,
-        role: admin.role,
-    });
-    // 5- رجّع response ناجح
+        role: admin.role?.name || null,
+        isSuperAdmin: admin.isSuperAdmin
+    }, process.env.JWT_SECRET, { expiresIn: "7d" });
     return (0, response_1.SuccessResponse)(res, {
         message: "Login successful",
         token

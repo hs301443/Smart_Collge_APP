@@ -6,6 +6,8 @@ import { Request, Response } from "express";
 import { RoleModel } from "../../models/shema/auth/Admin";
 // ✅ Create Role
 export const createRole = async (req: Request, res: Response) => {
+      console.log("👤 Inside createRole, user:", req.user);
+
   if (!req.user || !req.user.isSuperAdmin) {
     throw new UnauthorizedError("Only Super Admin can create roles");
   }
@@ -19,7 +21,6 @@ export const createRole = async (req: Request, res: Response) => {
   return SuccessResponse(res, { message: "Role Created Successfully", role });
 };
 
-
 export const getRoles = async (req: Request, res: Response) => {
      if (!req.user || (!req.user.isSuperAdmin && req.user.role == null)) {
     throw new UnauthorizedError("Admins only can view roles");
@@ -27,6 +28,7 @@ export const getRoles = async (req: Request, res: Response) => {
     const roles = await RoleModel.find();
   return SuccessResponse(res, { roles });
 };
+
 
 
 // ✅ Get Role By Id

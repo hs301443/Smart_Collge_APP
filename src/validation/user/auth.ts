@@ -38,6 +38,7 @@ export const checkResetCodeSchema = Joi.object({
 
 export const resetPasswordSchema = Joi.object({
   email: Joi.string().required(),
+  code: Joi.string().required(),
   newPassword: Joi.string().min(6).max(30).required(),
 }); 
 

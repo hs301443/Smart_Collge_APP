@@ -53,15 +53,18 @@ const auth = async (req, res, next) => {
         const token = (req.headers.authorization || "").replace("Bearer ", "");
         if (!token)
             return next(new unauthorizedError_1.UnauthorizedError("No token provided"));
+        // ✅ التأكد من صحة التوكن واستخراج البيانات
         const payload = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
+        // ✅ البحث عن السوبر أدمن أو أي أدمن حسب الـ _id
         const admin = await Admin_1.AdminModel.findById(payload.sub).populate("role");
         if (!admin)
             return next(new unauthorizedError_1.UnauthorizedError("Admin not found"));
+        // ✅ ملء معلومات المستخدم في req.user
         req.user = {
             id: admin._id.toString(),
             name: admin.name,
             email: admin.email,
-            role: admin.role?.name || null, // ✅ null مش "admin" افتراضي
+            role: admin.role?.name || null, // null لو مفيش role
             isSuperAdmin: admin.isSuperAdmin,
             customPermissions: admin.customPermissions || [],
             rolePermissions: admin.role?.permissions || [],
