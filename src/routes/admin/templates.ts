@@ -7,10 +7,10 @@ import { authenticated } from '../../middlewares/authenticated';
 
 const router = Router();
 
-router.post('/', auth, authorizeRoles('superadmin'), validate(createTemplateSchema), createTemplate);
+router.post('/', auth, authorizeRoles("admin"), validate(createTemplateSchema), createTemplate);
 router.get('/', authenticated , getTemplates);
 router.get('/:id',authenticated, getTemplateById);
-router.put('/:id', auth, authorizeRoles('superadmin'), validate(updateTemplateSchema), updateTemplate);
-router.delete('/:id', auth, authorizeRoles('superadmin'), deleteTemplate);
+router.put('/:id', auth, authorizeRoles("admin"), validate(updateTemplateSchema), updateTemplate);
+router.delete('/:id', auth, authorizeRoles("admin"), deleteTemplate);
 
 export default router;
