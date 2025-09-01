@@ -8,7 +8,6 @@ const Errors_2 = require("../../Errors");
 const Admin_1 = require("../../models/shema/auth/Admin");
 // ✅ Create Role
 const createRole = async (req, res) => {
-    console.log("👤 Inside createRole, user:", req.user);
     if (!req.user || !req.user.isSuperAdmin) {
         throw new Errors_2.UnauthorizedError("Only Super Admin can create roles");
     }

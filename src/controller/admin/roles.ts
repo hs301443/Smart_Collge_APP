@@ -6,7 +6,6 @@ import { Request, Response } from "express";
 import { RoleModel } from "../../models/shema/auth/Admin";
 // ✅ Create Role
 export const createRole = async (req: Request, res: Response) => {
-      console.log("👤 Inside createRole, user:", req.user);
 
   if (!req.user || !req.user.isSuperAdmin) {
     throw new UnauthorizedError("Only Super Admin can create roles");

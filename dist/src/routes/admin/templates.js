@@ -1,0 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const templates_1 = require("../../controller/admin/templates");
+const validation_1 = require("../../middlewares/validation");
+const templates_2 = require("../../validation/admin/templates");
+const authorized_1 = require("../../middlewares/authorized");
+const authenticated_1 = require("../../middlewares/authenticated");
+const router = (0, express_1.Router)();
+router.post('/', authorized_1.auth, (0, authorized_1.authorizeRoles)('superadmin'), (0, validation_1.validate)(templates_2.createTemplateSchema), templates_1.createTemplate);
+router.get('/', authenticated_1.authenticated, templates_1.getTemplates);
+router.get('/:id', authenticated_1.authenticated, templates_1.getTemplateById);
+router.put('/:id', authorized_1.auth, (0, authorized_1.authorizeRoles)('superadmin'), (0, validation_1.validate)(templates_2.updateTemplateSchema), templates_1.updateTemplate);
+router.delete('/:id', authorized_1.auth, (0, authorized_1.authorizeRoles)('superadmin'), templates_1.deleteTemplate);
+exports.default = router;
