@@ -50,6 +50,18 @@ const sendNotificationToAll = async (req, res) => {
         tokens,
     };
     const response = await firebase_1.messaging.sendEachForMulticast(message);
+    // معالجة الأخطاء
+    const invalidTokens = [];
+    await Promise.all(response.responses.map(async (resp, idx) => {
+        if (!resp.success) {
+            console.error(`❌ Error for token[${tokens[idx]}]:`, resp.error?.code, resp.error?.message);
+            // لو التوكن مش صالح، نمسحه من الداتابيز
+            if (resp.error?.code === "messaging/registration-token-not-registered") {
+                invalidTokens.push(tokens[idx]);
+                await User_1.UserModel.updateOne({ _id: validUsers[idx]._id }, { $unset: { fcmtoken: "" } });
+            }
+        }
+    }));
     return res.json({
         success: true,
         message: "Notification sent successfully",
@@ -58,6 +70,7 @@ const sendNotificationToAll = async (req, res) => {
             successCount: response.successCount,
             failureCount: response.failureCount,
             totalTokens: tokens.length,
+            invalidTokens,
         },
         stats: {
             totalUsers: allUsers.length,
