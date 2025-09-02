@@ -3,13 +3,13 @@ import{sendNotificationToAll,getallNotification,deletenotification,updateNotific
 import {createnotificationSchema,updatenotificationSchema} from '../../validation/admin/notification';
 import { validate } from '../../middlewares/validation';
 import { authenticated } from '../../middlewares/authenticated';
-import { authorizeRoles } from '../../middlewares/authorized';
+import { auth, authorizeRoles } from '../../middlewares/authorized';
 const router = Router();
 
-router.post('/',authenticated,authorizeRoles('admin'),validate(createnotificationSchema),sendNotificationToAll);
-router.get('/',authenticated,authorizeRoles('admin'),getallNotification);
-router.delete('/:id',authenticated,authorizeRoles('admin'),deletenotification);
-router.put('/:id',authenticated,authorizeRoles('admin'),validate(updatenotificationSchema),updateNotification);
-router.get('/:id',authenticated,authorizeRoles('admin'),getNotificationById);
+router.post('/',auth, authorizeRoles("superAdmin"),validate(createnotificationSchema),sendNotificationToAll);
+router.get('/',auth, authorizeRoles("superAdmin"),getallNotification);
+router.delete('/:id',auth, authorizeRoles("superAdmin"),deletenotification);
+router.put('/:id',auth, authorizeRoles("superAdmin"),validate(updatenotificationSchema),updateNotification);
+router.get('/:id',auth, authorizeRoles("superAdmin"),getNotificationById);
 
 export default router;
