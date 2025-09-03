@@ -51,30 +51,32 @@ export const authorizeRoles = (...roles: string[]): RequestHandler => {
   };
 };
 
-// export const authorizePermissions = (...permissions: string[]): RequestHandler => {
-//   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-//     if (!req.user) {
-//       return next(new UnauthorizedError("User not authenticated"));
-//     }
+export const authorizePermissions = (...permissions: string[]): RequestHandler => {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return next(new UnauthorizedError("User not authenticated"));
+    }
 
-//     if (req.user.isSuperAdmin) {
-//       return next();
-//     }
+    // ✅ Super Admin يتخطى كل شيء
+    if (req.user.isSuperAdmin) return next();
 
-//     const userPermissions = new Set([
-//       ...(req.user.rolePermissions || []),
-//       ...(req.user.customPermissions || []),
-//     ]);
+    // ✅ دمج صلاحيات الدور مع الصلاحيات المخصصة
+    const userPermissions = new Set([
+      ...(req.user.rolePermissions || []),
+      ...(req.user.customPermissions || []),
+    ]);
 
-//     // ✅ لازم المستخدم يكون عنده كل البرميشنز المطلوبة
-//     const missingPerms = permissions.filter((perm) => !userPermissions.has(perm));
-//     if (missingPerms.length > 0) {
-//       return next(new UnauthorizedError(`Missing permissions: ${missingPerms.join(", ")}`));
-//     }
+    // ✅ تحقق أن المستخدم يمتلك كل الصلاحيات المطلوبة
+    const missingPerms = permissions.filter((perm) => !userPermissions.has(perm));
+    if (missingPerms.length > 0) {
+      return next(
+        new UnauthorizedError(`Missing permissions: ${missingPerms.join(", ")}`)
+      );
+    }
 
-//     next();
-//   };
-// };
+    next();
+  };
+};
 
 
 
@@ -83,22 +85,25 @@ export const auth = async (req: AuthenticatedRequest, res: Response, next: NextF
     const token = (req.headers.authorization || "").replace("Bearer ", "");
     if (!token) return next(new UnauthorizedError("No token provided"));
 
-    // ✅ التأكد من صحة التوكن واستخراج البيانات
+    // ✅ التحقق من صحة الـ JWT
     const payload = jwt.verify(token, process.env.JWT_SECRET!) as any;
 
-    // ✅ البحث عن السوبر أدمن أو أي أدمن حسب الـ _id
-    const admin = await AdminModel.findById(payload.sub).populate("role");
+    // ✅ البحث عن Admin وربط الدور
+    const admin = await AdminModel.findById(payload.sub).populate({ path: "role", select: "permissions" });
     if (!admin) return next(new UnauthorizedError("Admin not found"));
 
-    // ✅ ملء معلومات المستخدم في req.user
+    // ✅ ملء req.user مع كل الصلاحيات
+    const rolePermissions = Array.isArray((admin.role as any)?.permissions)
+      ? (admin.role as any).permissions
+      : [];
+
     req.user = {
       id: admin._id.toString(),
       name: admin.name,
       email: admin.email,
-      role: (admin.role as any)?.name || null, // null لو مفيش role
       isSuperAdmin: admin.isSuperAdmin,
       customPermissions: admin.customPermissions || [],
-      rolePermissions: (admin.role as any)?.permissions || [],
+      rolePermissions,
     };
 
     next();

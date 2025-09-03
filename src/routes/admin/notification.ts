@@ -3,13 +3,15 @@ import{sendNotificationToAll,getallNotification,deletenotification,updateNotific
 import {createnotificationSchema,updatenotificationSchema} from '../../validation/admin/notification';
 import { validate } from '../../middlewares/validation';
 import { authenticated } from '../../middlewares/authenticated';
-import { auth, authorizeRoles } from '../../middlewares/authorized';
+import { auth, authorizeRoles,authorizePermissions } from '../../middlewares/authorized';
+
 const router = Router();
 
-router.post('/',auth, authorizeRoles("Admin"),validate(createnotificationSchema),sendNotificationToAll);
+router.post('/',auth, authorizePermissions("sendNotificationToAll"),validate(createnotificationSchema),sendNotificationToAll);
 router.get('/',auth, authorizeRoles("Admin"),getallNotification);
 router.delete('/:id',auth, authorizeRoles("Admin"),deletenotification);
 router.put('/:id',auth, authorizeRoles("Admin"),validate(updatenotificationSchema),updateNotification);
 router.get('/:id',auth, authorizeRoles("Admin"),getNotificationById);
 
 export default router;
+

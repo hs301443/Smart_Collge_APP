@@ -6,7 +6,7 @@ const notification_2 = require("../../validation/admin/notification");
 const validation_1 = require("../../middlewares/validation");
 const authorized_1 = require("../../middlewares/authorized");
 const router = (0, express_1.Router)();
-router.post('/', authorized_1.auth, (0, authorized_1.authorizeRoles)("Admin"), (0, validation_1.validate)(notification_2.createnotificationSchema), notification_1.sendNotificationToAll);
+router.post('/', authorized_1.auth, (0, authorized_1.authorizePermissions)("sendNotificationToAll"), (0, validation_1.validate)(notification_2.createnotificationSchema), notification_1.sendNotificationToAll);
 router.get('/', authorized_1.auth, (0, authorized_1.authorizeRoles)("Admin"), notification_1.getallNotification);
 router.delete('/:id', authorized_1.auth, (0, authorized_1.authorizeRoles)("Admin"), notification_1.deletenotification);
 router.put('/:id', authorized_1.auth, (0, authorized_1.authorizeRoles)("Admin"), (0, validation_1.validate)(notification_2.updatenotificationSchema), notification_1.updateNotification);
