@@ -12,5 +12,5 @@ route.use("/notification", NotificationRouter);
 route.use("/news", NewsRouter);
 route.use("/statics", StaticsRouter);
 route.use("/templates", templatesRouter);
-route.use("/chat", authenticated,chatRouter);
+route.use("/chat",chatRouter);
 export default route;
