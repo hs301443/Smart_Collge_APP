@@ -67,21 +67,44 @@ export const getAdmins = async (req: Request, res: Response) => {
 
 // ✅ Get Single Admin
 export const getAdminById = async (req: Request, res: Response) => {
-    if (!req.user || !req.user.isSuperAdmin) {
-    throw new UnauthorizedError("Only Super Admin can delete admins");
+  if (!req.user || !req.user.isSuperAdmin) {
+    throw new UnauthorizedError("Only Super Admin can access admins");
   }
+
   const { id } = req.params;
-  const admin = await AdminModel.findById(id).populate("role");
+  const admin = await AdminModel.findById(id).populate("role").select("-hashedPassword");
   if (!admin) throw new NotFound("Admin not found");
-  return SuccessResponse(res, { admin });
+
+  const formattedAdmin = {
+    _id: admin._id,
+    name: admin.name,
+    email: admin.email,
+    imagePath: admin.imagePath,
+    isSuperAdmin: admin.isSuperAdmin,
+    role: admin.role && typeof admin.role === "object" && "_id" in admin.role
+      ? {
+          _id: (admin.role as any)._id,
+          name: (admin.role as any).name,
+          permissions: (admin.role as any).permissions,
+          description: (admin.role as any).description,
+        }
+      : null,
+    customPermissions: admin.customPermissions,
+    createdAt: admin.createdAt,
+    updatedAt: admin.updatedAt,
+  };
+
+  return SuccessResponse(res, { admin: formattedAdmin });
 };
+
 
 // ✅ Update Admin
 export const updateAdmin = async (req: Request, res: Response) => {
   if (!req.user || !req.user.isSuperAdmin) {
     throw new UnauthorizedError("Only Super Admin can update admins");
   }
- const { id } = req.params;
+
+  const { id } = req.params;
   const { name, email, password, role } = req.body;
 
   let updateData: any = { name, email, role };
@@ -89,10 +112,32 @@ export const updateAdmin = async (req: Request, res: Response) => {
     updateData.hashedPassword = await bcrypt.hash(password, 10);
   }
 
-  const admin = await AdminModel.findByIdAndUpdate(id, updateData, { new: true }).populate("role");
+  const admin = await AdminModel.findByIdAndUpdate(id, updateData, { new: true })
+    .populate("role")
+    .select("-hashedPassword");
+
   if (!admin) throw new NotFound("Admin not found");
 
-  return SuccessResponse(res, { message: "Admin updated", admin });
+  const formattedAdmin = {
+    _id: admin._id,
+    name: admin.name,
+    email: admin.email,
+    imagePath: admin.imagePath,
+    isSuperAdmin: admin.isSuperAdmin,
+    role: admin.role && typeof admin.role === "object" && "name" in admin.role
+      ? {
+          _id: (admin.role as any)._id,
+          name: (admin.role as any).name,
+          permissions: (admin.role as any).permissions,
+          description: (admin.role as any).description,
+        }
+      : null,
+    customPermissions: admin.customPermissions,
+    createdAt: admin.createdAt,
+    updatedAt: admin.updatedAt,
+  };
+
+  return SuccessResponse(res, { message: "Admin updated", admin: formattedAdmin });
 };
 
 // ✅ Delete Admin
@@ -105,5 +150,5 @@ export const deleteAdmin = async (req: Request, res: Response) => {
   const admin = await AdminModel.findByIdAndDelete(id);
   if (!admin) throw new NotFound("Admin not found");
 
-  return SuccessResponse(res, { message: "Admin Deleted Successfully" });
+  return SuccessResponse(res, { message: "Admin deleted successfully" });
 };
