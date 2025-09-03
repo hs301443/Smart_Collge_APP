@@ -114,6 +114,7 @@ const login = async (req, res) => {
     const token = (0, auth_1.generateToken)({
         id: user._id,
         name: user.name,
+        role: user.role, // 👈 ضيفها لو محتاجها
     });
     (0, response_1.SuccessResponse)(res, { message: "Login Successful", token }, 200);
 };

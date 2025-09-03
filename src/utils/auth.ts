@@ -1,12 +1,15 @@
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { UnauthorizedError } from "../Errors";
+
 dotenv.config();
 
 export const generateToken = (user: any): string => {
-  return jwt.sign(user, process.env.JWT_SECRET as string, {
-    expiresIn: "7d",
-  });
+  return jwt.sign(
+    { id: user._id.toString(), role: user.role, name: user.name },
+    process.env.JWT_SECRET as string,
+    { expiresIn: "7d" }
+  );
 };
 
 export const verifyToken = (token: string) => {
@@ -15,6 +18,7 @@ export const verifyToken = (token: string) => {
       token,
       process.env.JWT_SECRET as string
     ) as jwt.JwtPayload;
+
     return {
       id: decoded.id,
       name: decoded.name,
@@ -24,5 +28,3 @@ export const verifyToken = (token: string) => {
     throw new UnauthorizedError("Invalid token");
   }
 };
-
-

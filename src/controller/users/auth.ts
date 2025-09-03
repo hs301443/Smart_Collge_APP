@@ -149,6 +149,8 @@ export const login = async (req: Request, res: Response) => {
   const token = generateToken({
     id: user._id,
     name: user.name,
+      role: user.role, // 👈 ضيفها لو محتاجها
+
   });
 
   SuccessResponse(res, { message: "Login Successful", token }, 200);
