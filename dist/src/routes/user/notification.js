@@ -5,7 +5,7 @@ const notification_1 = require("../../controller/users/notification");
 const authenticated_1 = require("../../middlewares/authenticated");
 const catchAsync_1 = require("../../utils/catchAsync");
 const router = (0, express_1.Router)();
-router.get('/', authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(notification_1.getUserNotifications));
 router.get('/unread-count', authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(notification_1.getUnreadCount));
+router.get('/', authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(notification_1.getUserNotifications));
 router.get('/:id', authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(notification_1.getSingleNotification));
 exports.default = router;
