@@ -13,7 +13,7 @@ import { auth } from "../../middlewares/authorized";
 const router = Router();
 
 // المحادثات
-router.get("/conversations/:adminId",auth ,getConversations);
+router.get("/conversations",auth ,getConversations);
 
 // الرسائل
 router.get("/messages/:conversationId",auth , getMessages);

@@ -5,7 +5,7 @@ const chat_1 = require("../../controller/admin/chat");
 const authorized_1 = require("../../middlewares/authorized");
 const router = (0, express_1.Router)();
 // المحادثات
-router.get("/conversations/:adminId", authorized_1.auth, chat_1.getConversations);
+router.get("/conversations", authorized_1.auth, chat_1.getConversations);
 // الرسائل
 router.get("/messages/:conversationId", authorized_1.auth, chat_1.getMessages);
 // إرسال رسالة
