@@ -65,28 +65,16 @@ export const sendNotificationToAll = async (req: Request, res: Response) => {
 
   const response = await messaging.sendEachForMulticast(message);
 
-  // معالجة الأخطاء
-  const invalidTokens: string[] = [];
-  await Promise.all(
-    response.responses.map(async (resp, idx) => {
-      if (!resp.success) {
-        console.error(
-          `❌ Error for token[${tokens[idx]}]:`,
-          resp.error?.code,
-          resp.error?.message
-        );
-
-        // لو التوكن مش صالح، نمسحه من الداتابيز
-        if (resp.error?.code === "messaging/registration-token-not-registered") {
-          invalidTokens.push(tokens[idx]);
-          await UserModel.updateOne(
-            { _id: validUsers[idx]._id },
-            { $unset: { fcmtoken: "" } }
-          );
-        }
-      }
-    })
-  );
+  // اطبع الأخطاء بالتفصيل
+  response.responses.forEach((resp, idx) => {
+    if (!resp.success) {
+      console.error(
+        `❌ Error for token[${tokens[idx]}]:`,
+        resp.error?.code,
+        resp.error?.message
+      );
+    }
+  });
 
   return res.json({
     success: true,
@@ -96,7 +84,6 @@ export const sendNotificationToAll = async (req: Request, res: Response) => {
       successCount: response.successCount,
       failureCount: response.failureCount,
       totalTokens: tokens.length,
-      invalidTokens,
     },
     stats: {
       totalUsers: allUsers.length,
