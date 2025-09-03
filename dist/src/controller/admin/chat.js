@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteConversation = exports.deleteMessage = exports.markAsRead = exports.markMessageAsRead = exports.sendMessageByAdmin = exports.getMessages = exports.getConversations = void 0;
+exports.deleteConversation = exports.deleteMessage = exports.markAsRead = exports.markMessageAsRead = exports.sendMessageByAdmin = exports.getMessages = exports.getAdminConversations = void 0;
 const Conversation_1 = require("../../models/shema/Conversation");
 const Message_1 = require("../../models/shema/Message");
 const BadRequest_1 = require("../../Errors/BadRequest");
@@ -8,19 +8,18 @@ const Errors_1 = require("../../Errors");
 const Errors_2 = require("../../Errors");
 const response_1 = require("../../utils/response");
 // 1️⃣ كل المحادثات الخاصة بإدمن
-const getConversations = async (req, res) => {
+const getAdminConversations = async (req, res) => {
     if (!req.user)
         throw new Errors_2.UnauthorizedError("Only admin can access conversations");
-    const adminId = req.user._id;
+    const adminId = req.user?.id; // مفروض الأدمن بيكون لوج إن وداخل بالتوكن\
     const conversations = await Conversation_1.ConversationModel.find({ admin: adminId })
-        .populate("user", "name email")
-        .sort({ lastMessageAt: -1 });
+        .populate("user", "name email") // عرض بيانات اليوزر
+        .sort({ updatedAt: -1 });
     if (!conversations)
         throw new Errors_1.NotFound("No conversations found");
     (0, response_1.SuccessResponse)(res, { success: true, conversations });
-    // res.json({ success: true, conversations });
 };
-exports.getConversations = getConversations;
+exports.getAdminConversations = getAdminConversations;
 // 2️⃣ كل الرسائل في محادثة معينة
 const getMessages = async (req, res) => {
     if (!req.user)

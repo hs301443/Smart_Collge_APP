@@ -6,18 +6,18 @@ import { NotFound } from "../../Errors";
 import { UnauthorizedError } from "../../Errors";
 import { SuccessResponse } from "../../utils/response";
 // 1️⃣ كل المحادثات الخاصة بإدمن
-export const getConversations = async (req: Request, res: Response) => {
-    if (!req.user) throw new UnauthorizedError("Only admin can access conversations");
-    const adminId = req.user._id;
-    const conversations = await ConversationModel.find({ admin: adminId })
-        .populate("user", "name email")
-        .sort({ lastMessageAt: -1 });
 
+export const getAdminConversations = async (req: Request, res: Response) => {
+    if (!req.user) throw new UnauthorizedError("Only admin can access conversations");
+    const adminId = req.user?.id; // مفروض الأدمن بيكون لوج إن وداخل بالتوكن\
+
+    const conversations = await ConversationModel.find({ admin: adminId })
+      .populate("user", "name email") // عرض بيانات اليوزر
+      .sort({ updatedAt: -1 });
         if(!conversations) throw new NotFound("No conversations found");
 
-        SuccessResponse(res, { success: true, conversations });
-    // res.json({ success: true, conversations });
-};
+    SuccessResponse(res, { success: true, conversations });
+  };
 
 // 2️⃣ كل الرسائل في محادثة معينة
 export const getMessages = async (req: Request, res: Response) => {
