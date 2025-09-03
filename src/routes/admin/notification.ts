@@ -6,10 +6,10 @@ import { authenticated } from '../../middlewares/authenticated';
 import { auth, authorizeRoles } from '../../middlewares/authorized';
 const router = Router();
 
-router.post('/',auth, authorizeRoles("superAdmin"),validate(createnotificationSchema),sendNotificationToAll);
-router.get('/',auth, authorizeRoles("superAdmin"),getallNotification);
-router.delete('/:id',auth, authorizeRoles("superAdmin"),deletenotification);
-router.put('/:id',auth, authorizeRoles("superAdmin"),validate(updatenotificationSchema),updateNotification);
-router.get('/:id',auth, authorizeRoles("superAdmin"),getNotificationById);
+router.post('/',auth, authorizeRoles("Admin"),validate(createnotificationSchema),sendNotificationToAll);
+router.get('/',auth, authorizeRoles("Admin"),getallNotification);
+router.delete('/:id',auth, authorizeRoles("Admin"),deletenotification);
+router.put('/:id',auth, authorizeRoles("Admin"),validate(updatenotificationSchema),updateNotification);
+router.get('/:id',auth, authorizeRoles("Admin"),getNotificationById);
 
 export default router;
