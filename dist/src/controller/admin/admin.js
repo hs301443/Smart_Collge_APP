@@ -28,12 +28,34 @@ exports.createAdmin = createAdmin;
 // ✅ Get All Admins
 const getAdmins = async (req, res) => {
     if (!req.user || !req.user.isSuperAdmin) {
-        throw new Errors_2.UnauthorizedError("Only Super Admin can delete admins");
+        throw new Errors_2.UnauthorizedError("Only Super Admin can access admins");
     }
-    const admins = await Admin_1.AdminModel.find().populate("role");
-    if (!admins)
+    // جلب الـ admins مع الدور، واستبعاد كلمة المرور
+    const admins = await Admin_1.AdminModel.find()
+        .populate("role")
+        .select("-hashedPassword");
+    if (admins.length === 0)
         throw new Errors_1.NotFound("Admins not found");
-    return (0, response_1.SuccessResponse)(res, { admins });
+    // ترتيب الـ response
+    const formattedAdmins = admins.map(admin => ({
+        _id: admin._id,
+        name: admin.name,
+        email: admin.email,
+        imagePath: admin.imagePath,
+        isSuperAdmin: admin.isSuperAdmin,
+        role: admin.role && typeof admin.role === "object" && "_id" in admin.role
+            ? {
+                _id: admin.role._id,
+                name: admin.role.name,
+                permissions: admin.role.permissions, // حقل الصلاحيات الصحيح
+                description: admin.role.description,
+            }
+            : null,
+        customPermissions: admin.customPermissions,
+        createdAt: admin.createdAt,
+        updatedAt: admin.updatedAt,
+    }));
+    return (0, response_1.SuccessResponse)(res, { admins: formattedAdmins });
 };
 exports.getAdmins = getAdmins;
 // ✅ Get Single Admin
