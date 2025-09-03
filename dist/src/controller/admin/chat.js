@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteConversation = exports.deleteMessage = exports.markAsRead = exports.markMessageAsRead = exports.sendMessageByAdmin = exports.getMessages = exports.getAdminConversations = void 0;
+exports.getUnreadCount = exports.getConversation = exports.deleteConversation = exports.deleteMessage = exports.markAsRead = exports.markMessageAsRead = exports.sendMessageByAdmin = exports.getMessages = exports.getAdminConversations = void 0;
 const Conversation_1 = require("../../models/shema/Conversation");
 const Message_1 = require("../../models/shema/Message");
 const BadRequest_1 = require("../../Errors/BadRequest");
@@ -125,3 +125,31 @@ const deleteConversation = async (req, res) => {
     (0, response_1.SuccessResponse)(res, { success: true, message: "Conversation and its messages deleted" });
 };
 exports.deleteConversation = deleteConversation;
+// ✅ محادثة واحدة
+const getConversation = async (req, res) => {
+    if (!req.user)
+        throw new Errors_2.UnauthorizedError("Only admin can access conversation");
+    const { conversationId } = req.params;
+    if (!conversationId)
+        throw new BadRequest_1.BadRequest("conversationId is required");
+    const conversation = await Conversation_1.ConversationModel.findById(conversationId)
+        .populate("user", "name email")
+        .populate("admin", "name email");
+    if (!conversation)
+        throw new Errors_1.NotFound("Conversation not found");
+    return (0, response_1.SuccessResponse)(res, { conversation });
+};
+exports.getConversation = getConversation;
+// ✅ عدد الرسائل الغير مقروءة للأدمن
+const getUnreadCount = async (req, res) => {
+    if (!req.user)
+        throw new Errors_2.UnauthorizedError("Only admin can get unread count");
+    const adminId = req.user.id;
+    // نجيب كل المحادثات اللي الأدمن فيها ونحسب مجموع الرسائل الغير مقروءة
+    const conversations = await Conversation_1.ConversationModel.find({ admin: adminId });
+    const totalUnread = conversations.reduce((sum, conv) => {
+        return sum + (conv.unread?.admin || 0);
+    }, 0);
+    return (0, response_1.SuccessResponse)(res, { unread: totalUnread });
+};
+exports.getUnreadCount = getUnreadCount;

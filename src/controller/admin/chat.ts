@@ -117,3 +117,34 @@ export const deleteConversation = async (req: Request, res: Response) => {
     SuccessResponse(res, { success: true, message: "Conversation and its messages deleted" });
 };
 
+// ✅ محادثة واحدة
+export const getConversation = async (req: Request, res: Response) => {
+  if (!req.user) throw new UnauthorizedError("Only admin can access conversation");
+
+  const { conversationId } = req.params;
+  if (!conversationId) throw new BadRequest("conversationId is required");
+
+  const conversation = await ConversationModel.findById(conversationId)
+    .populate("user", "name email")
+    .populate("admin", "name email");
+
+  if (!conversation) throw new NotFound("Conversation not found");
+
+  return SuccessResponse(res, { conversation });
+};
+
+// ✅ عدد الرسائل الغير مقروءة للأدمن
+export const getUnreadCount = async (req: Request, res: Response) => {
+  if (!req.user) throw new UnauthorizedError("Only admin can get unread count");
+
+  const adminId = req.user.id;
+
+  // نجيب كل المحادثات اللي الأدمن فيها ونحسب مجموع الرسائل الغير مقروءة
+  const conversations = await ConversationModel.find({ admin: adminId });
+
+  const totalUnread = conversations.reduce((sum, conv) => {
+    return sum + (conv.unread?.admin || 0);
+  }, 0);
+
+  return SuccessResponse(res, { unread: totalUnread });
+};
