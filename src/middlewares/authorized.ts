@@ -51,30 +51,30 @@ export const authorizeRoles = (...roles: string[]): RequestHandler => {
   };
 };
 
-export const authorizePermissions = (...permissions: string[]): RequestHandler => {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    if (!req.user) {
-      return next(new UnauthorizedError("User not authenticated"));
-    }
+// export const authorizePermissions = (...permissions: string[]): RequestHandler => {
+//   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+//     if (!req.user) {
+//       return next(new UnauthorizedError("User not authenticated"));
+//     }
 
-    if (req.user.isSuperAdmin) {
-      return next();
-    }
+//     if (req.user.isSuperAdmin) {
+//       return next();
+//     }
 
-    const userPermissions = new Set([
-      ...(req.user.rolePermissions || []),
-      ...(req.user.customPermissions || []),
-    ]);
+//     const userPermissions = new Set([
+//       ...(req.user.rolePermissions || []),
+//       ...(req.user.customPermissions || []),
+//     ]);
 
-    // ✅ لازم المستخدم يكون عنده كل البرميشنز المطلوبة
-    const missingPerms = permissions.filter((perm) => !userPermissions.has(perm));
-    if (missingPerms.length > 0) {
-      return next(new UnauthorizedError(`Missing permissions: ${missingPerms.join(", ")}`));
-    }
+//     // ✅ لازم المستخدم يكون عنده كل البرميشنز المطلوبة
+//     const missingPerms = permissions.filter((perm) => !userPermissions.has(perm));
+//     if (missingPerms.length > 0) {
+//       return next(new UnauthorizedError(`Missing permissions: ${missingPerms.join(", ")}`));
+//     }
 
-    next();
-  };
-};
+//     next();
+//   };
+// };
 
 
 

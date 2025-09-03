@@ -6,7 +6,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.auth = exports.authorizePermissions = exports.authorizeRoles = void 0;
+exports.auth = exports.authorizeRoles = void 0;
 const unauthorizedError_1 = require("../Errors/unauthorizedError");
 const Admin_1 = require("../models/shema/auth/Admin");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
@@ -27,27 +27,26 @@ const authorizeRoles = (...roles) => {
     };
 };
 exports.authorizeRoles = authorizeRoles;
-const authorizePermissions = (...permissions) => {
-    return (req, res, next) => {
-        if (!req.user) {
-            return next(new unauthorizedError_1.UnauthorizedError("User not authenticated"));
-        }
-        if (req.user.isSuperAdmin) {
-            return next();
-        }
-        const userPermissions = new Set([
-            ...(req.user.rolePermissions || []),
-            ...(req.user.customPermissions || []),
-        ]);
-        // ✅ لازم المستخدم يكون عنده كل البرميشنز المطلوبة
-        const missingPerms = permissions.filter((perm) => !userPermissions.has(perm));
-        if (missingPerms.length > 0) {
-            return next(new unauthorizedError_1.UnauthorizedError(`Missing permissions: ${missingPerms.join(", ")}`));
-        }
-        next();
-    };
-};
-exports.authorizePermissions = authorizePermissions;
+// export const authorizePermissions = (...permissions: string[]): RequestHandler => {
+//   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+//     if (!req.user) {
+//       return next(new UnauthorizedError("User not authenticated"));
+//     }
+//     if (req.user.isSuperAdmin) {
+//       return next();
+//     }
+//     const userPermissions = new Set([
+//       ...(req.user.rolePermissions || []),
+//       ...(req.user.customPermissions || []),
+//     ]);
+//     // ✅ لازم المستخدم يكون عنده كل البرميشنز المطلوبة
+//     const missingPerms = permissions.filter((perm) => !userPermissions.has(perm));
+//     if (missingPerms.length > 0) {
+//       return next(new UnauthorizedError(`Missing permissions: ${missingPerms.join(", ")}`));
+//     }
+//     next();
+//   };
+// };
 const auth = async (req, res, next) => {
     try {
         const token = (req.headers.authorization || "").replace("Bearer ", "");
