@@ -9,7 +9,7 @@ const Errors_2 = require("../../Errors");
 const getUserNotifications = async (req, res) => {
     if (!req.user)
         throw new Errors_1.UnauthorizedError("User not found");
-    const userId = req.user._id;
+    const userId = req.user.id;
     if (!userId)
         throw new BadRequest_1.BadRequest("User not found");
     const notifications = await notification_1.UserNotificationModel.find({ userId })
@@ -21,7 +21,7 @@ exports.getUserNotifications = getUserNotifications;
 const getUnreadCount = async (req, res) => {
     if (!req.user)
         throw new Errors_1.UnauthorizedError("User not found");
-    const userId = req.user._id;
+    const userId = req.user.id;
     const count = await notification_1.UserNotificationModel.countDocuments({
         user: userId,
         read: false,
@@ -32,7 +32,7 @@ exports.getUnreadCount = getUnreadCount;
 const getSingleNotification = async (req, res) => {
     if (!req.user)
         throw new Errors_1.UnauthorizedError("User not found");
-    const userId = req.user._id;
+    const userId = req.user.id;
     const { id } = req.params; // ⬅️ ID بتاع الـ UserNotification
     const userNotification = await notification_1.UserNotificationModel.findOne({
         _id: id,
