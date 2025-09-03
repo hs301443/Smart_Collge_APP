@@ -147,7 +147,7 @@ export const login = async (req: Request, res: Response) => {
   }
 
   const token = generateToken({
-    id: user._id,
+  id: user._id.toString(),
     name: user.name,
       role: user.role, // 👈 ضيفها لو محتاجها
 

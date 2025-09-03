@@ -112,7 +112,7 @@ const login = async (req, res) => {
         throw new Errors_1.ForbiddenError("Verify your email first");
     }
     const token = (0, auth_1.generateToken)({
-        id: user._id,
+        id: user._id.toString(),
         name: user.name,
         role: user.role, // 👈 ضيفها لو محتاجها
     });
