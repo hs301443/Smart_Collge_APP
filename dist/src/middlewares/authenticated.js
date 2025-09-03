@@ -11,7 +11,7 @@ function authenticated(req, res, next) {
     }
     const token = authHeader.split(" ")[1];
     const decoded = (0, auth_1.verifyToken)(token);
-    req.user = decoded;
+    req.user = decoded; // 👈 هنا TypeScript هيقبله بعد ما عرّفناه
     next();
 }
 const requireGraduated = (req, res, next) => {

@@ -7,13 +7,13 @@ export function authenticated(req: Request, res: Response, next: NextFunction) {
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     throw new UnauthorizedError("Invalid Token");
   }
+
   const token = authHeader.split(" ")[1];
   const decoded = verifyToken(token);
-  req.user = decoded;
+
+  req.user = decoded; // 👈 هنا TypeScript هيقبله بعد ما عرّفناه
   next();
 }
-
-
 
 export const requireGraduated = (req: Request, res: Response, next: NextFunction) => {
   if (req.user?.role !== 'Graduated') {
