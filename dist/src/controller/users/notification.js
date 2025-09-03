@@ -23,10 +23,10 @@ const getUnreadCount = async (req, res) => {
         throw new Errors_1.UnauthorizedError("User not found");
     const userId = req.user.id;
     const count = await notification_1.UserNotificationModel.countDocuments({
-        user: userId,
-        read: false,
+        user: userId, // 👈 استخدم user مش userId
+        read: false, // 👈 مطابق للموديل
     });
-    return (0, response_1.SuccessResponse)(res, count);
+    return (0, response_1.SuccessResponse)(res, { unreadCount: count });
 };
 exports.getUnreadCount = getUnreadCount;
 const getSingleNotification = async (req, res) => {

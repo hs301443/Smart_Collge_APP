@@ -17,16 +17,17 @@ const userId = req.user.id;
   return SuccessResponse(res, notifications);
 
 };
-
 export const getUnreadCount = async (req: Request, res: Response) => {
   if (!req.user) throw new UnauthorizedError("User not found");
-const userId = req.user.id;
+
+  const userId = req.user.id;
 
   const count = await UserNotificationModel.countDocuments({
-    user: userId,
-    read: false,
+    user: userId,   // 👈 استخدم user مش userId
+    read: false,    // 👈 مطابق للموديل
   });
-  return SuccessResponse(res, count);
+
+  return SuccessResponse(res, { unreadCount: count });
 };
 
 export const getSingleNotification = async (req: Request, res: Response) => {
