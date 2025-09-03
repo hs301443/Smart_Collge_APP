@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteConversation = exports.deleteMessage = exports.markAsRead = exports.markMessageAsRead = exports.sendMessage = exports.getMessages = exports.getConversations = void 0;
+exports.deleteConversation = exports.deleteMessage = exports.markAsRead = exports.markMessageAsRead = exports.sendMessageByAdmin = exports.getMessages = exports.getConversations = void 0;
 const Conversation_1 = require("../../models/shema/Conversation");
 const Message_1 = require("../../models/shema/Message");
 const BadRequest_1 = require("../../Errors/BadRequest");
@@ -35,34 +35,36 @@ const getMessages = async (req, res) => {
 };
 exports.getMessages = getMessages;
 // 3️⃣ إرسال رسالة
-const sendMessage = async (req, res) => {
-    if (!req.user)
-        throw new Errors_2.UnauthorizedError("Only admin can send messages");
-    const { conversationId } = req.params;
-    const { text, attachments } = req.body;
-    if (!conversationId || !text)
-        throw new BadRequest_1.BadRequest("conversationId and text are required");
-    const conversation = await Conversation_1.ConversationModel.findById(conversationId);
-    if (!conversation)
-        throw new Errors_1.NotFound("Conversation not found");
+const sendMessageByAdmin = async (req, res) => {
+    const { adminId, userId, text } = req.body;
+    // 1- دور على محادثة موجودة
+    let conversation = await Conversation_1.ConversationModel.findOne({ admin: adminId, user: userId });
+    // 2- لو مش موجودة اعمل محادثة جديدة
+    if (!conversation) {
+        conversation = await Conversation_1.ConversationModel.create({
+            admin: adminId,
+            user: userId,
+        });
+    }
+    // 3- سجل الرسالة
     const message = await Message_1.MessageModel.create({
         conversation: conversation._id,
-        from: conversation.admin,
+        from: adminId,
         fromModel: "Admin",
-        to: conversation.user,
+        to: userId,
         toModel: "User",
         text,
-        attachments: attachments || [],
     });
+    // 4- حدّث آخر رسالة وتاريخها
     conversation.lastMessageAt = new Date();
     if (!conversation.unread) {
         conversation.unread = { user: 0, admin: 0 };
     }
-    conversation.unread.user += 1;
+    conversation.unread.user += 1; // تزود للـ user عشان عنده رسالة جديدة
     await conversation.save();
-    (0, response_1.SuccessResponse)(res, { success: true, message });
+    return (0, response_1.SuccessResponse)(res, { conversation, message });
 };
-exports.sendMessage = sendMessage;
+exports.sendMessageByAdmin = sendMessageByAdmin;
 // 4️⃣ تعليم رسالة واحدة كمقروءة
 const markMessageAsRead = async (req, res) => {
     if (!req.user)

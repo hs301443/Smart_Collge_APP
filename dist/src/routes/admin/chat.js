@@ -9,7 +9,7 @@ router.get("/conversations/:adminId", authorized_1.auth, chat_1.getConversations
 // الرسائل
 router.get("/messages/:conversationId", authorized_1.auth, chat_1.getMessages);
 // إرسال رسالة
-router.post("/messages/send/:conversationId", authorized_1.auth, chat_1.sendMessage);
+router.post("/messages/send/:conversationId", authorized_1.auth, chat_1.sendMessageByAdmin);
 // تعليم رسالة واحدة كمقروءة
 router.post("/messages/read/message/:messageId", authorized_1.auth, chat_1.markMessageAsRead);
 // تعليم كل الرسائل كمقروءة

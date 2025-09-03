@@ -30,33 +30,40 @@ export const getMessages = async (req: Request, res: Response) => {
 };
 
 // 3️⃣ إرسال رسالة
-export const sendMessage = async (req: Request, res: Response) => {
-    if (!req.user) throw new UnauthorizedError("Only admin can send messages");
-  const { conversationId } = req.params;
-  const { text, attachments } = req.body;
-    if (!conversationId || !text) throw new BadRequest("conversationId and text are required");
-  const conversation = await ConversationModel.findById(conversationId);
-    if (!conversation) throw new NotFound("Conversation not found");
+export const sendMessageByAdmin = async (req: Request, res: Response) => {
+  const { adminId, userId, text } = req.body;
+
+  // 1- دور على محادثة موجودة
+  let conversation = await ConversationModel.findOne({ admin: adminId, user: userId });
+
+  // 2- لو مش موجودة اعمل محادثة جديدة
+  if (!conversation) {
+    conversation = await ConversationModel.create({
+      admin: adminId,
+      user: userId,
+    });
+  }
+
+  // 3- سجل الرسالة
   const message = await MessageModel.create({
     conversation: conversation._id,
-    from: conversation.admin,
+    from: adminId,
     fromModel: "Admin",
-    to: conversation.user,
+    to: userId,
     toModel: "User",
     text,
-    attachments: attachments || [],
   });
 
+  // 4- حدّث آخر رسالة وتاريخها
   conversation.lastMessageAt = new Date();
   if (!conversation.unread) {
     conversation.unread = { user: 0, admin: 0 };
   }
-  conversation.unread.user += 1;
+  conversation.unread.user += 1; // تزود للـ user عشان عنده رسالة جديدة
   await conversation.save();
 
-    SuccessResponse(res, { success: true, message });
+  return SuccessResponse(res, { conversation, message });
 };
-
 // 4️⃣ تعليم رسالة واحدة كمقروءة
 export const markMessageAsRead = async (req: Request, res: Response) => {
   if( !req.user) throw new UnauthorizedError("Only admin can mark messages as read");

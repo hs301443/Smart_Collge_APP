@@ -2,11 +2,11 @@ import { Router } from "express";
 import {
   getConversations,
   getMessages,
-  sendMessage,
   markMessageAsRead,
   markAsRead,
   deleteMessage,
-  deleteConversation
+  deleteConversation,
+  sendMessageByAdmin
 } from "../../controller/admin/chat";
 import { auth } from "../../middlewares/authorized";
 
@@ -19,7 +19,7 @@ router.get("/conversations/:adminId",auth ,getConversations);
 router.get("/messages/:conversationId",auth , getMessages);
 
 // إرسال رسالة
-router.post("/messages/send/:conversationId", auth ,sendMessage);
+router.post("/messages/send/:conversationId", auth ,sendMessageByAdmin);
 
 // تعليم رسالة واحدة كمقروءة
 router.post("/messages/read/message/:messageId",auth , markMessageAsRead);
