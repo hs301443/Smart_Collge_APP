@@ -139,7 +139,6 @@ export const getUnreadCount = async (req: Request, res: Response) => {
 
   const adminId = req.user.id;
 
-  // نجيب كل المحادثات اللي الأدمن فيها ونحسب مجموع الرسائل الغير مقروءة
   const conversations = await ConversationModel.find({ admin: adminId });
 
   const totalUnread = conversations.reduce((sum, conv) => {

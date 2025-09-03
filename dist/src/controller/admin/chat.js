@@ -145,7 +145,6 @@ const getUnreadCount = async (req, res) => {
     if (!req.user)
         throw new Errors_2.UnauthorizedError("Only admin can get unread count");
     const adminId = req.user.id;
-    // نجيب كل المحادثات اللي الأدمن فيها ونحسب مجموع الرسائل الغير مقروءة
     const conversations = await Conversation_1.ConversationModel.find({ admin: adminId });
     const totalUnread = conversations.reduce((sum, conv) => {
         return sum + (conv.unread?.admin || 0);
