@@ -1,29 +1,19 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getSingleNotification = exports.getUnreadCount = exports.getUserNotifications = void 0;
 const notification_1 = require("../../models/shema/notification");
 const Errors_1 = require("../../Errors");
 const response_1 = require("../../utils/response");
-const BadRequest_1 = require("../../Errors/BadRequest");
 const Errors_2 = require("../../Errors");
-const mongoose_1 = __importDefault(require("mongoose"));
 const getUserNotifications = async (req, res) => {
-    // التحقق من وجود المستخدم في الـ request
-    if (!req.user)
+    if (!req.user?._id)
         throw new Errors_1.UnauthorizedError("User not found");
-    // التأكد من وجود id للمستخدم
-    if (!req.user.id)
-        throw new BadRequest_1.BadRequest("User ID not found");
-    // تحويل الـ id لـ ObjectId لو لازم
-    const userId = new mongoose_1.default.Types.ObjectId(req.user.id);
-    // البحث عن إشعارات المستخدم
-    const notifications = await notification_1.UserNotificationModel.find({ userId })
-        .populate("notification") // لو الحقل مرتبط بـ Notification model
+    const userId = req.user._id;
+    console.log("User ID:", userId);
+    const notifications = await notification_1.UserNotificationModel.find({ user: userId }) // هنا بدل userId استخدم user
+        .populate("notification")
         .sort({ createdAt: -1 });
-    console.log("User Notifications:", notifications); // للتأكد من النتيجة
+    console.log("User Notifications:", notifications);
     return (0, response_1.SuccessResponse)(res, notifications);
 };
 exports.getUserNotifications = getUserNotifications;
