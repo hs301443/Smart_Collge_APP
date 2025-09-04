@@ -9,9 +9,9 @@ import mongoose from 'mongoose';
 export const getUserNotifications = async (req: Request, res: Response) => {
   if (!req.user) throw new UnauthorizedError("User not found");
 
-  if (!req.user._id) throw new BadRequest("User ID not found");
+  if (!req.user.id) throw new BadRequest("User ID not found");
 
-  const userId = new mongoose.Types.ObjectId(req.user._id); // استخدم _id بدل id
+  const userId = req.user.id;
 
   const notifications = await UserNotificationModel.find({ user: userId })
     .populate("notification")
