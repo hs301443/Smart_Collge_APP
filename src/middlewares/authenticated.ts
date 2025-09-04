@@ -2,6 +2,7 @@ import { verifyToken } from "../utils/auth";
 import { Request, Response, NextFunction, RequestHandler } from 'express';
 import { UnauthorizedError } from "../Errors/unauthorizedError";
 
+
 export function authenticated(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
