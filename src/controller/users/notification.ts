@@ -8,21 +8,16 @@ import mongoose from 'mongoose';
 
 
 export const getUserNotifications = async (req: Request, res: Response) => {
-  // التحقق من وجود المستخدم في الـ request
   if (!req.user) throw new UnauthorizedError("User not found");
-
-  // التأكد من وجود id للمستخدم
   if (!req.user.id) throw new BadRequest("User ID not found");
 
-  // تحويل الـ id لـ ObjectId لو لازم
   const userId = new mongoose.Types.ObjectId(req.user.id);
 
-  // البحث عن إشعارات المستخدم
-  const notifications = await UserNotificationModel.find({ userId })
-    .populate("notification") // لو الحقل مرتبط بـ Notification model
+  const notifications = await UserNotificationModel.find({ user: userId }) // هنا بدل userId استخدم user
+    .populate("notification")
     .sort({ createdAt: -1 });
 
-  console.log("User Notifications:", notifications); // للتأكد من النتيجة
+  console.log("User Notifications:", notifications);
 
   return SuccessResponse(res, notifications);
 };
