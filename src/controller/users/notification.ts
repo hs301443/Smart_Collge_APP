@@ -4,14 +4,16 @@ import { SuccessResponse } from "../../utils/response";
 import { Request, Response } from "express";
 import { BadRequest } from "../../Errors/BadRequest";
 import { NotFound } from "../../Errors";
-
+import mongoose from 'mongoose';
 
 export const getUserNotifications = async (req: Request, res: Response) => {
   if (!req.user) throw new UnauthorizedError("User not found");
 
-  const userId = req.user._id;
-  console.log("User ID:", userId);
-  const notifications = await UserNotificationModel.find({ user: userId }) // هنا بدل userId استخدم user
+  if (!req.user._id) throw new BadRequest("User ID not found");
+
+  const userId = new mongoose.Types.ObjectId(req.user._id); // استخدم _id بدل id
+
+  const notifications = await UserNotificationModel.find({ user: userId })
     .populate("notification")
     .sort({ createdAt: -1 });
 
