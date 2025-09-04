@@ -6,7 +6,7 @@ const Errors_1 = require("../../Errors");
 const response_1 = require("../../utils/response");
 const Errors_2 = require("../../Errors");
 const getUserNotifications = async (req, res) => {
-    if (!req.user?._id)
+    if (!req.user)
         throw new Errors_1.UnauthorizedError("User not found");
     const userId = req.user._id;
     console.log("User ID:", userId);
