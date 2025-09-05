@@ -17,7 +17,13 @@ class OpenRouterService {
         try {
             const response = await axios_1.default.post(`${this.baseUrl}/chat/completions`, {
                 model: this.defaultModel,
-                messages: [{ role: "user", content: prompt }],
+                messages: [
+                    {
+                        role: "system",
+                        content: "انت مساعد دردشة ودود. حدد لغة المستخدم الأساسية من أول جملة (سواء كانت العربية أو الإنجليزية) ورد بها فقط. تجاهل أي لغة أخرى حتى لو كانت مكتوبة مع الرسالة.",
+                    },
+                    { role: "user", content: prompt },
+                ],
             }, {
                 headers: {
                     Authorization: `Bearer ${this.apiKey}`,

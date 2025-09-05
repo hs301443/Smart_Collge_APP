@@ -6,10 +6,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const OpenAi_1 = __importDefault(require("../controller/OpenAi"));
 const router = (0, express_1.Router)();
-// =======================
-// Chat Route
-// POST /api/chat
-// =======================
 router.post("/chat", async (req, res) => {
     const { prompt } = req.body;
     if (!prompt) {
@@ -18,10 +14,6 @@ router.post("/chat", async (req, res) => {
     const result = await OpenAi_1.default.generateChat(prompt);
     return res.json(result);
 });
-// =======================
-// Image Route
-// POST /api/image
-// =======================
 router.post("/image", async (req, res) => {
     const { prompt } = req.body;
     if (!prompt) {
@@ -30,10 +22,6 @@ router.post("/image", async (req, res) => {
     const result = await OpenAi_1.default.generateImage(prompt);
     return res.json(result);
 });
-// =======================
-// Moderation Route
-// POST /api/moderation
-// =======================
 router.post("/moderation", async (req, res) => {
     const { text } = req.body;
     if (!text) {
