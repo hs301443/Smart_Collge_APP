@@ -20,7 +20,7 @@ class OpenRouterService {
                 messages: [
                     {
                         role: "system",
-                        content: "أنت مساعد ذكي. تحدد لغة المستخدم من أول رسالة (العربية أو الإنجليزية) وترد بها فقط، بإجابة طبيعية وواضحة بدون زيادة كلام.",
+                        content: "أنت مساعد ذكي. دايمًا رد بنفس لغة المستخدم. لو كتب بالعربية رد بالعربية، لو كتب بالإنجليزية رد بالإنجليزية. خلي إجابتك طبيعية ومختصرة.",
                     },
                     { role: "user", content: prompt },
                 ],
@@ -44,6 +44,7 @@ class OpenRouterService {
             };
         }
     }
+    // 🖼️ Image Debug
     async generateImage(prompt) {
         try {
             const response = await axios_1.default.post(`${this.baseUrl}/images`, { prompt, size: "512x512" }, {
@@ -53,19 +54,18 @@ class OpenRouterService {
                     "Content-Type": "application/json",
                 },
             });
-            const data = response.data?.data;
-            if (!data || data.length === 0) {
-                return { success: false, error: "No image data returned from API" };
-            }
+            console.log("Image response:", response.data);
             return {
                 success: true,
-                data: data[0]?.url || "",
+                data: response.data?.data?.[0]?.url || null,
             };
         }
         catch (error) {
+            console.error("Image API Error:", error.response?.data || error.message);
             return { success: false, error: error.response?.data?.error || error.message };
         }
     }
+    // 🚨 Moderation Debug
     async moderateContent(text) {
         try {
             const response = await axios_1.default.post(`${this.baseUrl}/moderations`, { input: text }, {
@@ -75,13 +75,11 @@ class OpenRouterService {
                     "Content-Type": "application/json",
                 },
             });
-            const results = response.data?.results;
-            if (!results || results.length === 0) {
-                return { success: false, error: "No moderation results returned from API" };
-            }
-            return { success: true, data: results[0] };
+            console.log("Moderation response:", response.data);
+            return { success: true, data: response.data || null };
         }
         catch (error) {
+            console.error("Moderation API Error:", error.response?.data || error.message);
             return { success: false, error: error.response?.data?.error || error.message };
         }
     }
