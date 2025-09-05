@@ -22,14 +22,15 @@ class OpenRouterService {
       `${this.baseUrl}/chat/completions`,
       {
         model: this.defaultModel,
-        messages: [
-          {
-            role: "system",
-            content:
-              "انت مساعد دردشة ودود. حدد لغة المستخدم الأساسية من أول جملة (سواء كانت العربية أو الإنجليزية) ورد بها فقط. تجاهل أي لغة أخرى حتى لو كانت مكتوبة مع الرسالة.",
-          },
-          { role: "user", content: prompt },
-        ],
+       messages: [
+           {
+    role: "system",
+      content:
+      "أنت مساعد ذكي. دايمًا رد بنفس لغة المستخدم. لو كتب بالعربية رد بالعربية، لو كتب بالإنجليزية رد بالإنجليزية. خلي إجابتك طبيعية متزودش كلام  ",
+           },
+        { role: "user", content: prompt },
+                  ],
+
       },
       {
         headers: {
