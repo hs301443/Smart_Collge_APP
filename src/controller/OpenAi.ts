@@ -13,7 +13,8 @@ class OpenRouterService {
 
     this.apiKey = process.env.OPENROUTER_API_KEY;
     this.baseUrl = "https://openrouter.ai/api/v1";
-    this.defaultModel = "mistralai/mistral-7b-instruct";
+    this.defaultModel = "qwen/qwen-14b-chat";
+;
   }
 
   async generateChat(prompt: string) {
