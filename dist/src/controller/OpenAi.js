@@ -53,16 +53,17 @@ class OpenRouterService {
                     "Content-Type": "application/json",
                 },
             });
+            const data = response.data?.data;
+            if (!data || data.length === 0) {
+                return { success: false, error: "No image data returned from API" };
+            }
             return {
                 success: true,
-                data: response.data.data[0].url,
+                data: data[0]?.url || "",
             };
         }
         catch (error) {
-            return {
-                success: false,
-                error: error.response?.data?.error || error.message,
-            };
+            return { success: false, error: error.response?.data?.error || error.message };
         }
     }
     async moderateContent(text) {
@@ -74,16 +75,14 @@ class OpenRouterService {
                     "Content-Type": "application/json",
                 },
             });
-            return {
-                success: true,
-                data: response.data.results[0],
-            };
+            const results = response.data?.results;
+            if (!results || results.length === 0) {
+                return { success: false, error: "No moderation results returned from API" };
+            }
+            return { success: true, data: results[0] };
         }
         catch (error) {
-            return {
-                success: false,
-                error: error.response?.data?.error || error.message,
-            };
+            return { success: false, error: error.response?.data?.error || error.message };
         }
     }
 }

@@ -52,57 +52,59 @@ class OpenRouterService {
     }
   }
 
-  async generateImage(prompt: string) {
-    try {
-      const response = await axios.post<ImageResponse>(
-        `${this.baseUrl}/images`,
-        { prompt, size: "512x512" },
-        {
-          headers: {
-            Authorization: `Bearer ${this.apiKey}`,
-            "HTTP-Referer": "https://smartcollgeapp-production.up.railway.app",
-            "Content-Type": "application/json",
-          },
-        }
-      );
+async generateImage(prompt: string) {
+  try {
+    const response = await axios.post<ImageResponse>(
+      `${this.baseUrl}/images`,
+      { prompt, size: "512x512" },
+      {
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          "HTTP-Referer": "https://smartcollgeapp-production.up.railway.app",
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
-      return {
-        success: true,
-        data: response.data.data[0].url,
-      };
-    } catch (error: any) {
-      return {
-        success: false,
-        error: error.response?.data?.error || error.message,
-      };
+    const data = (response.data as any)?.data;
+    if (!data || data.length === 0) {
+      return { success: false, error: "No image data returned from API" };
     }
+
+    return {
+      success: true,
+      data: data[0]?.url || "",
+    };
+  } catch (error: any) {
+    return { success: false, error: error.response?.data?.error || error.message };
   }
+}
 
-  async moderateContent(text: string) {
-    try {
-      const response = await axios.post<ModerationResponse>(
-        `${this.baseUrl}/moderations`,
-        { input: text },
-        {
-          headers: {
-            Authorization: `Bearer ${this.apiKey}`,
-            "HTTP-Referer": "https://smartcollgeapp-production.up.railway.app",
-            "Content-Type": "application/json",
-          },
-        }
-      );
+ async moderateContent(text: string) {
+  try {
+    const response = await axios.post<ModerationResponse>(
+      `${this.baseUrl}/moderations`,
+      { input: text },
+      {
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          "HTTP-Referer": "https://smartcollgeapp-production.up.railway.app",
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
-      return {
-        success: true,
-        data: response.data.results[0],
-      };
-    } catch (error: any) {
-      return {
-        success: false,
-        error: error.response?.data?.error || error.message,
-      };
+    const results = (response.data as any)?.results;
+    if (!results || results.length === 0) {
+      return { success: false, error: "No moderation results returned from API" };
     }
+
+    return { success: true, data: results[0] };
+  } catch (error: any) {
+    return { success: false, error: error.response?.data?.error || error.message };
   }
+}
+
 }
 
 export default new OpenRouterService();
