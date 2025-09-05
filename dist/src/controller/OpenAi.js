@@ -44,44 +44,5 @@ class OpenRouterService {
             };
         }
     }
-    // 🖼️ Image Debug
-    async generateImage(prompt) {
-        try {
-            const response = await axios_1.default.post(`${this.baseUrl}/images`, { prompt, size: "512x512" }, {
-                headers: {
-                    Authorization: `Bearer ${this.apiKey}`,
-                    "HTTP-Referer": "https://smartcollgeapp-production.up.railway.app",
-                    "Content-Type": "application/json",
-                },
-            });
-            console.log("Image response:", response.data);
-            return {
-                success: true,
-                data: response.data?.data?.[0]?.url || null,
-            };
-        }
-        catch (error) {
-            console.error("Image API Error:", error.response?.data || error.message);
-            return { success: false, error: error.response?.data?.error || error.message };
-        }
-    }
-    // 🚨 Moderation Debug
-    async moderateContent(text) {
-        try {
-            const response = await axios_1.default.post(`${this.baseUrl}/moderations`, { input: text }, {
-                headers: {
-                    Authorization: `Bearer ${this.apiKey}`,
-                    "HTTP-Referer": "https://smartcollgeapp-production.up.railway.app",
-                    "Content-Type": "application/json",
-                },
-            });
-            console.log("Moderation response:", response.data);
-            return { success: true, data: response.data || null };
-        }
-        catch (error) {
-            console.error("Moderation API Error:", error.response?.data || error.message);
-            return { success: false, error: error.response?.data?.error || error.message };
-        }
-    }
 }
 exports.default = new OpenRouterService();
