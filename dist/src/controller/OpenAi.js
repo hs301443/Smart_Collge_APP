@@ -11,8 +11,7 @@ class OpenRouterService {
         }
         this.apiKey = process.env.OPENROUTER_API_KEY;
         this.baseUrl = "https://openrouter.ai/api/v1";
-        this.defaultModel = "qwen/qwen-14b-chat";
-        ;
+        this.defaultModel = "mistralai/mistral-small-3.1-24b-instruct"; // موديل داعم للعربية
     }
     async generateChat(prompt) {
         try {
@@ -21,7 +20,7 @@ class OpenRouterService {
                 messages: [
                     {
                         role: "system",
-                        content: "أنت مساعد ذكي. دايمًا رد بنفس لغة المستخدم. لو كتب بالعربية رد بالعربية، لو كتب بالإنجليزية رد بالإنجليزية. خلي إجابتك طبيعية متزودش كلام  ",
+                        content: "أنت مساعد ذكي. تحدد لغة المستخدم من أول رسالة (العربية أو الإنجليزية) وترد بها فقط، بإجابة طبيعية وواضحة بدون زيادة كلام.",
                     },
                     { role: "user", content: prompt },
                 ],
@@ -60,7 +59,10 @@ class OpenRouterService {
             };
         }
         catch (error) {
-            return { success: false, error: error.response?.data?.error || error.message };
+            return {
+                success: false,
+                error: error.response?.data?.error || error.message,
+            };
         }
     }
     async moderateContent(text) {
@@ -72,10 +74,16 @@ class OpenRouterService {
                     "Content-Type": "application/json",
                 },
             });
-            return { success: true, data: response.data.results[0] };
+            return {
+                success: true,
+                data: response.data.results[0],
+            };
         }
         catch (error) {
-            return { success: false, error: error.response?.data?.error || error.message };
+            return {
+                success: false,
+                error: error.response?.data?.error || error.message,
+            };
         }
     }
 }
