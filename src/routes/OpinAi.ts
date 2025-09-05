@@ -3,10 +3,6 @@ import OpenRouterService from "../controller/OpenAi";
 
 const router = Router();
 
-// =======================
-// Chat Route
-// POST /api/chat
-// =======================
 router.post("/chat", async (req, res) => {
   const { prompt } = req.body;
 
@@ -18,10 +14,7 @@ router.post("/chat", async (req, res) => {
   return res.json(result);
 });
 
-// =======================
-// Image Route
-// POST /api/image
-// =======================
+
 router.post("/image", async (req, res) => {
   const { prompt } = req.body;
 
@@ -33,10 +26,6 @@ router.post("/image", async (req, res) => {
   return res.json(result);
 });
 
-// =======================
-// Moderation Route
-// POST /api/moderation
-// =======================
 router.post("/moderation", async (req, res) => {
   const { text } = req.body;
 
