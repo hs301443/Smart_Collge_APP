@@ -63,15 +63,42 @@ export const getAllQuestionsforExam =async(req:Request,res:Response)=>{
 
 
 export const getQuestionById = async (req: Request, res: Response) => {
-  if (!req.user || !req.user.isSuperAdmin){
+  // 1️⃣ التحقق من الصلاحيات
+  if (!req.user || !req.user.isSuperAdmin) {
     throw new UnauthorizedError("Only Super Admin can view questions");
   }
+
   const { id } = req.params;
   if (!id) throw new BadRequest("Question ID is required");
-  const question = await QuestionModel.findById(id).populate("exam", "title level department");
-  if (!question) throw new NotFound("Question not found");
 
-  SuccessResponse(res, { message: "Question found successfully", question }, 200);
+  // 2️⃣ التحقق من صحة ObjectId
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new BadRequest("Invalid Question ID");
+  }
+
+  // 3️⃣ جلب السؤال مع populate للامتحان
+  const question = await QuestionModel.findById(id).populate(
+    "exam",
+    "title level department"
+  );
+
+  // 4️⃣ التحقق من وجود السؤال
+  if (!question) {
+    throw new NotFound("Question not found");
+  }
+
+  // 5️⃣ التحقق من وجود الامتحان مربوط بالسؤال
+  if (!question.exam) {
+    throw new NotFound(
+      "The exam linked to this question does not exist or has been deleted"
+    );
+  }
+
+  // 6️⃣ إعادة البيانات بنجاح
+  SuccessResponse(res, {
+    message: "Question found successfully",
+    question,
+  }, 200);
 };
 
 export const updateQuestionById =async(req:Request,res:Response)=>{

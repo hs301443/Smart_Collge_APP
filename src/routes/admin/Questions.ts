@@ -9,7 +9,7 @@ router
     .post('/:examId',uploadQuestionImage.single("image"),
     catchAsync(createQuestionForExam))
     .get('/:examId', catchAsync(getAllQuestionsforExam))
-    .get('/:questionid', catchAsync(getQuestionById))
+    .get('/:id', catchAsync(getQuestionById))
     .delete('/:id', catchAsync(deleteQuestionById))
     .put('/:id', catchAsync(updateQuestionById))
 
