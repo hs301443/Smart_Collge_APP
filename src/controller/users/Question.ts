@@ -19,6 +19,9 @@ export const getQuestionsForExam = async (req: Request, res: Response) => {
   if (exam.level !== req.user.level || exam.department !== req.user.department) {
     throw new UnauthorizedError("You are not allowed to access this exam");
   }
+  if (exam.isPublished==false) {
+    throw new NotFound("exam is not published");
+  }
 
   const questions = await QuestionModel.find({ exam: examId }).select(
     "-correctAnswer" // hide correct answer

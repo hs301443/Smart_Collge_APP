@@ -20,6 +20,9 @@ const getQuestionsForExam = async (req, res) => {
     if (exam.level !== req.user.level || exam.department !== req.user.department) {
         throw new Errors_1.UnauthorizedError("You are not allowed to access this exam");
     }
+    if (exam.isPublished == false) {
+        throw new Errors_1.NotFound("exam is not published");
+    }
     const questions = await Questions_1.QuestionModel.find({ exam: examId }).select("-correctAnswer" // hide correct answer
     );
     (0, response_1.SuccessResponse)(res, { questions }, 200);
