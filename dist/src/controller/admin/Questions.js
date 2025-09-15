@@ -63,8 +63,10 @@ const getQuestionById = async (req, res) => {
     if (!req.user || !req.user.isSuperAdmin)
         throw new Errors_2.UnauthorizedError("Only Super Admin can view questions");
     const { id } = req.params;
+    console.log(id);
     if (!id)
         throw new BadRequest_1.BadRequest("id is required");
+    console.log(id);
     const question = await Questions_1.QuestionModel.findById(id).populate("exam", "title level department");
     if (!question)
         throw new Errors_1.NotFound("Question not found");

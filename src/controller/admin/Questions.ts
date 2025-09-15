@@ -65,7 +65,10 @@ export const getQuestionById = async (req: Request, res: Response) => {
     throw new UnauthorizedError("Only Super Admin can view questions");
 
   const { id } = req.params;
+  console.log(id); 
+
   if (!id) throw new BadRequest("id is required");
+  console.log(id); 
 
   const question = await QuestionModel.findById(id).populate("exam", "title level department");
   if (!question) throw new NotFound("Question not found");
