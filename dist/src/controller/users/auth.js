@@ -115,9 +115,19 @@ const login = async (req, res) => {
     const token = (0, auth_1.generateToken)({
         id: user._id.toString(),
         name: user.name,
-        role: user.role, // 👈 ضيفها لو محتاجها
+        role: user.role,
+        email: user.email,
     });
-    (0, response_1.SuccessResponse)(res, { message: "Login Successful", token }, 200);
+    (0, response_1.SuccessResponse)(res, {
+        message: "Login Successful",
+        token,
+        user: {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+        },
+    }, 200);
 };
 exports.login = login;
 const getFcmToken = async (req, res) => {
