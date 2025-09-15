@@ -9,7 +9,8 @@ const response_1 = require("../../utils/response");
 const getExamsForStudent = async (req, res) => {
     if (!req.user)
         throw new Errors_1.UnauthorizedError("Unauthorized");
-    const { level, department } = req.user;
+    const level = req.user.level;
+    const department = req.user.department;
     if (!level || !department)
         throw new BadRequest_1.BadRequest("User must have level and department");
     const exams = await Exam_1.ExamModel.find({ level, department });

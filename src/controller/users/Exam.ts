@@ -10,7 +10,8 @@ import { SuccessResponse } from "../../utils/response";
 export const getExamsForStudent = async (req: Request, res: Response) => {
   if (!req.user) throw new UnauthorizedError("Unauthorized");
 
-  const { level, department } = req.user;
+  const level = req.user.level;
+  const department = req.user.department;
   if (!level || !department) throw new BadRequest("User must have level and department");
 
   const exams = await ExamModel.find({ level, department });
