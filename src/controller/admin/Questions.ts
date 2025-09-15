@@ -6,10 +6,9 @@ import { UnauthorizedError } from "../../Errors";
 import { SuccessResponse } from "../../utils/response";
 
 export const createQuestionForExam = async (req: any, res: any) => {
-if (!req.user || (req.user.role !== "SuperAdmin" && req.user.role !== "Admin")) {
-  throw new UnauthorizedError("Access denied");
-}
-
+ if (!req.user || !req.user.isSuperAdmin) {
+    throw new UnauthorizedError("Only Super Admin can create roles");
+  }
   const { examId, text, type, choices, correctAnswer, points } = req.body;
 
   // الصورة متخزنة في req.file
