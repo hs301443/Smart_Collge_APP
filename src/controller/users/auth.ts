@@ -143,19 +143,27 @@ export const login = async (req: Request, res: Response) => {
     throw new UnauthorizedError("Invalid email or password");
   }
 
-  
   if (!user.isVerified) {
     throw new ForbiddenError("Verify your email first");
   }
 
   const token = generateToken({
-  id: user._id.toString(),
+    id: user._id.toString(),
     name: user.name,
-      role: user.role, // 👈 ضيفها لو محتاجها
-
+    role: user.role,
+    email: user.email,
   });
 
-  SuccessResponse(res, { message: "Login Successful", token }, 200);
+  SuccessResponse(res, {
+    message: "Login Successful",
+    token,
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    },
+  }, 200);
 };
 
 
