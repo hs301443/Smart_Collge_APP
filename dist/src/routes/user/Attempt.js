@@ -1,1 +1,12 @@
 "use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const authenticated_1 = require("../../middlewares/authenticated");
+const Attempt_1 = require("../../controller/users/Attempt");
+const catchAsync_1 = require("../../utils/catchAsync");
+const router = (0, express_1.Router)();
+router.post("/start", authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(Attempt_1.startAttempt));
+router.post("/save-answer", authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(Attempt_1.saveAnswer));
+router.post("/submit", authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(Attempt_1.submitAttempt));
+router.get("/my-attempts", authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(Attempt_1.getMyAttempts));
+exports.default = router;
