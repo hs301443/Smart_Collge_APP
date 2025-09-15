@@ -60,7 +60,10 @@ const saveAnswer = async (req, res) => {
         const question = await Questions_1.QuestionModel.findById(questionId);
         if (!question)
             throw new Errors_1.NotFound("Question not found");
-        const filePath = req.file ? `/uploads/answers/${req.file.filename}` : null;
+        // ملف الطالب مع رابط كامل
+        const filePath = req.file
+            ? `${req.protocol}://${req.get('host')}/uploads/answers/${req.file.filename}`
+            : null;
         const existingAnswer = attempt.answers.find((a) => a.question.toString() === questionId);
         if (existingAnswer) {
             existingAnswer.answer = answer;

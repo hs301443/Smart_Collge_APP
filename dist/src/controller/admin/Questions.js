@@ -11,9 +11,11 @@ const createQuestionForExam = async (req, res) => {
         throw new Errors_2.UnauthorizedError("Only Super Admin can create roles");
     }
     const { examId, text, type, choices, correctAnswer, points } = req.body;
-    // الصورة متخزنة في req.file
-    const imagePath = req.file ? `/uploads/questions/${req.file.filename}` : null;
-    // ✅ تحويل choices من نص JSON إلى array
+    // الصورة متخزنة في req.file، نحولها لرابط كامل
+    const imagePath = req.file
+        ? `${req.protocol}://${req.get('host')}/uploads/questions/${req.file.filename}`
+        : null;
+    // تحويل choices من نص JSON إلى array
     let parsedChoices = [];
     if (choices) {
         try {

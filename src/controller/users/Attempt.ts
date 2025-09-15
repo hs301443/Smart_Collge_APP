@@ -42,7 +42,8 @@ export const startAttempt = async (req: Request, res: Response) => {
 // ✅ Save Answer (while in-progress)
 export const saveAnswer = async (req: Request, res: Response) => {
   if (!req.user || !req.user.id) throw new UnauthorizedError("Unauthorized");
- const userId = req.user.id;
+  const userId = req.user.id;
+
   uploadAnswerFile.single("file")(req, res, async (err: any) => {
     if (err) return res.status(400).json({ message: err.message });
 
@@ -63,7 +64,10 @@ export const saveAnswer = async (req: Request, res: Response) => {
     const question = await QuestionModel.findById(questionId);
     if (!question) throw new NotFound("Question not found");
 
-    const filePath = req.file ? `/uploads/answers/${req.file.filename}` : null;
+    // ملف الطالب مع رابط كامل
+    const filePath = req.file 
+      ? `${req.protocol}://${req.get('host')}/uploads/answers/${req.file.filename}`
+      : null;
 
     const existingAnswer = attempt.answers.find(
       (a: any) => a.question.toString() === questionId

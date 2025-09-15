@@ -6,15 +6,18 @@ import { UnauthorizedError } from "../../Errors";
 import { SuccessResponse } from "../../utils/response";
 
 export const createQuestionForExam = async (req: any, res: any) => {
- if (!req.user || !req.user.isSuperAdmin) {
+  if (!req.user || !req.user.isSuperAdmin) {
     throw new UnauthorizedError("Only Super Admin can create roles");
   }
+
   const { examId, text, type, choices, correctAnswer, points } = req.body;
 
-  // الصورة متخزنة في req.file
-  const imagePath = req.file ? `/uploads/questions/${req.file.filename}` : null;
+  // الصورة متخزنة في req.file، نحولها لرابط كامل
+  const imagePath = req.file 
+    ? `${req.protocol}://${req.get('host')}/uploads/questions/${req.file.filename}` 
+    : null;
 
-  // ✅ تحويل choices من نص JSON إلى array
+  // تحويل choices من نص JSON إلى array
   let parsedChoices: any[] = [];
   if (choices) {
     try {
@@ -36,7 +39,6 @@ export const createQuestionForExam = async (req: any, res: any) => {
 
   SuccessResponse(res, { question }, 201);
 };
-
 export const getAllQuestionsforExam =async(req:Request,res:Response)=>{
   if(!req.user || !req.user.isSuperAdmin) throw new UnauthorizedError("Only Super Admin can create roles");
   const {examId}=req.params
