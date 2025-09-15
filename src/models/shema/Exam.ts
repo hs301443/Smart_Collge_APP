@@ -5,7 +5,7 @@ const ExamSchema =new mongoose.Schema({
   description: {String},
   doctorname: { type: String, required: true },
   level: { type: Number, enum: [1,2,3,4,5], required: true },
-  department: { type: String, required: true },
+    department: { type: String,enum:["IT","CS","Is","AI"],required: true},
   questions: [{ type: Schema.Types.ObjectId, ref: 'Question', required: true }],
   isPublished: { type: Boolean, default: false },
   subject_name:{type: String, required: true},

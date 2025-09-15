@@ -12,7 +12,7 @@ import mongoose from "mongoose";
     googleId: { type: String, unique: true, sparse: true },   
     role:{type: String, enum: ["Graduated", "Student"]},
     level:{type:Number, enum:[1,2,3,4,5],required: true},
-    department: { type: String,required: true}
+    department: { type: String,enum:["IT","CS","Is","AI"],required: true}
     
 
   },
