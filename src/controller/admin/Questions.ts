@@ -63,26 +63,6 @@ export const getAllQuestionsforExam =async(req:Request,res:Response)=>{
 }
 
 
-export const getQuestionById = async (req: Request, res: Response) => {
-  if (!req.user || !req.user.isSuperAdmin)
-    throw new UnauthorizedError("Only Super Admin can view questions");
-
-  const { id } = req.params; // لازم يكون id زي الراوت
-  if (!id) throw new BadRequest("Question ID is required");
-
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    throw new BadRequest("Invalid Question ID");
-  }
-
-  const question = await QuestionModel.findById(id).populate(
-    "exam",
-    "title level department"
-  );
-
-  if (!question) throw new NotFound("Question not found");
-
-  SuccessResponse(res, { message: "Question found successfully", question }, 200);
-};
 
 export const updateQuestionById =async(req:Request,res:Response)=>{
   if(!req.user || !req.user.isSuperAdmin) throw new UnauthorizedError("Only Super Admin can create roles");
