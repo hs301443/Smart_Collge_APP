@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteQuestionById = exports.updateQuestionById = exports.getAllQuestionById = exports.getAllQuestionsforExam = exports.createQuestionForExam = void 0;
+exports.deleteQuestionById = exports.updateQuestionById = exports.getQuestionById = exports.getAllQuestionsforExam = exports.createQuestionForExam = void 0;
 const Questions_1 = require("../../models/shema/Questions");
 const BadRequest_1 = require("../../Errors/BadRequest");
 const Errors_1 = require("../../Errors");
@@ -59,7 +59,7 @@ const getAllQuestionsforExam = async (req, res) => {
     (0, response_1.SuccessResponse)(res, { questions }, 200);
 };
 exports.getAllQuestionsforExam = getAllQuestionsforExam;
-const getAllQuestionById = async (req, res) => {
+const getQuestionById = async (req, res) => {
     if (!req.user || !req.user.isSuperAdmin)
         throw new Errors_2.UnauthorizedError("Only Super Admin can create roles");
     const { id } = req.params;
@@ -70,7 +70,7 @@ const getAllQuestionById = async (req, res) => {
         throw new Errors_1.NotFound("Question not found");
     (0, response_1.SuccessResponse)(res, { question }, 200);
 };
-exports.getAllQuestionById = getAllQuestionById;
+exports.getQuestionById = getQuestionById;
 const updateQuestionById = async (req, res) => {
     if (!req.user || !req.user.isSuperAdmin)
         throw new Errors_2.UnauthorizedError("Only Super Admin can create roles");

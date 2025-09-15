@@ -8,7 +8,7 @@ const router = (0, express_1.Router)();
 router
     .post('/:examId', multer_1.uploadQuestionImage.single("image"), (0, catchAsync_1.catchAsync)(Questions_1.createQuestionForExam))
     .get('/:examId', (0, catchAsync_1.catchAsync)(Questions_1.getAllQuestionsforExam))
-    .get('/:id', (0, catchAsync_1.catchAsync)(Questions_1.getAllQuestionById))
+    .get('/:id', (0, catchAsync_1.catchAsync)(Questions_1.getQuestionById))
     .delete('/:id', (0, catchAsync_1.catchAsync)(Questions_1.deleteQuestionById))
     .put('/:id', (0, catchAsync_1.catchAsync)(Questions_1.updateQuestionById));
 exports.default = router;

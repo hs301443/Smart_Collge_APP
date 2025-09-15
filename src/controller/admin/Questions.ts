@@ -60,7 +60,7 @@ export const getAllQuestionsforExam =async(req:Request,res:Response)=>{
   SuccessResponse(res, {questions}, 200);
 }
 
-export const getAllQuestionById =async(req:Request,res:Response)=>{
+export const getQuestionById =async(req:Request,res:Response)=>{
   if(!req.user || !req.user.isSuperAdmin) throw new UnauthorizedError("Only Super Admin can create roles");
   const {id}=req.params
   if(!id) throw new BadRequest("id is required")
