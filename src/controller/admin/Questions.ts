@@ -5,6 +5,7 @@ import { NotFound } from "../../Errors";
 import { UnauthorizedError } from "../../Errors";
 import { SuccessResponse } from "../../utils/response";
 import { ExamModel } from "../../models/shema/Exam";
+import mongoose from "mongoose";
 
 export const createQuestionForExam = async (req: any, res: any) => {
   if (!req.user || !req.user.isSuperAdmin) {
@@ -65,13 +66,19 @@ export const getQuestionById = async (req: Request, res: Response) => {
     throw new UnauthorizedError("Only Super Admin can view questions");
 
   const { questionid } = req.params;
-  if (!questionid) throw new BadRequest("id is required");
+  if (!questionid) throw new BadRequest("Question ID is required");
+
+  // التحقق من صحة ObjectId
+  if (!mongoose.Types.ObjectId.isValid(questionid)) {
+    throw new BadRequest("Invalid Question ID");
+  }
+
   const question = await QuestionModel.findById(questionid).populate("exam", "title level department");
+
   if (!question) throw new NotFound("Question not found");
 
-  SuccessResponse(res, { message: "Question found successfully",question }, 200);
+  SuccessResponse(res, { message: "Question found successfully", question }, 200);
 };
-
 
 export const updateQuestionById =async(req:Request,res:Response)=>{
   if(!req.user || !req.user.isSuperAdmin) throw new UnauthorizedError("Only Super Admin can create roles");
