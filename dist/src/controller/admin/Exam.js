@@ -6,6 +6,7 @@ const BadRequest_1 = require("../../Errors/BadRequest");
 const Errors_1 = require("../../Errors");
 const Errors_2 = require("../../Errors");
 const response_1 = require("../../utils/response");
+// القيم المسموح بها للـ level والـ department
 const allowedLevels = [1, 2, 3, 4, 5];
 const allowedDepartments = ["CS", "IT", "IS", "CE", "EE"]; // عدل حسب الموديل الحقيقي
 const createExam = async (req, res) => {
@@ -70,7 +71,7 @@ const deleteExam = async (req, res) => {
     const exam = await Exam_1.ExamModel.findByIdAndDelete(id);
     if (!exam)
         throw new Errors_1.NotFound("Exam not found");
-    (0, response_1.SuccessResponse)(res, 200);
+    (0, response_1.SuccessResponse)(res, { message: "Exam deleted successfully" }, 200);
 };
 exports.deleteExam = deleteExam;
 const updateExam = async (req, res) => {

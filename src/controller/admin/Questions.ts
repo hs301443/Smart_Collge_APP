@@ -10,8 +10,13 @@ export const createQuestionForExam = async (req: any, res: any) => {
     throw new UnauthorizedError("Only Super Admin can create roles");
   }
 
-  const { examId, text, type, choices, correctAnswer, points } = req.body;
+  const {  text, type, choices, correctAnswer, points } = req.body;
 
+  const { examId } = req.params;
+
+  if (!examId) {
+    throw new BadRequest("examId is required");
+  }
   // الصورة متخزنة في req.file، نحولها لرابط كامل
   const imagePath = req.file 
     ? `${req.protocol}://${req.get('host')}/uploads/questions/${req.file.filename}` 

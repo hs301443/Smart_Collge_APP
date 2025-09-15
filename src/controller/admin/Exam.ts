@@ -5,9 +5,9 @@ import { NotFound } from "../../Errors";
 import { UnauthorizedError } from "../../Errors";
 import { SuccessResponse } from "../../utils/response";
 
+// القيم المسموح بها للـ level والـ department
 const allowedLevels = [1, 2, 3, 4, 5];
 const allowedDepartments = ["CS", "IT", "IS", "CE", "EE"]; // عدل حسب الموديل الحقيقي
-
 export const createExam = async (req: Request, res: Response) => {
   if (!req.user || !req.user.isSuperAdmin) {
     throw new UnauthorizedError("Only Super Admin can create exams");
@@ -82,7 +82,7 @@ export const deleteExam=async(req:Request, res:Response)=>{
   if(!id) throw new BadRequest("id is required")
   const exam=await ExamModel.findByIdAndDelete(id)
   if(!exam) throw new NotFound("Exam not found")
-  SuccessResponse(res,  200);
+  SuccessResponse(res,  {message:"Exam deleted successfully"},200);
 }
 
 export const updateExam=async(req:Request, res:Response)=>{
