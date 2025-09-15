@@ -32,10 +32,10 @@ exports.getQuestionsForExam = getQuestionsForExam;
 const getQuestionByIdForStudent = async (req, res) => {
     if (!req.user)
         throw new Errors_1.UnauthorizedError("Unauthorized");
-    const { id } = req.params;
-    if (!id)
+    const { questionId } = req.params;
+    if (!questionId)
         throw new BadRequest_1.BadRequest("Question ID is required");
-    const question = await Questions_1.QuestionModel.findById(id).select("-correctAnswer");
+    const question = await Questions_1.QuestionModel.findById(questionId).select("-correctAnswer");
     if (!question)
         throw new Errors_1.NotFound("Question not found");
     (0, response_1.SuccessResponse)(res, { question }, 200);
