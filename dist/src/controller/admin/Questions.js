@@ -68,7 +68,7 @@ const getQuestionById = async (req, res) => {
     const question = await Questions_1.QuestionModel.findById(questionid).populate("exam", "title level department");
     if (!question)
         throw new Errors_1.NotFound("Question not found");
-    (0, response_1.SuccessResponse)(res, { question }, 200);
+    (0, response_1.SuccessResponse)(res, { message: "Question found successfully", question }, 200);
 };
 exports.getQuestionById = getQuestionById;
 const updateQuestionById = async (req, res) => {
@@ -80,7 +80,7 @@ const updateQuestionById = async (req, res) => {
     const question = await Questions_1.QuestionModel.findByIdAndUpdate(id, req.body, { new: true });
     if (!question)
         throw new Errors_1.NotFound("Question not found");
-    (0, response_1.SuccessResponse)(res, { question }, 200);
+    (0, response_1.SuccessResponse)(res, { message: "Question updated successfully", question }, 200);
 };
 exports.updateQuestionById = updateQuestionById;
 const deleteQuestionById = async (req, res) => {
@@ -92,6 +92,6 @@ const deleteQuestionById = async (req, res) => {
     const question = await Questions_1.QuestionModel.findByIdAndDelete(id);
     if (!question)
         throw new Errors_1.NotFound("Question not found");
-    (0, response_1.SuccessResponse)(res, { question }, 200);
+    (0, response_1.SuccessResponse)(res, { message: "Question deleted successfully" }, 200);
 };
 exports.deleteQuestionById = deleteQuestionById;

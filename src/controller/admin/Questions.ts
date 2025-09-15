@@ -69,7 +69,7 @@ export const getQuestionById = async (req: Request, res: Response) => {
   const question = await QuestionModel.findById(questionid).populate("exam", "title level department");
   if (!question) throw new NotFound("Question not found");
 
-  SuccessResponse(res, { question }, 200);
+  SuccessResponse(res, { message: "Question found successfully",question }, 200);
 };
 
 
@@ -79,7 +79,7 @@ export const updateQuestionById =async(req:Request,res:Response)=>{
   if(!id) throw new BadRequest("id is required")
   const question=await QuestionModel.findByIdAndUpdate(id,req.body,{new:true})
   if(!question) throw new NotFound("Question not found")
-  SuccessResponse(res, {question}, 200);
+  SuccessResponse(res, {message:"Question updated successfully",question}, 200);
 }
 
 export const deleteQuestionById =async(req:Request,res:Response)=>{
@@ -88,5 +88,5 @@ export const deleteQuestionById =async(req:Request,res:Response)=>{
   if(!id) throw new BadRequest("id is required")
   const question=await QuestionModel.findByIdAndDelete(id)
   if(!question) throw new NotFound("Question not found")
-  SuccessResponse(res, {question}, 200);
+  SuccessResponse(res, {message:"Question deleted successfully"}, 200);
 }
