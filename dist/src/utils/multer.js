@@ -6,10 +6,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.uploadAnswerFile = exports.uploadQuestionImage = void 0;
 const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
+const fs_1 = __importDefault(require("fs"));
 // مكان تخزين الصور والأسئلة
 const questionStorage = multer_1.default.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, "uploads/questions");
+        const dir = "uploads/questions";
+        if (!fs_1.default.existsSync(dir))
+            fs_1.default.mkdirSync(dir, { recursive: true });
+        cb(null, dir);
     },
     filename: (req, file, cb) => {
         const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
@@ -19,7 +23,10 @@ const questionStorage = multer_1.default.diskStorage({
 // مكان تخزين ملفات الطلاب
 const answerStorage = multer_1.default.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, "uploads/answers");
+        const dir = "uploads/answers";
+        if (!fs_1.default.existsSync(dir))
+            fs_1.default.mkdirSync(dir, { recursive: true });
+        cb(null, dir);
     },
     filename: (req, file, cb) => {
         const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);

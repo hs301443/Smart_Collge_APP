@@ -1,10 +1,13 @@
 import multer from "multer";
 import path from "path";
+import fs from "fs";
 
 // مكان تخزين الصور والأسئلة
 const questionStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads/questions");
+    const dir = "uploads/questions";
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
@@ -15,7 +18,9 @@ const questionStorage = multer.diskStorage({
 // مكان تخزين ملفات الطلاب
 const answerStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads/answers");
+    const dir = "uploads/answers";
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);

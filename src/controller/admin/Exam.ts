@@ -54,7 +54,7 @@ export const deleteExam=async(req:Request, res:Response)=>{
   if(!id) throw new BadRequest("id is required")
   const exam=await ExamModel.findByIdAndDelete(id)
   if(!exam) throw new NotFound("Exam not found")
-  SuccessResponse(res, {exam}, 200);
+  SuccessResponse(res,  200);
 }
 
 export const updateExam=async(req:Request, res:Response)=>{

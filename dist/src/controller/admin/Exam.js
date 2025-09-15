@@ -59,7 +59,7 @@ const deleteExam = async (req, res) => {
     const exam = await Exam_1.ExamModel.findByIdAndDelete(id);
     if (!exam)
         throw new Errors_1.NotFound("Exam not found");
-    (0, response_1.SuccessResponse)(res, { exam }, 200);
+    (0, response_1.SuccessResponse)(res, 200);
 };
 exports.deleteExam = deleteExam;
 const updateExam = async (req, res) => {
