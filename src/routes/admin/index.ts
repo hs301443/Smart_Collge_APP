@@ -15,12 +15,13 @@ import AttemptRouter from './Attempt'
 export const route = Router();
 
 route.use("/auth", authRouter);
-route.use("/notification", notificationRouter);
+route.use(auth, authorizeRoles("admin", "superadmin"));
+route.use("/notification",notificationRouter);
 route.use("/news", NewsRouter);
 route.use("/roles", rolesRouter);
-route.use("/admins", authenticated, adminRouter);
+route.use("/admins", adminRouter);
 route.use("/templates", TempletsRouter);
-route.use("/chat", auth, chatRouter);
+route.use("/chat", chatRouter);
 route.use("/exam",ExamRouter);
 route.use("/questions",QuestionsRouter)
 route.use("/attempt",AttemptRouter)
