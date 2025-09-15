@@ -1,0 +1,13 @@
+import { Router } from "express";
+import { authenticated } from "../../middlewares/authenticated";
+import { getQuestionsForExam, getQuestionByIdForExam } from "../../controller/users/Question";
+import { catchAsync } from "../../utils/catchAsync";
+const router = Router();
+
+// ✅ كل أسئلة الامتحان
+router.get("/:examId", authenticated, catchAsync(getQuestionsForExam));
+
+// ✅ سؤال واحد بس
+router.get("/:examId/:questionId", authenticated, catchAsync(getQuestionByIdForExam));
+
+export default router;
