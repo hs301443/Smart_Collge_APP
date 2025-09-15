@@ -6,7 +6,9 @@ import { UnauthorizedError } from "../../Errors";
 import { SuccessResponse } from "../../utils/response";
 
 export const createQuestionForExam = async (req: any, res: any) => {
-  if (!req.user || req.user.role !== "admin") throw new UnauthorizedError("Access denied");
+if (!req.user || (req.user.role !== "SuperAdmin" && req.user.role !== "Admin")) {
+  throw new UnauthorizedError("Access denied");
+}
 
   const { examId, text, type, choices, correctAnswer, points } = req.body;
 

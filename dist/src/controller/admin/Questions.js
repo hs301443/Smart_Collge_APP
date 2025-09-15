@@ -7,8 +7,9 @@ const Errors_1 = require("../../Errors");
 const Errors_2 = require("../../Errors");
 const response_1 = require("../../utils/response");
 const createQuestionForExam = async (req, res) => {
-    if (!req.user || req.user.role !== "admin")
+    if (!req.user || (req.user.role !== "SuperAdmin" && req.user.role !== "Admin")) {
         throw new Errors_2.UnauthorizedError("Access denied");
+    }
     const { examId, text, type, choices, correctAnswer, points } = req.body;
     // الصورة متخزنة في req.file
     const imagePath = req.file ? `/uploads/questions/${req.file.filename}` : null;
