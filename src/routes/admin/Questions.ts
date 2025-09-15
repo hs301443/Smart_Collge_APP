@@ -6,7 +6,7 @@ import { uploadQuestionImage } from '../../utils/multer';
 const router =Router();
 
 router
-    .post('/:id',uploadQuestionImage.single("image"),
+    .post('/:examId',uploadQuestionImage.single("image"),
     catchAsync(createQuestionForExam))
     .get('/:id', catchAsync(getAllQuestionsforExam))
     .get('/:id', catchAsync(getAllQuestionById))
