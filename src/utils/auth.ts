@@ -6,7 +6,7 @@ dotenv.config();
 
 export const generateToken = (user: any): string => {
   return jwt.sign(
-    { id: user.id?.toString(), role: user.role, name: user.name },
+    { id: user.id?.toString(), role: user.role, name: user.name, level: user.level, department: user.department },
     process.env.JWT_SECRET as string,
     { expiresIn: "7d" }
   );
@@ -24,6 +24,8 @@ export const verifyToken = (token: string) => {
       id: decoded.id,
       name: decoded.name,
       role: decoded.role,
+      level: decoded.level,
+      department: decoded.department
     };
   } catch (error) {
     throw new UnauthorizedError("Invalid token");

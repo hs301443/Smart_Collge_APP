@@ -9,6 +9,9 @@ import { messaging } from '../../utils/firebase';
 
 
 export const sendNotificationToAll = async (req: Request, res: Response) => {
+   if (!req.user || !req.user.isSuperAdmin) {
+      throw new UnauthorizedError("Only Super Admin can create roles");
+    }
   const { title, body } = req.body;
 
   if (!title || !body) {
@@ -94,8 +97,8 @@ export const sendNotificationToAll = async (req: Request, res: Response) => {
 
 
 export const getallNotification =async (req: Request, res: Response) => {
-  if(!req.user){
-    throw new UnauthorizedError("You are not authorized to access this resource")
+ if (!req.user || !req.user.isSuperAdmin) {
+    throw new UnauthorizedError("Only Super Admin can create roles");
   }
     const notifications = await NotificationModels.find({});
     if(!notifications.length)
@@ -107,9 +110,9 @@ export const getallNotification =async (req: Request, res: Response) => {
 }
 
 export const getNotificationById= async(req:Request, res:Response)=>{
-  if(!req.user)
-    throw new UnauthorizedError("You are not authorized to access this resource")
-  
+   if (!req.user || !req.user.isSuperAdmin) {
+    throw new UnauthorizedError("Only Super Admin can create roles");
+  }
   const {id}=req.params
   if(!id)
     throw new BadRequest("id is required")
@@ -125,9 +128,9 @@ export const getNotificationById= async(req:Request, res:Response)=>{
 }
 
 export const deletenotification = async(req:Request, res:Response)=>{
-  if(!req.user)
-    throw new UnauthorizedError("You are not authorized to access this resource")
-  
+   if (!req.user || !req.user.isSuperAdmin) {
+    throw new UnauthorizedError("Only Super Admin can create roles");
+  }
   const {id}=req.params
   if(!id)
     throw new BadRequest("id is required")
@@ -143,9 +146,9 @@ export const deletenotification = async(req:Request, res:Response)=>{
 }
 
 export const updateNotification = async(req:Request, res:Response)=>{
-  if(!req.user)
-    throw new UnauthorizedError("You are not authorized to access this resource")
-  
+   if (!req.user || !req.user.isSuperAdmin) {
+    throw new UnauthorizedError("Only Super Admin can create roles");
+  }
   const {id}=req.params
   if(!id)
     throw new BadRequest("id is required")

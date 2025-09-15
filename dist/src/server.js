@@ -14,7 +14,7 @@ const cors_1 = __importDefault(require("cors"));
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const helmet_1 = __importDefault(require("helmet"));
 const connection_1 = require("./models/connection");
-const chatSocket_1 = require("./utils/chatSocket"); // هنا الـ Socket.IO
+const chatSocket_1 = require("./utils/chatSocket"); // socket utils
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 (0, connection_1.connectDB)();
@@ -31,11 +31,9 @@ app.use((req, res, next) => {
 });
 app.use(errorHandler_1.errorHandler);
 const server = http_1.default.createServer(app);
-const io = new socket_io_1.Server(server, {
-    cors: { origin: "*" },
-});
-// ربط Socket.IO
+const io = new socket_io_1.Server(server, { cors: { origin: "*" } });
+// اربط Socket.IO
 (0, chatSocket_1.setupSocket)(io);
 server.listen(3000, () => {
-    console.log("Server is running on http://localhost:3000");
+    console.log("🚀 Server is running on http://localhost:3000");
 });

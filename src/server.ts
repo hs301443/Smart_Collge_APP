@@ -9,7 +9,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import { connectDB } from "./models/connection";
-import { setupSocket } from "./utils/chatSocket"; // هنا الـ Socket.IO
+import { setupSocket } from "./utils/chatSocket"; // socket utils
 
 dotenv.config();
 
@@ -32,13 +32,11 @@ app.use((req, res, next) => {
 app.use(errorHandler);
 
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: "*" },
-});
+const io = new Server(server, { cors: { origin: "*" } });
 
-// ربط Socket.IO
+// اربط Socket.IO
 setupSocket(io);
 
 server.listen(3000, () => {
-  console.log("Server is running on http://localhost:3000");
+  console.log("🚀 Server is running on http://localhost:3000");
 });

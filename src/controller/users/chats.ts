@@ -4,6 +4,7 @@ import { MessageModel } from "../../models/shema/Message";
 import { BadRequest } from "../../Errors/BadRequest";
 import { NotFound, UnauthorizedError } from "../../Errors";
 import { SuccessResponse } from "../../utils/response";
+import { getIO } from "../../utils/chatSocket";
 
 // 1️⃣ كل المحادثات الخاصة بيوزر
 export const getUserConversations = async (req: Request, res: Response) => {
@@ -38,12 +39,8 @@ export const sendMessageByUser = async (req: Request, res: Response) => {
   const { userId, adminId, text } = req.body;
 
   let conversation = await ConversationModel.findOne({ user: userId, admin: adminId });
-
   if (!conversation) {
-    conversation = await ConversationModel.create({
-      user: userId,
-      admin: adminId,
-    });
+    conversation = await ConversationModel.create({ user: userId, admin: adminId });
   }
 
   const message = await MessageModel.create({
@@ -57,8 +54,12 @@ export const sendMessageByUser = async (req: Request, res: Response) => {
 
   conversation.lastMessageAt = new Date();
   if (!conversation.unread) conversation.unread = { user: 0, admin: 0 };
-  conversation.unread.admin += 1; // تزود للـ admin
+  conversation.unread.admin += 1;
   await conversation.save();
+
+  // 🔥 real-time للـ admin
+  const io = getIO();
+  io.to(adminId.toString()).emit("receiveMessage", { conversation, message });
 
   SuccessResponse(res, { conversation, message });
 };
@@ -75,6 +76,10 @@ export const markUserMessageAsRead = async (req: Request, res: Response) => {
 
   message.seenAt = new Date();
   await message.save();
+
+  // 🔥 real-time للطرف الآخر (الـ Admin)
+  const io = getIO();
+  io.to(message.from.toString()).emit("messageSeen", { messageId });
 
   SuccessResponse(res, { message });
 };
@@ -93,6 +98,10 @@ export const markUserConversationAsRead = async (req: Request, res: Response) =>
   conversation.unread.user = 0;
   await conversation.save();
 
+  // 🔥 real-time للـ Admin إن المحادثة اتقريت
+  const io = getIO();
+  io.to(conversation.admin.toString()).emit("conversationRead", { conversationId });
+
   SuccessResponse(res, { conversation });
 };
 
@@ -105,6 +114,10 @@ export const deleteUserMessage = async (req: Request, res: Response) => {
 
   const message = await MessageModel.findByIdAndDelete(messageId);
   if (!message) throw new NotFound("Message not found");
+
+  // 🔥 real-time للطرف الآخر
+  const io = getIO();
+  io.to(message.to.toString()).emit("messageDeleted", { messageId });
 
   SuccessResponse(res, { message });
 };
@@ -121,20 +134,25 @@ export const deleteUserConversation = async (req: Request, res: Response) => {
 
   await MessageModel.deleteMany({ conversation: conversationId });
 
+  // 🔥 real-time للـ Admin
+  const io = getIO();
+  io.to(conversation.admin.toString()).emit("conversationDeleted", { conversationId });
+
   SuccessResponse(res, { message: "Conversation and its messages deleted" });
 };
 
 // 8️⃣ عدد الرسائل الغير مقروءة لليوزر
 export const getUserUnreadCount = async (req: Request, res: Response) => {
-  if (!req.user) throw new UnauthorizedError("Only user can get unread count");
-
-  const userId = req.user.id;
-
+if (!req.user || !req.user.id) {
+  throw new UnauthorizedError("Only user can get unread count");
+}
+ const userId = req.user.id;
   const conversations = await ConversationModel.find({ user: userId });
-
   const totalUnread = conversations.reduce((sum, conv) => {
     return sum + (conv.unread?.user || 0);
   }, 0);
+  const io = getIO();
+  io.to(userId.toString()).emit("unreadCount", { unread: totalUnread });
 
   SuccessResponse(res, { unread: totalUnread });
 };

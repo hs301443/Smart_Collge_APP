@@ -8,8 +8,9 @@ const response_1 = require("../../utils/response");
 const Errors_1 = require("../../Errors");
 const Errors_2 = require("../../Errors");
 const createNews = async (req, res) => {
-    if (!req.user)
-        throw new Errors_2.UnauthorizedError("Only admin can create news");
+    if (!req.user || !req.user.isSuperAdmin) {
+        throw new Errors_2.UnauthorizedError("Only Super Admin can create roles");
+    }
     const { title, content, type, event_link, event_date, images = [], optional = [], mainImageBase64, mainImage } = req.body;
     if (!title || !content || !type)
         throw new BadRequest_1.BadRequest("title, content and type are required");
@@ -33,8 +34,9 @@ const createNews = async (req, res) => {
 };
 exports.createNews = createNews;
 const updateNews = async (req, res) => {
-    if (!req.user)
-        throw new Errors_2.UnauthorizedError("Only admin can update news");
+    if (!req.user || !req.user.isSuperAdmin) {
+        throw new Errors_2.UnauthorizedError("Only Super Admin can create roles");
+    }
     const { id } = req.params;
     const news = await News_1.NewsModel.findById(id);
     if (!news)
@@ -62,8 +64,9 @@ const updateNews = async (req, res) => {
 };
 exports.updateNews = updateNews;
 const deleteNews = async (req, res) => {
-    if (!req.user)
-        throw new Errors_2.UnauthorizedError("Only admin can delete news");
+    if (!req.user || !req.user.isSuperAdmin) {
+        throw new Errors_2.UnauthorizedError("Only Super Admin can create roles");
+    }
     const { id } = req.params;
     const news = await News_1.NewsModel.findById(id);
     if (!news)
@@ -73,15 +76,17 @@ const deleteNews = async (req, res) => {
 };
 exports.deleteNews = deleteNews;
 const getAllNews = async (req, res) => {
-    if (!req.user)
-        throw new Errors_2.UnauthorizedError("Only admin can view news");
+    if (!req.user || !req.user.isSuperAdmin) {
+        throw new Errors_2.UnauthorizedError("Only Super Admin can create roles");
+    }
     const newsList = await News_1.NewsModel.find().sort({ createdAt: -1 });
     return (0, response_1.SuccessResponse)(res, { news: newsList }, 200);
 };
 exports.getAllNews = getAllNews;
 const getNewsById = async (req, res) => {
-    if (!req.user)
-        throw new Errors_2.UnauthorizedError("Only admin can view news");
+    if (!req.user || !req.user.isSuperAdmin) {
+        throw new Errors_2.UnauthorizedError("Only Super Admin can create roles");
+    }
     const { id } = req.params;
     const news = await News_1.NewsModel.findById(id);
     if (!news)

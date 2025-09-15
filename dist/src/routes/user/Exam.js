@@ -1,0 +1,13 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const catchAsync_1 = require("../../utils/catchAsync");
+const authenticated_1 = require("../../middlewares/authenticated");
+const express_1 = require("express");
+const Exam_1 = require("../../controller/users/Exam");
+const router = (0, express_1.Router)();
+router.get("/exams", authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(Exam_1.getExamsForStudent));
+router.get("/exam/:id", authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(Exam_1.getExamByIdForStudent));
+router.get("/attempts", authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(Exam_1.getMyAttempts));
+router.post("/attempt/:id/start", authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(Exam_1.startExamAttempt));
+router.post("/attempt/:id/submit", authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(Exam_1.submitExamAttempt));
+exports.default = router;

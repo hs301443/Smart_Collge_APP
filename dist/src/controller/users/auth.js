@@ -16,14 +16,13 @@ const sendEmails_1 = require("../../utils/sendEmails");
 const BadRequest_1 = require("../../Errors/BadRequest");
 const mongoose_1 = require("mongoose");
 const signup = async (req, res) => {
-    const { name, email, password, role, BaseImage64, graduatedData } = req.body;
+    const { name, email, password, role, BaseImage64, graduatedData, level, department } = req.body;
     // التحقق من وجود المستخدم مسبقًا
     const existing = await User_1.UserModel.findOne({ email });
     if (existing)
         throw new Errors_1.UniqueConstrainError("Email", "User already signed up with this email");
     // تشفير الباسورد
     const hashedPassword = await bcrypt_1.default.hash(password, 10);
-    // إعداد البيانات العامة للمستخدم
     const userData = {
         name,
         email,
@@ -31,6 +30,8 @@ const signup = async (req, res) => {
         role,
         BaseImage64: BaseImage64 || null,
         isVerified: false,
+        level,
+        department
     };
     // إنشاء الـ User أولًا
     const newUser = new User_1.UserModel(userData);

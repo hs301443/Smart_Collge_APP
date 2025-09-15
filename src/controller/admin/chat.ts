@@ -5,11 +5,14 @@ import { BadRequest } from "../../Errors/BadRequest";
 import { NotFound } from "../../Errors";
 import { UnauthorizedError } from "../../Errors";
 import { SuccessResponse } from "../../utils/response";
+import { getIO } from "../../utils/chatSocket";
+
 // 1️⃣ كل المحادثات الخاصة بإدمن
 
 export const getAdminConversations = async (req: Request, res: Response) => {
-    if (!req.user) throw new UnauthorizedError("Only admin can access conversations");
-    const adminId = req.user?.id; // مفروض الأدمن بيكون لوج إن وداخل بالتوكن\
+ if (!req.user || !req.user.isSuperAdmin) {
+    throw new UnauthorizedError("Only Super Admin can create roles");
+  }    const adminId = req.user?.id; // مفروض الأدمن بيكون لوج إن وداخل بالتوكن\
 
     const conversations = await ConversationModel.find({ admin: adminId })
       .populate("user", "name email") // عرض بيانات اليوزر
@@ -21,8 +24,9 @@ export const getAdminConversations = async (req: Request, res: Response) => {
 
 // 2️⃣ كل الرسائل في محادثة معينة
 export const getMessages = async (req: Request, res: Response) => {
-    if (!req.user) throw new UnauthorizedError("Only admin can access messages");
-  const { conversationId } = req.params;
+ if (!req.user || !req.user.isSuperAdmin) {
+    throw new UnauthorizedError("Only Super Admin can create roles");
+  }  const { conversationId } = req.params;
   if (!conversationId) throw new BadRequest("conversationId is required");
   const messages = await MessageModel.find({ conversation: conversationId }).sort({ createdAt: 1 });
     if(!messages) throw new NotFound("No messages found"); 
@@ -31,12 +35,13 @@ export const getMessages = async (req: Request, res: Response) => {
 
 // 3️⃣ إرسال رسالة
 export const sendMessageByAdmin = async (req: Request, res: Response) => {
+   if (!req.user || !req.user.isSuperAdmin) {
+      throw new UnauthorizedError("Only Super Admin can create roles");
+    }
   const { adminId, userId, text } = req.body;
 
-  // 1- دور على محادثة موجودة
   let conversation = await ConversationModel.findOne({ admin: adminId, user: userId });
 
-  // 2- لو مش موجودة اعمل محادثة جديدة
   if (!conversation) {
     conversation = await ConversationModel.create({
       admin: adminId,
@@ -44,7 +49,6 @@ export const sendMessageByAdmin = async (req: Request, res: Response) => {
     });
   }
 
-  // 3- سجل الرسالة
   const message = await MessageModel.create({
     conversation: conversation._id,
     from: adminId,
@@ -54,33 +58,46 @@ export const sendMessageByAdmin = async (req: Request, res: Response) => {
     text,
   });
 
-  // 4- حدّث آخر رسالة وتاريخها
   conversation.lastMessageAt = new Date();
   if (!conversation.unread) {
     conversation.unread = { user: 0, admin: 0 };
   }
-  conversation.unread.user += 1; // تزود للـ user عشان عنده رسالة جديدة
+  conversation.unread.user += 1;
   await conversation.save();
+
+  // 🔥 ريل تايم
+  const io = getIO();
+  io.to(userId).emit("receiveMessage", message); // تبعت للـ user
+  io.to(adminId).emit("messageSent", message);   // تبعت للـ admin نفسه
 
   return SuccessResponse(res, { conversation, message });
 };
 // 4️⃣ تعليم رسالة واحدة كمقروءة
 export const markMessageAsRead = async (req: Request, res: Response) => {
-  if( !req.user) throw new UnauthorizedError("Only admin can mark messages as read");
-  const { messageId } = req.params;
-  if (!messageId) throw new BadRequest("messageId is required");  
+ if (!req.user || !req.user.isSuperAdmin) {
+    throw new UnauthorizedError("Only Super Admin can create roles");
+  }  const { messageId } = req.params;
+
+  if (!messageId) throw new BadRequest("messageId is required");
+
   const message = await MessageModel.findById(messageId);
-    if (!message) throw new NotFound("Message not found");
+  if (!message) throw new NotFound("Message not found");
+
   message.seenAt = new Date();
   await message.save();
+
+  // 🔥 ريل تايم
+  const io = getIO();
+  io.to(message.from.toString()).emit("messageRead", message);
 
   SuccessResponse(res, { success: true, message });
 };
 
 // 5️⃣ تعليم كل الرسائل في محادثة كمقروءة
 export const markAsRead = async (req: Request, res: Response) => {
-    if (!req.user) throw new UnauthorizedError("Only admin can mark messages as read");
-  const { conversationId } = req.params;
+ if (!req.user || !req.user.isSuperAdmin) {
+    throw new UnauthorizedError("Only Super Admin can create roles");
+  }  const { conversationId } = req.params;
     if (!conversationId) throw new BadRequest("conversationId is required");
   const conversation = await ConversationModel.findById(conversationId);
     if (!conversation) throw new NotFound("Conversation not found");
@@ -95,32 +112,46 @@ export const markAsRead = async (req: Request, res: Response) => {
 
 // 6️⃣ حذف رسالة واحدة
 export const deleteMessage = async (req: Request, res: Response) => {
-    if (!req.user) throw new UnauthorizedError("Only admin can delete messages");
-  const { messageId } = req.params;
-    if (!messageId) throw new BadRequest("messageId is required");
+ if (!req.user || !req.user.isSuperAdmin) {
+    throw new UnauthorizedError("Only Super Admin can create roles");
+  }  const { messageId } = req.params;
+
+  if (!messageId) throw new BadRequest("messageId is required");
 
   const message = await MessageModel.findByIdAndDelete(messageId);
   if (!message) throw new NotFound("Message not found");
+
+  // 🔥 ريل تايم
+  const io = getIO();
+  io.to(message.to.toString()).emit("messageDeleted", messageId);
+
   SuccessResponse(res, { success: true, message });
 };
 
 // 7️⃣ حذف محادثة كاملة
 export const deleteConversation = async (req: Request, res: Response) => {
-    if (!req.user) throw new UnauthorizedError("Only admin can delete conversations");
-  const { conversationId } = req.params;
-    if (!conversationId) throw new BadRequest("conversationId is required");
+ if (!req.user || !req.user.isSuperAdmin) {
+    throw new UnauthorizedError("Only Super Admin can create roles");
+  }  const { conversationId } = req.params;
+
+  if (!conversationId) throw new BadRequest("conversationId is required");
+
   const conversation = await ConversationModel.findByIdAndDelete(conversationId);
   if (!conversation) throw new NotFound("Conversation not found");
-  // حذف كل الرسائل المرتبطة
+
   await MessageModel.deleteMany({ conversation: conversationId });
 
-    SuccessResponse(res, { success: true, message: "Conversation and its messages deleted" });
-};
+  // 🔥 ريل تايم
+  const io = getIO();
+  io.to(conversation.user.toString()).emit("conversationDeleted", conversationId);
 
+  SuccessResponse(res, { success: true, message: "Conversation and its messages deleted" });
+};
 // ✅ محادثة واحدة
 export const getConversation = async (req: Request, res: Response) => {
-  if (!req.user) throw new UnauthorizedError("Only admin can access conversation");
-
+ if (!req.user || !req.user.isSuperAdmin) {
+    throw new UnauthorizedError("Only Super Admin can create roles");
+  }
   const { conversationId } = req.params;
   if (!conversationId) throw new BadRequest("conversationId is required");
 
@@ -135,8 +166,9 @@ export const getConversation = async (req: Request, res: Response) => {
 
 // ✅ عدد الرسائل الغير مقروءة للأدمن
 export const getUnreadCount = async (req: Request, res: Response) => {
-  if (!req.user) throw new UnauthorizedError("Only admin can get unread count");
-
+ if (!req.user || !req.user.isSuperAdmin) {
+    throw new UnauthorizedError("Only Super Admin can create roles");
+  }
   const adminId = req.user.id;
 
   const conversations = await ConversationModel.find({ admin: adminId });

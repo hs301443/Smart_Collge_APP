@@ -19,7 +19,7 @@ import { AuthenticatedRequest } from "../../types/custom";
 
 
 export const signup = async (req: Request, res: Response) => {
-  const { name, email, password, role, BaseImage64, graduatedData } = req.body;
+  const { name, email, password, role, BaseImage64, graduatedData,level,department} = req.body;
 
   // التحقق من وجود المستخدم مسبقًا
   const existing = await UserModel.findOne({ email });
@@ -28,7 +28,6 @@ export const signup = async (req: Request, res: Response) => {
   // تشفير الباسورد
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  // إعداد البيانات العامة للمستخدم
   const userData: any = {
     name,
     email,
@@ -36,6 +35,9 @@ export const signup = async (req: Request, res: Response) => {
     role,
     BaseImage64: BaseImage64 || null,
     isVerified: false,
+    level,
+    department
+  
   };
 
   // إنشاء الـ User أولًا

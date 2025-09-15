@@ -11,7 +11,10 @@ const User_1 = require("../models/shema/auth/User");
 dotenv_1.default.config();
 const client = new google_auth_library_1.OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const verifyGoogleToken = async (req, res) => {
-    const { token } = req.body;
+    const { token, role } = req.body; // لازم client يبعت الدور: "Student" أو "Graduated"
+    if (!role) {
+        return res.status(400).json({ success: false, message: "Role is required" });
+    }
     try {
         const ticket = await client.verifyIdToken({
             idToken: token,
@@ -19,50 +22,48 @@ const verifyGoogleToken = async (req, res) => {
         });
         const payload = ticket.getPayload();
         if (!payload) {
-            return res
-                .status(400)
-                .json({ success: false, message: "Invalid Google payload" });
+            return res.status(400).json({ success: false, message: "Invalid Google payload" });
         }
         const email = payload.email;
         const name = payload.name || "Unknown User";
         const googleId = payload.sub;
-        // 🔍 check if user exists by googleId OR email
-        let user = await User_1.UserModel.findOne({ $or: [{ googleId }, { email }] });
+        // البحث أولاً بالـ googleId
+        let user = await User_1.UserModel.findOne({ googleId });
         if (!user) {
-            // ➕ Signup (new user)
-            user = new User_1.UserModel({
-                googleId,
-                email,
-                name,
-                isVerified: true,
-            });
-            await user.save();
-        }
-        else {
-            // 👤 Login (existing user)
-            // لو المستخدم كان موجود بالإيميل بس ومفيش googleId نخزنه
-            if (!user.googleId) {
-                user.googleId = googleId;
+            // لو مفيش googleId، شوف لو فيه email موجود
+            const existingByEmail = await User_1.UserModel.findOne({ email });
+            if (existingByEmail) {
+                // لو الدور مختلف، ارفض الربط
+                if (existingByEmail.role !== role) {
+                    return res.status(400).json({
+                        success: false,
+                        message: `This email is already registered as a different role: ${existingByEmail.role}`
+                    });
+                }
+                // نفس الدور → حدث googleId
+                existingByEmail.googleId = googleId;
+                await existingByEmail.save();
+                user = existingByEmail;
+            }
+            else {
+                // إنشاء مستخدم جديد
+                user = new User_1.UserModel({
+                    googleId,
+                    email,
+                    name,
+                    role,
+                    isVerified: true,
+                });
                 await user.save();
             }
         }
-        // 🔑 Generate JWT
-        const authToken = jsonwebtoken_1.default.sign({ id: user._id }, process.env.JWT_SECRET, {
-            expiresIn: "7d",
-        });
-        return res.json({
-            success: true,
-            token: authToken,
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-            },
-        });
+        // توليد JWT
+        const authToken = jsonwebtoken_1.default.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "7d" });
+        return res.json({ token: authToken });
     }
     catch (error) {
         console.error("Google login error:", error);
-        res.status(401).json({ success: false, message: "Invalid token" });
+        return res.status(401).json({ success: false, message: "Invalid token" });
     }
 };
 exports.verifyGoogleToken = verifyGoogleToken;

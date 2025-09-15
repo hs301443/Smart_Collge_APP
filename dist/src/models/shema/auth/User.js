@@ -14,7 +14,9 @@ const UserSchema = new mongoose_1.Schema({
     fcmtoken: { type: String },
     isVerified: { type: Boolean, default: false },
     googleId: { type: String, unique: true, sparse: true },
-    role: { type: String, enum: ["Graduated", "Student"] }
+    role: { type: String, enum: ["Graduated", "Student"] },
+    level: { type: Number, enum: [1, 2, 3, 4, 5], required: true },
+    department: { type: String, required: true }
 }, { timestamps: true, });
 exports.UserModel = mongoose_2.default.model('User', UserSchema);
 const GraduatedSchema = new mongoose_1.Schema({

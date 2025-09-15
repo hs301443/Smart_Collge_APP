@@ -8,21 +8,25 @@ interface UserSocket {
   role: "Admin" | "User";
 }
 
+let io: Server; // نخزن الـ instance هنا
 const connectedUsers: UserSocket[] = [];
 
-export const setupSocket = (io: Server) => {
+// initSocket عشان تناديها من server.ts
+export const setupSocket = (serverIo: Server) => {
+  io = serverIo;
+
   io.on("connection", (socket) => {
     console.log(`User connected: ${socket.id}`);
 
     socket.on("register", (data: { userId: string; role: "Admin" | "User" }) => {
       connectedUsers.push({ ...data, socketId: socket.id });
+      socket.join(data.userId); // يدخل Room بنفس الـ userId
       console.log("Registered user:", data.userId, "as", data.role);
     });
 
     socket.on(
       "sendMessage",
       async (data: { from: string; fromModel: "Admin" | "User"; to: string; toModel: "Admin" | "User"; text: string }) => {
-        // البحث أو إنشاء المحادثة
         const conversation = await ConversationModel.findOneAndUpdate(
           {
             user: data.fromModel === "User" ? data.from : data.to,
@@ -32,7 +36,6 @@ export const setupSocket = (io: Server) => {
           { upsert: true, new: true }
         );
 
-        // حفظ الرسالة
         const newMessage = new MessageModel({
           conversation: conversation._id,
           from: data.from,
@@ -43,11 +46,8 @@ export const setupSocket = (io: Server) => {
         });
         await newMessage.save();
 
-        // إرسال الرسالة real-time
-        const receiver = connectedUsers.find((u) => u.userId === data.to && u.role === data.toModel);
-        if (receiver) {
-          io.to(receiver.socketId).emit("receiveMessage", data);
-        }
+        // ابعت الرسالة للـ Receiver
+        io.to(data.to).emit("receiveMessage", newMessage);
       }
     );
 
@@ -57,4 +57,10 @@ export const setupSocket = (io: Server) => {
       console.log(`User disconnected: ${socket.id}`);
     });
   });
+};
+
+// Getter عشان تستعمل io في أي مكان
+export const getIO = () => {
+  if (!io) throw new Error("Socket.io not initialized!");
+  return io;
 };

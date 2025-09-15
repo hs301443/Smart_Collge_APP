@@ -22,3 +22,4 @@ export const getTemplateById = async (req: Request, res: Response) => {
     if (!template) throw new NotFound("Template not found");
     return SuccessResponse(res, { template });
 };
+ 

@@ -5,7 +5,9 @@ export interface AppUser {
   id?: string;
   email?: string;
   name?: string;
-  role?: string;              // admin / superAdmin / ...
+  role?: string;   
+  level?: number;
+  department?: string;           // admin / superAdmin / ...
   isSuperAdmin?: boolean;     // لو true يبقى معاه كل حاجة
   customPermissions?: string[];
   rolePermissions?: string[];
