@@ -5,23 +5,27 @@ import { NotFound } from "../../Errors";
 import { UnauthorizedError } from "../../Errors";
 import { SuccessResponse } from "../../utils/response";
 
-export const createQuestionforExam =async(req:Request,res:Response)=>{
-  if(!req.user || !req.user.isSuperAdmin) throw new UnauthorizedError("Only Super Admin can create roles");
-  const {examId}=req.params
-  if(!examId) throw new BadRequest("examId is required")
-  const {type,text,choices,correctAnswer,points,image}=req.body
-  if(!type||!text||!choices||!correctAnswer||!points) throw new BadRequest("data is required")
-  const questionData=await QuestionModel.create({
-text
-,type
-,choices
-,correctAnswer
-,points
-,image:image||null
-,exam:examId
-})
-  SuccessResponse(res, {questionData}, 200);
-}
+export const createQuestionForExam = async (req: any, res: any) => {
+  if (!req.user || req.user.role !== "admin") throw new UnauthorizedError("Access denied");
+
+  const { examId, text, type, choices, correctAnswer, points } = req.body;
+
+  // الصورة متخزنة في req.file
+  const imagePath = req.file ? `/uploads/questions/${req.file.filename}` : null;
+
+  const question = await QuestionModel.create({
+    exam: examId,
+    text,
+    type,
+    choices,
+    correctAnswer,
+    points,
+    image: imagePath
+  });
+
+  SuccessResponse(res, { question }, 201);
+};
+
 
 export const getAllQuestionsforExam =async(req:Request,res:Response)=>{
   if(!req.user || !req.user.isSuperAdmin) throw new UnauthorizedError("Only Super Admin can create roles");

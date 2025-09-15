@@ -7,6 +7,7 @@ const Questions_1 = require("../../models/shema/Questions");
 const BadRequest_1 = require("../../Errors/BadRequest");
 const Errors_1 = require("../../Errors");
 const response_1 = require("../../utils/response");
+const multer_1 = require("../../utils/multer"); // 👈 استدعاء Multer
 // ✅ 1. Start Attempt
 const startAttempt = async (req, res) => {
     if (!req.user || !req.user.id)
@@ -36,38 +37,42 @@ const startAttempt = async (req, res) => {
     (0, response_1.SuccessResponse)(res, { attempt }, 201);
 };
 exports.startAttempt = startAttempt;
-// ✅ 2. Save Answer (while in-progress)
+// ✅ Save Answer (while in-progress)
 const saveAnswer = async (req, res) => {
     if (!req.user || !req.user.id)
         throw new Errors_1.UnauthorizedError("Unauthorized");
-    const { attemptId, questionId, answer, file } = req.body;
-    if (!attemptId || !questionId)
-        throw new BadRequest_1.BadRequest("attemptId and questionId are required");
-    const attempt = await Attempt_1.AttemptModel.findById(attemptId);
-    if (!attempt)
-        throw new Errors_1.NotFound("Attempt not found");
-    if (attempt.student.toString() !== req.user.id.toString()) {
-        throw new Errors_1.UnauthorizedError("You are not allowed to modify this attempt");
-    }
-    if (attempt.status !== "in-progress") {
-        throw new BadRequest_1.BadRequest("Attempt is already submitted");
-    }
-    // check question
-    const question = await Questions_1.QuestionModel.findById(questionId);
-    if (!question)
-        throw new Errors_1.NotFound("Question not found");
-    // push or update answer
-    const existingAnswer = attempt.answers.find((a) => a.question.toString() === questionId);
-    if (existingAnswer) {
-        existingAnswer.answer = answer;
-        if (file)
-            existingAnswer.file = file;
-    }
-    else {
-        attempt.answers.push({ question: questionId, answer, file });
-    }
-    await attempt.save();
-    (0, response_1.SuccessResponse)(res, { attempt }, 200);
+    const userId = req.user.id;
+    multer_1.uploadAnswerFile.single("file")(req, res, async (err) => {
+        if (err)
+            return res.status(400).json({ message: err.message });
+        const { attemptId, questionId, answer } = req.body;
+        if (!attemptId || !questionId)
+            throw new BadRequest_1.BadRequest("attemptId and questionId are required");
+        const attempt = await Attempt_1.AttemptModel.findById(attemptId);
+        if (!attempt)
+            throw new Errors_1.NotFound("Attempt not found");
+        if (attempt.student.toString() !== userId.toString()) {
+            throw new Errors_1.UnauthorizedError("You are not allowed to modify this attempt");
+        }
+        if (attempt.status !== "in-progress") {
+            throw new BadRequest_1.BadRequest("Attempt is already submitted");
+        }
+        const question = await Questions_1.QuestionModel.findById(questionId);
+        if (!question)
+            throw new Errors_1.NotFound("Question not found");
+        const filePath = req.file ? `/uploads/answers/${req.file.filename}` : null;
+        const existingAnswer = attempt.answers.find((a) => a.question.toString() === questionId);
+        if (existingAnswer) {
+            existingAnswer.answer = answer;
+            if (filePath)
+                existingAnswer.file = filePath;
+        }
+        else {
+            attempt.answers.push({ question: questionId, answer, file: filePath });
+        }
+        await attempt.save();
+        (0, response_1.SuccessResponse)(res, { attempt }, 200);
+    });
 };
 exports.saveAnswer = saveAnswer;
 // ✅ 3. Submit Attempt

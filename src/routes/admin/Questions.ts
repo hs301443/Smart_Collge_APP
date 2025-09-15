@@ -1,11 +1,13 @@
 import {Router} from 'express';
-import{createQuestionforExam,getAllQuestionsforExam,getAllQuestionById,deleteQuestionById,updateQuestionById}from '../../controller/admin/Questions'
+import{createQuestionForExam,getAllQuestionsforExam,getAllQuestionById,deleteQuestionById,updateQuestionById}from '../../controller/admin/Questions'
 import { catchAsync } from '../../utils/catchAsync';
+import { uploadQuestionImage } from '../../utils/multer';
 
 const router =Router();
 
 router
-    .post('/:id', catchAsync(createQuestionforExam))
+    .post('/:id',uploadQuestionImage.single("image"),
+    catchAsync(createQuestionForExam))
     .get('/:id', catchAsync(getAllQuestionsforExam))
     .get('/:id', catchAsync(getAllQuestionById))
     .delete('/:id', catchAsync(deleteQuestionById))

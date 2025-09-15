@@ -5,6 +5,7 @@ import { QuestionModel } from "../../models/shema/Questions";
 import { BadRequest } from "../../Errors/BadRequest";
 import { NotFound, UnauthorizedError } from "../../Errors";
 import { SuccessResponse } from "../../utils/response";
+import { uploadAnswerFile } from "../../utils/multer"; // 👈 استدعاء Multer
 
 // ✅ 1. Start Attempt
 export const startAttempt = async (req: Request, res: Response) => {
@@ -37,44 +38,48 @@ export const startAttempt = async (req: Request, res: Response) => {
   SuccessResponse(res, { attempt }, 201);
 };
 
-// ✅ 2. Save Answer (while in-progress)
+
+// ✅ Save Answer (while in-progress)
 export const saveAnswer = async (req: Request, res: Response) => {
-  if (!req.user||!req.user.id) throw new UnauthorizedError("Unauthorized");
+  if (!req.user || !req.user.id) throw new UnauthorizedError("Unauthorized");
+ const userId = req.user.id;
+  uploadAnswerFile.single("file")(req, res, async (err: any) => {
+    if (err) return res.status(400).json({ message: err.message });
 
-  const { attemptId, questionId, answer, file } = req.body;
-  if (!attemptId || !questionId) throw new BadRequest("attemptId and questionId are required");
+    const { attemptId, questionId, answer } = req.body;
+    if (!attemptId || !questionId) throw new BadRequest("attemptId and questionId are required");
 
-  const attempt = await AttemptModel.findById(attemptId);
-  if (!attempt) throw new NotFound("Attempt not found");
+    const attempt = await AttemptModel.findById(attemptId);
+    if (!attempt) throw new NotFound("Attempt not found");
 
-  if (attempt.student.toString() !== req.user.id.toString()) {
-    throw new UnauthorizedError("You are not allowed to modify this attempt");
-  }
+    if (attempt.student.toString() !== userId.toString()) {
+      throw new UnauthorizedError("You are not allowed to modify this attempt");
+    }
 
-  if (attempt.status !== "in-progress") {
-    throw new BadRequest("Attempt is already submitted");
-  }
+    if (attempt.status !== "in-progress") {
+      throw new BadRequest("Attempt is already submitted");
+    }
 
-  // check question
-  const question = await QuestionModel.findById(questionId);
-  if (!question) throw new NotFound("Question not found");
+    const question = await QuestionModel.findById(questionId);
+    if (!question) throw new NotFound("Question not found");
 
-  // push or update answer
-  const existingAnswer = attempt.answers.find(
-    (a: any) => a.question.toString() === questionId
-  );
+    const filePath = req.file ? `/uploads/answers/${req.file.filename}` : null;
 
-  if (existingAnswer) {
-    existingAnswer.answer = answer;
-    if (file) existingAnswer.file = file;
-  } else {
-    attempt.answers.push({ question: questionId, answer, file });
-  }
+    const existingAnswer = attempt.answers.find(
+      (a: any) => a.question.toString() === questionId
+    );
 
-  await attempt.save();
-  SuccessResponse(res, { attempt }, 200);
+    if (existingAnswer) {
+      existingAnswer.answer = answer;
+      if (filePath) existingAnswer.file = filePath;
+    } else {
+      attempt.answers.push({ question: questionId, answer, file: filePath });
+    }
+
+    await attempt.save();
+    SuccessResponse(res, { attempt }, 200);
+  });
 };
-
 // ✅ 3. Submit Attempt
 export const submitAttempt = async (req: Request, res: Response) => {
   if (!req.user||!req.user.id) throw new UnauthorizedError("Unauthorized");
