@@ -25,7 +25,7 @@ export const getQuestionsForExam = async (req: Request, res: Response) => {
 
   const questions = await QuestionModel.find({ exam: examId }).select(
     "-correctAnswer" // hide correct answer
-  );
+  ).populate("exam","name title subject_name level department durationMinutes startAt endAt ");
 
   SuccessResponse(res, { questions }, 200);
 };

@@ -24,7 +24,7 @@ const getQuestionsForExam = async (req, res) => {
         throw new Errors_1.NotFound("exam is not published");
     }
     const questions = await Questions_1.QuestionModel.find({ exam: examId }).select("-correctAnswer" // hide correct answer
-    );
+    ).populate("exam", "name title subject_name level department durationMinutes startAt endAt ");
     (0, response_1.SuccessResponse)(res, { questions }, 200);
 };
 exports.getQuestionsForExam = getQuestionsForExam;
