@@ -12,7 +12,7 @@ import { catchAsync } from "../../utils/catchAsync";
 
 const router = Router();
 // ✅ get all attempts for an exam
-router.get("/exam/:examId", catchAsync(getAttemptsByExam));
+router.get("/:examId", catchAsync(getAttemptsByExam));
 
 // ✅ get all attempts for a student
 router.get("/student/:studentId", catchAsync(getAttemptsByStudent));

@@ -4,10 +4,8 @@ import { getQuestionsForExam, getQuestionByIdForStudent } from "../../controller
 import { catchAsync } from "../../utils/catchAsync";
 const router = Router();
 
-// ✅ كل أسئلة الامتحان
 router.get("/:examId", authenticated, catchAsync(getQuestionsForExam));
 
-// ✅ سؤال واحد بس
 router.get("/:examId/:questionId", authenticated, catchAsync(getQuestionByIdForStudent));
 
 export default router;
