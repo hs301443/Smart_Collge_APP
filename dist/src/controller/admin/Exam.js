@@ -6,20 +6,31 @@ const BadRequest_1 = require("../../Errors/BadRequest");
 const Errors_1 = require("../../Errors");
 const Errors_2 = require("../../Errors");
 const response_1 = require("../../utils/response");
+const allowedLevels = [1, 2, 3, 4, 5];
+const allowedDepartments = ["CS", "IT", "IS", "CE", "EE"]; // عدل حسب الموديل الحقيقي
 const createExam = async (req, res) => {
     if (!req.user || !req.user.isSuperAdmin) {
-        throw new Errors_2.UnauthorizedError("Only Super Admin can create roles");
+        throw new Errors_2.UnauthorizedError("Only Super Admin can create exams");
     }
     const { title, description, doctorname, level, department, questions, subject_name, startAt, endAt, durationMinutes } = req.body;
-    if (!title || !description || !doctorname || !level || !department || !subject_name || !startAt || !endAt || !durationMinutes)
+    // التحقق من الحقول الأساسية
+    if (!title || !description || !doctorname || !level || !department || !subject_name || !startAt || !endAt || !durationMinutes) {
         throw new BadRequest_1.BadRequest("Please fill all the fields");
+    }
+    // التحقق من level و department
+    if (!allowedLevels.includes(Number(level))) {
+        throw new BadRequest_1.BadRequest("Invalid level");
+    }
+    if (!allowedDepartments.includes(department)) {
+        throw new BadRequest_1.BadRequest("Invalid department");
+    }
     const newExam = await Exam_1.ExamModel.create({
         title,
         description,
         doctorname,
         level,
         department,
-        questions: questions || null,
+        questions: Array.isArray(questions) ? questions : [], // مصفوفة فارغة لو مفيش أسئلة
         subject_name,
         startAt,
         endAt,
