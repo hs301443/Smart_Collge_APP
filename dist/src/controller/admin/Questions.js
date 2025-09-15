@@ -6,16 +6,20 @@ const BadRequest_1 = require("../../Errors/BadRequest");
 const Errors_1 = require("../../Errors");
 const Errors_2 = require("../../Errors");
 const response_1 = require("../../utils/response");
+const Exam_1 = require("../../models/shema/Exam");
 const createQuestionForExam = async (req, res) => {
     if (!req.user || !req.user.isSuperAdmin) {
         throw new Errors_2.UnauthorizedError("Only Super Admin can create roles");
     }
     const { text, type, choices, correctAnswer, points } = req.body;
     const { examId } = req.params;
-    if (!examId) {
+    if (!examId)
         throw new BadRequest_1.BadRequest("examId is required");
-    }
-    // الصورة متخزنة في req.file، نحولها لرابط كامل
+    // التحقق من وجود الامتحان
+    const exam = await Exam_1.ExamModel.findById(examId);
+    if (!exam)
+        throw new Errors_1.NotFound("Exam not found");
+    // الصورة متخزنة في req.file
     const imagePath = req.file
         ? `${req.protocol}://${req.get('host')}/uploads/questions/${req.file.filename}`
         : null;
@@ -29,6 +33,7 @@ const createQuestionForExam = async (req, res) => {
             throw new BadRequest_1.BadRequest("Invalid JSON format for choices");
         }
     }
+    // إنشاء السؤال
     const question = await Questions_1.QuestionModel.create({
         exam: examId,
         text,
@@ -38,6 +43,9 @@ const createQuestionForExam = async (req, res) => {
         points,
         image: imagePath
     });
+    // ✅ ربط السؤال بالامتحان
+    exam.questions.push(question._id);
+    await exam.save();
     (0, response_1.SuccessResponse)(res, { question }, 201);
 };
 exports.createQuestionForExam = createQuestionForExam;
