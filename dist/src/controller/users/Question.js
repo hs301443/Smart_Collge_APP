@@ -1,51 +1,65 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getQuestionByIdForExam = exports.getQuestionsForExam = void 0;
-const Exam_1 = require("../../models/shema/Exam");
+exports.getQuestionByIndex = exports.getQuestionByIdForStudent = exports.getQuestionsForExam = void 0;
 const Questions_1 = require("../../models/shema/Questions");
+const Exam_1 = require("../../models/shema/Exam");
 const BadRequest_1 = require("../../Errors/BadRequest");
 const Errors_1 = require("../../Errors");
 const response_1 = require("../../utils/response");
-// 📌 Get questions of a specific exam (for logged-in student)
+// ✅ Get all questions for an exam (without correct answers)
 const getQuestionsForExam = async (req, res) => {
     if (!req.user)
         throw new Errors_1.UnauthorizedError("Unauthorized");
     const { examId } = req.params;
     if (!examId)
-        throw new BadRequest_1.BadRequest("examId is required");
-    // ✅ تأكد إن الامتحان موجود
+        throw new BadRequest_1.BadRequest("Exam ID is required");
     const exam = await Exam_1.ExamModel.findById(examId);
     if (!exam)
         throw new Errors_1.NotFound("Exam not found");
-    // ✅ تأكد إن الامتحان يخص القسم والليفل بتوع الطالب
+    // Check if exam belongs to student's department & level
     if (exam.level !== req.user.level || exam.department !== req.user.department) {
         throw new Errors_1.UnauthorizedError("You are not allowed to access this exam");
     }
-    // ✅ هات كل الأسئلة
-    const questions = await Questions_1.QuestionModel.find({ exam: examId }).select("-correctAnswer");
-    // 🔒 عشان الطالب ما يشوفش الحلول
-    (0, response_1.SuccessResponse)(res, { examId, questions }, 200);
+    const questions = await Questions_1.QuestionModel.find({ exam: examId }).select("-correctAnswer" // hide correct answer
+    );
+    (0, response_1.SuccessResponse)(res, { questions }, 200);
 };
 exports.getQuestionsForExam = getQuestionsForExam;
-// 📌 Get a single question by ID (for logged-in student)
-const getQuestionByIdForExam = async (req, res) => {
+// ✅ Get single question by ID (without correct answer)
+const getQuestionByIdForStudent = async (req, res) => {
     if (!req.user)
         throw new Errors_1.UnauthorizedError("Unauthorized");
-    const { examId, questionId } = req.params;
-    if (!examId || !questionId)
-        throw new BadRequest_1.BadRequest("examId and questionId are required");
-    // ✅ تأكد إن الامتحان موجود
+    const { id } = req.params;
+    if (!id)
+        throw new BadRequest_1.BadRequest("Question ID is required");
+    const question = await Questions_1.QuestionModel.findById(id).select("-correctAnswer");
+    if (!question)
+        throw new Errors_1.NotFound("Question not found");
+    (0, response_1.SuccessResponse)(res, { question }, 200);
+};
+exports.getQuestionByIdForStudent = getQuestionByIdForStudent;
+// ✅ Get next/previous question (pagination style)
+const getQuestionByIndex = async (req, res) => {
+    if (!req.user)
+        throw new Errors_1.UnauthorizedError("Unauthorized");
+    const { examId, index } = req.params;
+    if (!examId || index === undefined)
+        throw new BadRequest_1.BadRequest("ExamId and index are required");
     const exam = await Exam_1.ExamModel.findById(examId);
     if (!exam)
         throw new Errors_1.NotFound("Exam not found");
-    // ✅ تأكد إن الامتحان يخص القسم والليفل بتوع الطالب
     if (exam.level !== req.user.level || exam.department !== req.user.department) {
         throw new Errors_1.UnauthorizedError("You are not allowed to access this exam");
     }
-    // ✅ هات السؤال
-    const question = await Questions_1.QuestionModel.findOne({ _id: questionId, exam: examId }).select("-correctAnswer");
-    if (!question)
-        throw new Errors_1.NotFound("Question not found");
-    (0, response_1.SuccessResponse)(res, { examId, question }, 200);
+    const questions = await Questions_1.QuestionModel.find({ exam: examId }).select("-correctAnswer");
+    const idx = parseInt(index, 10);
+    if (idx < 0 || idx >= questions.length)
+        throw new Errors_1.NotFound("Invalid question index");
+    const question = questions[idx];
+    (0, response_1.SuccessResponse)(res, {
+        question,
+        index: idx,
+        total: questions.length,
+    }, 200);
 };
-exports.getQuestionByIdForExam = getQuestionByIdForExam;
+exports.getQuestionByIndex = getQuestionByIndex;

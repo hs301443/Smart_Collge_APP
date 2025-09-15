@@ -6,6 +6,7 @@ import StaticsRouter from "./Statics"
 import templatesRouter from "./templates"
 import chatRouter from "./chat";
 import  ExamRouter  from "./Exam";
+import QuestionRouter from './Question'
 const route = Router();
 route.use("/auth", AuthRoute);
 route.use("/notification", NotificationRouter);
@@ -14,4 +15,5 @@ route.use("/statics", StaticsRouter);
 route.use("/templates", templatesRouter);
 route.use("/chat",chatRouter);
 route.use("/exam",ExamRouter)
+route.use("/questions",QuestionRouter)
 export default route;

@@ -8,5 +8,7 @@ const router = (0, express_1.Router)();
 // ✅ كل أسئلة الامتحان
 router.get("/:examId", authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(Question_1.getQuestionsForExam));
 // ✅ سؤال واحد بس
-router.get("/:examId/:questionId", authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(Question_1.getQuestionByIdForExam));
+router.get("/:examId/:questionId", authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(Question_1.getQuestionByIdForStudent));
+// Get question by index (next/prev)
+router.get("/:examId/:index", authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(Question_1.getQuestionByIndex));
 exports.default = router;
