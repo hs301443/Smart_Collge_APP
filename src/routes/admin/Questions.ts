@@ -8,7 +8,7 @@ const router =Router();
 router
     .post('/:examId',uploadQuestionImage.single("image"),
     catchAsync(createQuestionForExam))
-    .get('/:id', catchAsync(getAllQuestionsforExam))
+    .get('/:examId', catchAsync(getAllQuestionsforExam))
     .get('/:id', catchAsync(getAllQuestionById))
     .delete('/:id', catchAsync(deleteQuestionById))
     .put('/:id', catchAsync(updateQuestionById))

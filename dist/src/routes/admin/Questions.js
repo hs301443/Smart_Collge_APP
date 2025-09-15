@@ -7,7 +7,7 @@ const multer_1 = require("../../utils/multer");
 const router = (0, express_1.Router)();
 router
     .post('/:examId', multer_1.uploadQuestionImage.single("image"), (0, catchAsync_1.catchAsync)(Questions_1.createQuestionForExam))
-    .get('/:id', (0, catchAsync_1.catchAsync)(Questions_1.getAllQuestionsforExam))
+    .get('/:examId', (0, catchAsync_1.catchAsync)(Questions_1.getAllQuestionsforExam))
     .get('/:id', (0, catchAsync_1.catchAsync)(Questions_1.getAllQuestionById))
     .delete('/:id', (0, catchAsync_1.catchAsync)(Questions_1.deleteQuestionById))
     .put('/:id', (0, catchAsync_1.catchAsync)(Questions_1.updateQuestionById));
