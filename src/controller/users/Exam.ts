@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import { ExamModel } from "../../models/shema/Exam";
-import { AttemptModel } from "../../models/shema/Attempt";
-import { QuestionModel } from "../../models/shema/Questions";
+
 import { BadRequest } from "../../Errors/BadRequest";
 import { NotFound, UnauthorizedError } from "../../Errors";
 import { SuccessResponse } from "../../utils/response";
@@ -13,7 +12,7 @@ export const getExamsForStudent = async (req: Request, res: Response) => {
   const level = req.user.level;
   const department = req.user.department;
   if (!level || !department) throw new BadRequest("User must have level and department");
-
+  
   const exams = await ExamModel.find({ level, department });
   SuccessResponse(res, { exams }, 200);
 };
