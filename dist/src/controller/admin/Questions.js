@@ -1,7 +1,4 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteQuestionById = exports.updateQuestionById = exports.getQuestionById = exports.getAllQuestionsforExam = exports.createQuestionForExam = void 0;
 const Questions_1 = require("../../models/shema/Questions");
@@ -10,7 +7,6 @@ const Errors_1 = require("../../Errors");
 const Errors_2 = require("../../Errors");
 const response_1 = require("../../utils/response");
 const Exam_1 = require("../../models/shema/Exam");
-const mongoose_1 = __importDefault(require("mongoose"));
 const createQuestionForExam = async (req, res) => {
     if (!req.user || !req.user.isSuperAdmin) {
         throw new Errors_2.UnauthorizedError("Only Super Admin can create roles");
@@ -64,17 +60,13 @@ const getAllQuestionsforExam = async (req, res) => {
 };
 exports.getAllQuestionsforExam = getAllQuestionsforExam;
 const getQuestionById = async (req, res) => {
-    if (!req.user || !req.user.isSuperAdmin)
+    if (!req.user || !req.user.isSuperAdmin) {
         throw new Errors_2.UnauthorizedError("Only Super Admin can view questions");
-    const { questionid } = req.params;
-    if (!questionid)
-        throw new BadRequest_1.BadRequest("Question ID is required");
-    // التحقق من صحة ObjectId
-    if (!mongoose_1.default.Types.ObjectId.isValid(questionid)) {
-        throw new BadRequest_1.BadRequest("Invalid Question ID");
     }
-    const question = await Questions_1.QuestionModel.findById(questionid)
-        .populate("exam", "title level department");
+    const { id } = req.params;
+    if (!id)
+        throw new BadRequest_1.BadRequest("Question ID is required");
+    const question = await Questions_1.QuestionModel.findById(id).populate("exam", "title level department");
     if (!question)
         throw new Errors_1.NotFound("Question not found");
     (0, response_1.SuccessResponse)(res, { message: "Question found successfully", question }, 200);
