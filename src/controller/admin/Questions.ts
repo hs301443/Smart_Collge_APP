@@ -53,6 +53,7 @@ export const createQuestionForExam = async (req: any, res: any) => {
 
   SuccessResponse(res, { question }, 201);
 };
+
 export const getAllQuestionsforExam =async(req:Request,res:Response)=>{
   if(!req.user || !req.user.isSuperAdmin) throw new UnauthorizedError("Only Super Admin can create roles");
   const {examId}=req.params
@@ -63,42 +64,24 @@ export const getAllQuestionsforExam =async(req:Request,res:Response)=>{
 
 
 export const getQuestionById = async (req: Request, res: Response) => {
-  // 1️⃣ التحقق من الصلاحيات
-  if (!req.user || !req.user.isSuperAdmin) {
+  if (!req.user || !req.user.isSuperAdmin)
     throw new UnauthorizedError("Only Super Admin can view questions");
-  }
 
-  const { id } = req.params;
+  const { id } = req.params; // لازم يكون id زي الراوت
   if (!id) throw new BadRequest("Question ID is required");
 
-  // 2️⃣ التحقق من صحة ObjectId
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new BadRequest("Invalid Question ID");
   }
 
-  // 3️⃣ جلب السؤال مع populate للامتحان
   const question = await QuestionModel.findById(id).populate(
     "exam",
     "title level department"
   );
 
-  // 4️⃣ التحقق من وجود السؤال
-  if (!question) {
-    throw new NotFound("Question not found");
-  }
+  if (!question) throw new NotFound("Question not found");
 
-  // 5️⃣ التحقق من وجود الامتحان مربوط بالسؤال
-  if (!question.exam) {
-    throw new NotFound(
-      "The exam linked to this question does not exist or has been deleted"
-    );
-  }
-
-  // 6️⃣ إعادة البيانات بنجاح
-  SuccessResponse(res, {
-    message: "Question found successfully",
-    question,
-  }, 200);
+  SuccessResponse(res, { message: "Question found successfully", question }, 200);
 };
 
 export const updateQuestionById =async(req:Request,res:Response)=>{

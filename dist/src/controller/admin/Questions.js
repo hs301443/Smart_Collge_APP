@@ -64,32 +64,18 @@ const getAllQuestionsforExam = async (req, res) => {
 };
 exports.getAllQuestionsforExam = getAllQuestionsforExam;
 const getQuestionById = async (req, res) => {
-    // 1️⃣ التحقق من الصلاحيات
-    if (!req.user || !req.user.isSuperAdmin) {
+    if (!req.user || !req.user.isSuperAdmin)
         throw new Errors_2.UnauthorizedError("Only Super Admin can view questions");
-    }
-    const { id } = req.params;
+    const { id } = req.params; // لازم يكون id زي الراوت
     if (!id)
         throw new BadRequest_1.BadRequest("Question ID is required");
-    // 2️⃣ التحقق من صحة ObjectId
     if (!mongoose_1.default.Types.ObjectId.isValid(id)) {
         throw new BadRequest_1.BadRequest("Invalid Question ID");
     }
-    // 3️⃣ جلب السؤال مع populate للامتحان
     const question = await Questions_1.QuestionModel.findById(id).populate("exam", "title level department");
-    // 4️⃣ التحقق من وجود السؤال
-    if (!question) {
+    if (!question)
         throw new Errors_1.NotFound("Question not found");
-    }
-    // 5️⃣ التحقق من وجود الامتحان مربوط بالسؤال
-    if (!question.exam) {
-        throw new Errors_1.NotFound("The exam linked to this question does not exist or has been deleted");
-    }
-    // 6️⃣ إعادة البيانات بنجاح
-    (0, response_1.SuccessResponse)(res, {
-        message: "Question found successfully",
-        question,
-    }, 200);
+    (0, response_1.SuccessResponse)(res, { message: "Question found successfully", question }, 200);
 };
 exports.getQuestionById = getQuestionById;
 const updateQuestionById = async (req, res) => {
