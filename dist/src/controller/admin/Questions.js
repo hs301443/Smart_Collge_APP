@@ -62,11 +62,10 @@ exports.getAllQuestionsforExam = getAllQuestionsforExam;
 const getQuestionById = async (req, res) => {
     if (!req.user || !req.user.isSuperAdmin)
         throw new Errors_2.UnauthorizedError("Only Super Admin can view questions");
-    const { id } = req.params;
-    if (!id)
+    const { questionid } = req.params;
+    if (!questionid)
         throw new BadRequest_1.BadRequest("id is required");
-    const question = await Questions_1.QuestionModel.findById(id).populate("exam", "title level department");
-    console.log(question);
+    const question = await Questions_1.QuestionModel.findById(questionid).populate("exam", "title level department");
     if (!question)
         throw new Errors_1.NotFound("Question not found");
     (0, response_1.SuccessResponse)(res, { question }, 200);
