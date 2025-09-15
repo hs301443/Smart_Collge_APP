@@ -11,7 +11,7 @@ const createExam = async (req, res) => {
         throw new Errors_2.UnauthorizedError("Only Super Admin can create roles");
     }
     const { title, description, doctorname, level, department, questions, subject_name, startAt, endAt, durationMinutes } = req.body;
-    if (!title || !description || !doctorname || !level || !department || !questions || !subject_name || !startAt || !endAt || !durationMinutes)
+    if (!title || !description || !doctorname || !level || !department || !subject_name || !startAt || !endAt || !durationMinutes)
         throw new BadRequest_1.BadRequest("Please fill all the fields");
     const newExam = await Exam_1.ExamModel.create({
         title,
@@ -19,7 +19,7 @@ const createExam = async (req, res) => {
         doctorname,
         level,
         department,
-        questions,
+        questions: questions || null,
         subject_name,
         startAt,
         endAt,
