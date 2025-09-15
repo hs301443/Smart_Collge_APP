@@ -61,6 +61,7 @@ export const getAllQuestionsforExam =async(req:Request,res:Response)=>{
   SuccessResponse(res, {questions}, 200);
 }
 
+
 export const getQuestionById = async (req: Request, res: Response) => {
   if (!req.user || !req.user.isSuperAdmin)
     throw new UnauthorizedError("Only Super Admin can view questions");
@@ -73,7 +74,8 @@ export const getQuestionById = async (req: Request, res: Response) => {
     throw new BadRequest("Invalid Question ID");
   }
 
-  const question = await QuestionModel.findById(questionid).populate("exam", "title level department");
+  const question = await QuestionModel.findById(questionid)
+    .populate("exam", "title level department");
 
   if (!question) throw new NotFound("Question not found");
 

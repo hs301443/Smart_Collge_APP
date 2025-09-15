@@ -73,7 +73,8 @@ const getQuestionById = async (req, res) => {
     if (!mongoose_1.default.Types.ObjectId.isValid(questionid)) {
         throw new BadRequest_1.BadRequest("Invalid Question ID");
     }
-    const question = await Questions_1.QuestionModel.findById(questionid).populate("exam", "title level department");
+    const question = await Questions_1.QuestionModel.findById(questionid)
+        .populate("exam", "title level department");
     if (!question)
         throw new Errors_1.NotFound("Question not found");
     (0, response_1.SuccessResponse)(res, { message: "Question found successfully", question }, 200);
