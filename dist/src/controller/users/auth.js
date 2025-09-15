@@ -126,6 +126,8 @@ const login = async (req, res) => {
             name: user.name,
             email: user.email,
             role: user.role,
+            level: user.level,
+            department: user.department
         },
     }, 200);
 };
