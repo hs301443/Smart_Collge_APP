@@ -13,11 +13,21 @@ const createQuestionForExam = async (req, res) => {
     const { examId, text, type, choices, correctAnswer, points } = req.body;
     // الصورة متخزنة في req.file
     const imagePath = req.file ? `/uploads/questions/${req.file.filename}` : null;
+    // ✅ تحويل choices من نص JSON إلى array
+    let parsedChoices = [];
+    if (choices) {
+        try {
+            parsedChoices = JSON.parse(choices);
+        }
+        catch (err) {
+            throw new BadRequest_1.BadRequest("Invalid JSON format for choices");
+        }
+    }
     const question = await Questions_1.QuestionModel.create({
         exam: examId,
         text,
         type,
-        choices,
+        choices: parsedChoices,
         correctAnswer,
         points,
         image: imagePath

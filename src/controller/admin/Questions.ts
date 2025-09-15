@@ -14,11 +14,21 @@ export const createQuestionForExam = async (req: any, res: any) => {
   // الصورة متخزنة في req.file
   const imagePath = req.file ? `/uploads/questions/${req.file.filename}` : null;
 
+  // ✅ تحويل choices من نص JSON إلى array
+  let parsedChoices: any[] = [];
+  if (choices) {
+    try {
+      parsedChoices = JSON.parse(choices);
+    } catch (err) {
+      throw new BadRequest("Invalid JSON format for choices");
+    }
+  }
+
   const question = await QuestionModel.create({
     exam: examId,
     text,
     type,
-    choices,
+    choices: parsedChoices,
     correctAnswer,
     points,
     image: imagePath
@@ -26,7 +36,6 @@ export const createQuestionForExam = async (req: any, res: any) => {
 
   SuccessResponse(res, { question }, 201);
 };
-
 
 export const getAllQuestionsforExam =async(req:Request,res:Response)=>{
   if(!req.user || !req.user.isSuperAdmin) throw new UnauthorizedError("Only Super Admin can create roles");
