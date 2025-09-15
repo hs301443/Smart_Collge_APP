@@ -57,6 +57,10 @@ export const getQuestionByIndex = async (req: Request, res: Response) => {
     throw new UnauthorizedError("You are not allowed to access this exam");
   }
 
+  if (exam.isPublished==false) {
+    throw new NotFound("exam is not published");
+  }
+
   const questions = await QuestionModel.find({ exam: examId }).select("-correctAnswer");
   const idx = parseInt(index, 10);
 
