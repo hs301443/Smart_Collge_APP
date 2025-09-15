@@ -13,7 +13,7 @@ const getExamsForStudent = async (req, res) => {
     const department = req.user.department;
     if (!level || !department)
         throw new BadRequest_1.BadRequest("User must have level and department");
-    const exams = await Exam_1.ExamModel.find({ level, department });
+    const exams = await Exam_1.ExamModel.find({ level, department }).select("-questions");
     (0, response_1.SuccessResponse)(res, { exams }, 200);
 };
 exports.getExamsForStudent = getExamsForStudent;
@@ -27,8 +27,8 @@ const getExamByIdForStudent = async (req, res) => {
     const exam = await Exam_1.ExamModel.findById(id);
     if (!exam)
         throw new Errors_1.NotFound("Exam not found");
-    if (exam.level !== req.user.level || exam.department !== req.user.department) {
-        throw new Errors_1.UnauthorizedError("You are not allowed to access this exam");
+    if (exam.isPublished == false) {
+        throw new Errors_1.UnauthorizedError("exam is not published");
     }
     (0, response_1.SuccessResponse)(res, { exam }, 200);
 };
