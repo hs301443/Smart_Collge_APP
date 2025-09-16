@@ -2,19 +2,21 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const socket_io_client_1 = require("socket.io-client");
 const URL = "https://smartcollgeapp-production.up.railway.app";
-// اختار إما User أو Admin لتجربتهم
-const ROLE = "User"; // غيرها لـ "Admin" لو عايز تجرب الـ admin
+// اختار الدور هنا
+const ROLE = "User"; // غيرها لـ "Admin" لو عايز تجرب الأدمن
 const USER_ID = ROLE === "User" ? "123" : "admin1";
 const TARGET_ID = ROLE === "User" ? "admin1" : "123";
+// إنشاء الاتصال بالباك
 const socket = (0, socket_io_client_1.io)(URL, {
-    transports: ["polling"], // لازم Polling على Railway
+    transports: ["polling"], // مهم على Railway
     timeout: 20000,
+    path: "/socket.io",
 });
 socket.on("connect", () => {
-    console.log(`✅ ${ROLE} connected:`, socket.id);
-    // سجل نفسك
+    console.log(`✅ ${ROLE} connected: ${socket.id}`);
+    // تسجيل اليوزر/الأدمن
     socket.emit("register", { userId: USER_ID, role: ROLE });
-    // ابعت رسالة كل 10 ثواني
+    // إرسال رسالة كل 10 ثواني
     let count = 1;
     setInterval(() => {
         const text = `Hello from ${ROLE}! Message ${count}`;
@@ -29,13 +31,15 @@ socket.on("connect", () => {
         count++;
     }, 10000);
 });
-// استقبل أي رسائل
+// استقبال الرسائل الواردة
 socket.on("receiveMessage", (msg) => {
     console.log(`📩 ${ROLE} received:`, msg);
 });
-socket.on("disconnect", (reason) => {
-    console.log(`❌ ${ROLE} disconnected. Reason:`, reason);
-});
-socket.on("connect_error", (err) => {
-    console.error(`⚠️ ${ROLE} connect error:`, err.message);
-});
+// استقبال إشعارات القراءة أو الحذف
+socket.on("messageSeen", (data) => console.log(`👀 Message seen:`, data));
+socket.on("conversationRead", (data) => console.log(`✅ Conversation read:`, data));
+socket.on("messageDeleted", (data) => console.log(`🗑️ Message deleted:`, data));
+socket.on("conversationDeleted", (data) => console.log(`🗑️ Conversation deleted:`, data));
+// Disconnect و أخطاء الاتصال
+socket.on("disconnect", (reason) => console.log(`❌ ${ROLE} disconnected. Reason:`, reason));
+socket.on("connect_error", (err) => console.error(`⚠️ ${ROLE} connect error:`, err.message));
