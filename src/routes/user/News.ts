@@ -1,13 +1,12 @@
-import {getallNews, getNewsById} from "../../controller/users/News";
 import { Router } from "express";
 import { catchAsync } from "../../utils/catchAsync";
 import { authenticated } from "../../middlewares/authenticated";
-import { getAllNews } from "../../controller/admin/News";
+import { getNewsById,getallNews } from "../../controller/users/News";
 
 const router = Router();
 
 router
-    .get('/',authenticated, catchAsync(getAllNews))
+    .get('/',authenticated, catchAsync(getallNews))
     .get('/:id',authenticated ,catchAsync(getNewsById))
 
 
