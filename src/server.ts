@@ -9,21 +9,22 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import { connectDB } from "./models/connection";
-import { setupSocket } from "./utils/chatSocket"; // socket utils
+import { setupSocket } from "./utils/chatSocket";
 
 dotenv.config();
 
 const app = express();
 connectDB();
 
+// Middleware
 app.use(helmet({ crossOriginResourcePolicy: false }));
-app.use(cors({ origin: "*" }));
+app.use(cors({ origin: "*", methods: ["GET", "POST"], credentials: true }));
 app.use(cookieParser());
 app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 app.use("/uploads", express.static("uploads"));
 
-// ✅ Route بسيط للتجربة
+// Route للتجربة
 app.get("/", (req, res) => {
   res.send("✅ API & Socket.IO Server is running on Railway...");
 });
@@ -37,22 +38,25 @@ app.use((req, res, next) => {
 });
 app.use(errorHandler);
 
-// ✅ استخدم بورت Railway
+// Port
 const PORT = process.env.PORT || 3000;
 
+// Create server
 const server = http.createServer(app);
 
-// ✅ Socket.IO مع إعدادات CORS
+// ✅ Socket.IO مع Polling فقط و path مضبوط
 const io = new Server(server, {
-  cors: {
-    origin: "*", // ممكن تحط لينك الفرونت إند هنا لو عايز تقفلها
-    methods: ["GET", "POST"],
-  },
+  cors: { origin: "*", methods: ["GET", "POST"], credentials: true },
+  transports: ["polling"], // Polling فقط
+  path: "/socket.io",      // Path الافتراضي
+  pingInterval: 10000,
+  pingTimeout: 20000,
 });
 
 // اربط Socket.IO
 setupSocket(io);
 
+// Start server
 server.listen(PORT, () => {
   console.log(`🚀 Server is running on http://localhost:${PORT}`);
 });
