@@ -1,34 +1,32 @@
 import { io } from "socket.io-client";
 
-const URL = "https://smartcollgeapp-production.up.railway.app"; // رابط السيرفر
+const URL = "https://smartcollgeapp-production.up.railway.app"; // سيرفر Railway
 
 const socket = io(URL, {
-  path: "/socket.io",       // Path مطابق للسيرفر
-  transports: ["polling"],  // Polling فقط
-  reconnectionAttempts: 10, // إعادة محاولة الاتصال
+  transports: ["polling"], // لازم Polling على Railway
   timeout: 20000,
 });
 
 socket.on("connect", () => {
   console.log("✅ Connected:", socket.id);
 
-  // سجل يوزر
-  socket.emit("register", { userId: "123", role: "User" });
+  // سجل نفسك
+  socket.emit("register", { userId: "testUser", role: "User" });
 
-  // ابعت رسالة بعد 2 ثانية
+  // ابعت رسالة تجريبية بعد ثانيتين
   setTimeout(() => {
     socket.emit("sendMessage", {
-      from: "123",
+      from: "testUser",
       fromModel: "User",
-      to: "456",
+      to: "admin1",
       toModel: "Admin",
-      text: "Hello Admin from Polling Client!",
+      text: "Hello Admin! This is a realtime test",
     });
     console.log("📤 Message sent");
   }, 2000);
 });
 
-// استقبل الرسائل
+// استقبل أي رسائل
 socket.on("receiveMessage", (msg) => {
   console.log("📩 Received:", msg);
 });
@@ -41,12 +39,4 @@ socket.on("disconnect", (reason) => {
 // أخطاء الاتصال
 socket.on("connect_error", (err) => {
   console.error("⚠️ Connect error:", err.message);
-});
-
-socket.on("reconnect_attempt", (attempt) => {
-  console.log(`🔄 Reconnection attempt: ${attempt}`);
-});
-
-socket.on("reconnect_failed", () => {
-  console.error("❌ Reconnection failed");
 });
