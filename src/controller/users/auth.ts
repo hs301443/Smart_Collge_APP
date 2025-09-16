@@ -36,7 +36,8 @@ export const signup = async (req: Request, res: Response) => {
     BaseImage64: BaseImage64 || null,
     isVerified: false,
     level,
-    department
+    department,
+    isNew: true
   
   };
 
@@ -321,3 +322,17 @@ export const updateProfileImage = async (req: AuthenticatedRequest, res: Respons
 
   SuccessResponse(res, { message: "Profile image updated successfully", imageUrl }, 200);
 };
+
+
+export const completeProfileStuden=async(req:Request,res:Response)=>{
+  if(!req.user ) throw new UnauthorizedError("User not found");
+  const {department,level}=req.body;
+  if(!department) throw new BadRequest("department not provided");
+  if(!level) throw new BadRequest("level not provided");
+  const user=await UserModel.findById(req.user.id);
+  if(!user) throw new NotFound("User not found");
+  user.department=department;
+  user.level=level;
+  await user.save();
+  SuccessResponse(res,"complete profile successfuly")
+}

@@ -11,8 +11,8 @@ const User_1 = require("../models/shema/auth/User");
 dotenv_1.default.config();
 const client = new google_auth_library_1.OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const verifyGoogleToken = async (req, res) => {
-    const { token, role } = req.body;
-    // لازم الـ frontend يبعت role: "Student" أو "Graduated"
+    const { token } = req.body; // 👈 هنا مش بناخد role على طول
+    const role = req.body.role; // 👈 نستخدمه بس لو محتاجينه (signup)
     try {
         const ticket = await client.verifyIdToken({
             idToken: token,
@@ -25,35 +25,34 @@ const verifyGoogleToken = async (req, res) => {
         const email = payload.email;
         const name = payload.name || "Unknown User";
         const googleId = payload.sub;
-        let user = await User_1.UserModel.findOne({ googleId });
+        // ندور على اليوزر
+        let user = await User_1.UserModel.findOne({ googleId }) || await User_1.UserModel.findOne({ email });
+        // ✅ Check: لو جديد → لازم role
         if (!user) {
-            const existingByEmail = await User_1.UserModel.findOne({ email });
-            if (existingByEmail) {
-                // لو اليوزر موجود بنفس الايميل
-                if (existingByEmail.role !== role) {
-                    // لو فيه اختلاف بين الدور اللي في DB واللي جاي من الـ frontend → امنع
-                    return res.status(400).json({
-                        success: false,
-                        message: "Role mismatch. Please login with correct role.",
-                    });
-                }
-                existingByEmail.googleId = googleId;
-                await existingByEmail.save();
-                user = existingByEmail;
-            }
-            else {
-                // إنشاء يوزر جديد
-                user = new User_1.UserModel({
-                    googleId,
-                    email,
-                    name,
-                    role, // هنا مهم
-                    isVerified: true,
+            if (!role) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Role is required for new users.",
                 });
+            }
+            // Sign Up
+            user = new User_1.UserModel({
+                googleId,
+                email,
+                name,
+                role, // يتسجل أول مرة بس
+                isVerified: true,
+            });
+            await user.save();
+        }
+        else {
+            // Login → نتجاهل أي role جاي من الـ frontend
+            if (!user.googleId) {
+                user.googleId = googleId;
                 await user.save();
             }
         }
-        // توليد JWT
+        // JWT
         const authToken = jsonwebtoken_1.default.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "7d" });
         return res.json({
             success: true,

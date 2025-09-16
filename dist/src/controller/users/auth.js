@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateProfileImage = exports.completeProfile = exports.resetPassword = exports.verifyResetCode = exports.sendResetCode = exports.getFcmToken = exports.login = exports.verifyEmail = exports.signup = void 0;
+exports.completeProfileStuden = exports.updateProfileImage = exports.completeProfile = exports.resetPassword = exports.verifyResetCode = exports.sendResetCode = exports.getFcmToken = exports.login = exports.verifyEmail = exports.signup = void 0;
 const handleImages_1 = require("../../utils/handleImages");
 const emailVerifications_1 = require("../../models/shema/auth/emailVerifications");
 const User_1 = require("../../models/shema/auth/User");
@@ -31,7 +31,8 @@ const signup = async (req, res) => {
         BaseImage64: BaseImage64 || null,
         isVerified: false,
         level,
-        department
+        department,
+        isNew: true
     };
     // إنشاء الـ User أولًا
     const newUser = new User_1.UserModel(userData);
@@ -256,3 +257,20 @@ const updateProfileImage = async (req, res) => {
     (0, response_1.SuccessResponse)(res, { message: "Profile image updated successfully", imageUrl }, 200);
 };
 exports.updateProfileImage = updateProfileImage;
+const completeProfileStuden = async (req, res) => {
+    if (!req.user)
+        throw new Errors_1.UnauthorizedError("User not found");
+    const { department, level } = req.body;
+    if (!department)
+        throw new BadRequest_1.BadRequest("department not provided");
+    if (!level)
+        throw new BadRequest_1.BadRequest("level not provided");
+    const user = await User_1.UserModel.findById(req.user.id);
+    if (!user)
+        throw new Errors_1.NotFound("User not found");
+    user.department = department;
+    user.level = level;
+    await user.save();
+    (0, response_1.SuccessResponse)(res, "complete profile successfuly");
+};
+exports.completeProfileStuden = completeProfileStuden;
