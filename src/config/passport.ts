@@ -10,11 +10,8 @@ dotenv.config();
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 export const verifyGoogleToken = async (req: Request, res: Response) => {
-  const { token, role } = req.body; // لازم client يبعت الدور: "Student" أو "Graduated"
-
-  if (!role) {
-    return res.status(400).json({ success: false, message: "Role is required" });
-  }
+  const { token, role } = req.body; 
+  // لازم الـ frontend يبعت role: "Student" أو "Graduated"
 
   try {
     const ticket = await client.verifyIdToken({
@@ -31,32 +28,31 @@ export const verifyGoogleToken = async (req: Request, res: Response) => {
     const name = payload.name || "Unknown User";
     const googleId = payload.sub;
 
-    // البحث أولاً بالـ googleId
     let user = await UserModel.findOne({ googleId });
 
     if (!user) {
-      // لو مفيش googleId، شوف لو فيه email موجود
       const existingByEmail = await UserModel.findOne({ email });
 
       if (existingByEmail) {
-        // لو الدور مختلف، ارفض الربط
+        // لو اليوزر موجود بنفس الايميل
         if (existingByEmail.role !== role) {
+          // لو فيه اختلاف بين الدور اللي في DB واللي جاي من الـ frontend → امنع
           return res.status(400).json({
             success: false,
-            message: `This email is already registered as a different role: ${existingByEmail.role}`
+            message: "Role mismatch. Please login with correct role.",
           });
         }
-        // نفس الدور → حدث googleId
+
         existingByEmail.googleId = googleId;
         await existingByEmail.save();
         user = existingByEmail;
       } else {
-        // إنشاء مستخدم جديد
+        // إنشاء يوزر جديد
         user = new UserModel({
           googleId,
           email,
           name,
-          role,
+          role, // هنا مهم
           isVerified: true,
         });
         await user.save();
@@ -64,9 +60,22 @@ export const verifyGoogleToken = async (req: Request, res: Response) => {
     }
 
     // توليد JWT
-    const authToken = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET!, { expiresIn: "7d" });
+    const authToken = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET!,
+      { expiresIn: "7d" }
+    );
 
-    return res.json({ token: authToken });
+    return res.json({
+      success: true,
+      token: authToken,
+      role: user.role,
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+      },
+    });
 
   } catch (error) {
     console.error("Google login error:", error);
