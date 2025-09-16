@@ -1,36 +1,41 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const socket_io_client_1 = require("socket.io-client");
-const URL = "https://smartcollgeapp-production.up.railway.app"; // سيرفر Railway
+const URL = "https://smartcollgeapp-production.up.railway.app";
+// اختار إما User أو Admin لتجربتهم
+const ROLE = "User"; // غيرها لـ "Admin" لو عايز تجرب الـ admin
+const USER_ID = ROLE === "User" ? "123" : "admin1";
+const TARGET_ID = ROLE === "User" ? "admin1" : "123";
 const socket = (0, socket_io_client_1.io)(URL, {
     transports: ["polling"], // لازم Polling على Railway
     timeout: 20000,
 });
 socket.on("connect", () => {
-    console.log("✅ Connected:", socket.id);
+    console.log(`✅ ${ROLE} connected:`, socket.id);
     // سجل نفسك
-    socket.emit("register", { userId: "testUser", role: "User" });
-    // ابعت رسالة تجريبية بعد ثانيتين
-    setTimeout(() => {
+    socket.emit("register", { userId: USER_ID, role: ROLE });
+    // ابعت رسالة كل 10 ثواني
+    let count = 1;
+    setInterval(() => {
+        const text = `Hello from ${ROLE}! Message ${count}`;
         socket.emit("sendMessage", {
-            from: "testUser",
-            fromModel: "User",
-            to: "admin1",
-            toModel: "Admin",
-            text: "Hello Admin! This is a realtime test",
+            from: USER_ID,
+            fromModel: ROLE,
+            to: TARGET_ID,
+            toModel: ROLE === "User" ? "Admin" : "User",
+            text,
         });
-        console.log("📤 Message sent");
-    }, 2000);
+        console.log(`📤 ${ROLE} message ${count} sent`);
+        count++;
+    }, 10000);
 });
 // استقبل أي رسائل
 socket.on("receiveMessage", (msg) => {
-    console.log("📩 Received:", msg);
+    console.log(`📩 ${ROLE} received:`, msg);
 });
-// Disconnect مع سبب
 socket.on("disconnect", (reason) => {
-    console.log("❌ Disconnected. Reason:", reason);
+    console.log(`❌ ${ROLE} disconnected. Reason:`, reason);
 });
-// أخطاء الاتصال
 socket.on("connect_error", (err) => {
-    console.error("⚠️ Connect error:", err.message);
+    console.error(`⚠️ ${ROLE} connect error:`, err.message);
 });
