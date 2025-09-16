@@ -24,16 +24,29 @@ app.use((0, cookie_parser_1.default)());
 app.use(express_1.default.json({ limit: "20mb" }));
 app.use(express_1.default.urlencoded({ extended: true, limit: "20mb" }));
 app.use("/uploads", express_1.default.static("uploads"));
+// ✅ Route بسيط للتجربة
+app.get("/", (req, res) => {
+    res.send("✅ API & Socket.IO Server is running on Railway...");
+});
 // Routes
 app.use("/api", routes_1.default);
+// Not found handler
 app.use((req, res, next) => {
     throw new Errors_1.NotFound("Route not found");
 });
 app.use(errorHandler_1.errorHandler);
+// ✅ استخدم بورت Railway
+const PORT = process.env.PORT || 3000;
 const server = http_1.default.createServer(app);
-const io = new socket_io_1.Server(server, { cors: { origin: "*" } });
+// ✅ Socket.IO مع إعدادات CORS
+const io = new socket_io_1.Server(server, {
+    cors: {
+        origin: "*", // ممكن تحط لينك الفرونت إند هنا لو عايز تقفلها
+        methods: ["GET", "POST"],
+    },
+});
 // اربط Socket.IO
 (0, chatSocket_1.setupSocket)(io);
-server.listen(3000, () => {
-    console.log("🚀 Server is running on http://localhost:3000");
+server.listen(PORT, () => {
+    console.log(`🚀 Server is running on http://localhost:${PORT}`);
 });
