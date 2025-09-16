@@ -11,8 +11,8 @@ const User_1 = require("../models/shema/auth/User");
 dotenv_1.default.config();
 const client = new google_auth_library_1.OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const verifyGoogleToken = async (req, res) => {
-    const { token } = req.body; // 👈 هنا مش بناخد role على طول
-    const role = req.body.role; // 👈 نستخدمه بس لو محتاجينه (signup)
+    const { token } = req.body;
+    const role = req.body.role;
     try {
         const ticket = await client.verifyIdToken({
             idToken: token,
@@ -25,9 +25,7 @@ const verifyGoogleToken = async (req, res) => {
         const email = payload.email;
         const name = payload.name || "Unknown User";
         const googleId = payload.sub;
-        // ندور على اليوزر
         let user = await User_1.UserModel.findOne({ googleId }) || await User_1.UserModel.findOne({ email });
-        // ✅ Check: لو جديد → لازم role
         if (!user) {
             if (!role) {
                 return res.status(400).json({
@@ -35,18 +33,19 @@ const verifyGoogleToken = async (req, res) => {
                     message: "Role is required for new users.",
                 });
             }
-            // Sign Up
+            // 🆕 Sign Up → isNew = true
             user = new User_1.UserModel({
                 googleId,
                 email,
                 name,
-                role, // يتسجل أول مرة بس
+                role,
                 isVerified: true,
+                isNew: true, // ✅ ده المهم
             });
             await user.save();
         }
         else {
-            // Login → نتجاهل أي role جاي من الـ frontend
+            // Login → ما نلمسش الـ role ولا isNew
             if (!user.googleId) {
                 user.googleId = googleId;
                 await user.save();
@@ -58,6 +57,7 @@ const verifyGoogleToken = async (req, res) => {
             success: true,
             token: authToken,
             role: user.role,
+            isNew: user.isNew, // ✅ رجّعها للفرونت عشان يعرف
             user: {
                 id: user._id,
                 email: user.email,

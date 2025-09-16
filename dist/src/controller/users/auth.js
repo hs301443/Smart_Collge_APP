@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.completeProfileStuden = exports.updateProfileImage = exports.completeProfile = exports.resetPassword = exports.verifyResetCode = exports.sendResetCode = exports.getFcmToken = exports.login = exports.verifyEmail = exports.signup = void 0;
+exports.completeProfileStudent = exports.updateProfileImage = exports.completeProfile = exports.resetPassword = exports.verifyResetCode = exports.sendResetCode = exports.getFcmToken = exports.login = exports.verifyEmail = exports.signup = void 0;
 const handleImages_1 = require("../../utils/handleImages");
 const emailVerifications_1 = require("../../models/shema/auth/emailVerifications");
 const User_1 = require("../../models/shema/auth/User");
@@ -257,7 +257,7 @@ const updateProfileImage = async (req, res) => {
     (0, response_1.SuccessResponse)(res, { message: "Profile image updated successfully", imageUrl }, 200);
 };
 exports.updateProfileImage = updateProfileImage;
-const completeProfileStuden = async (req, res) => {
+const completeProfileStudent = async (req, res) => {
     if (!req.user)
         throw new Errors_1.UnauthorizedError("User not found");
     const { department, level } = req.body;
@@ -268,9 +268,14 @@ const completeProfileStuden = async (req, res) => {
     const user = await User_1.UserModel.findById(req.user.id);
     if (!user)
         throw new Errors_1.NotFound("User not found");
+    // ✅ تأكد إن اليوزر طالب
+    if (user.role !== "Student") {
+        throw new BadRequest_1.BadRequest("Only students can complete student profile");
+    }
     user.department = department;
     user.level = level;
+    user.isNew = false;
     await user.save();
-    (0, response_1.SuccessResponse)(res, "complete profile successfuly");
+    return (0, response_1.SuccessResponse)(res, "Profile completed successfully");
 };
-exports.completeProfileStuden = completeProfileStuden;
+exports.completeProfileStudent = completeProfileStudent;
