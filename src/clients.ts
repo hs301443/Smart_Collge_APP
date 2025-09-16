@@ -2,51 +2,62 @@ import { io } from "socket.io-client";
 
 const URL = "https://smartcollgeapp-production.up.railway.app";
 
-// اختار الدور هنا
-const ROLE: "User" | "Admin" = "User"; // غيرها لـ "Admin" لو عايز تجرب الأدمن
-const USER_ID = ROLE === "User" ? "123" : "admin1";
-const TARGET_ID = ROLE === "User" ? "admin1" : "123";
+const USER_ID = "123";
+const ADMIN_ID = "admin1";
 
-// إنشاء الاتصال بالباك
-const socket = io(URL, {
-  transports: ["polling"], // مهم على Railway
-  timeout: 20000,
-  path: "/socket.io",
-});
+const userSocket = io(URL, { transports: ["polling"], timeout: 20000, path: "/socket.io" });
+const adminSocket = io(URL, { transports: ["polling"], timeout: 20000, path: "/socket.io" });
 
-socket.on("connect", () => {
-  console.log(`✅ ${ROLE} connected: ${socket.id}`);
+userSocket.on("connect", () => {
+  console.log(`✅ User connected: ${userSocket.id}`);
+  userSocket.emit("register", { userId: USER_ID, role: "User" });
 
-  // تسجيل اليوزر/الأدمن
-  socket.emit("register", { userId: USER_ID, role: ROLE });
-
-  // إرسال رسالة كل 10 ثواني
   let count = 1;
   setInterval(() => {
-    const text = `Hello from ${ROLE}! Message ${count}`;
-    socket.emit("sendMessage", {
+    const text = `Hello from User! Message ${count}`;
+    userSocket.emit("sendMessage", {
       from: USER_ID,
-      fromModel: ROLE,
-      to: TARGET_ID,
-      toModel: ROLE === "User" ? "Admin" : "User",
+      fromModel: "User",
+      to: ADMIN_ID,
+      toModel: "Admin",
       text,
+    }, (ack: any) => {  // هنا استلام ACK
+      console.log(`✅ User confirmed message ${count} delivered:`, ack);
     });
-    console.log(`📤 ${ROLE} message ${count} sent`);
+    console.log(`📤 User message ${count} sent`);
     count++;
   }, 10000);
 });
 
-// استقبال الرسائل الواردة
-socket.on("receiveMessage", (msg) => {
-  console.log(`📩 ${ROLE} received:`, msg);
+adminSocket.on("connect", () => {
+  console.log(`✅ Admin connected: ${adminSocket.id}`);
+  adminSocket.emit("register", { userId: ADMIN_ID, role: "Admin" });
+
+  let count = 1;
+  setInterval(() => {
+    const text = `Hello from Admin! Message ${count}`;
+    adminSocket.emit("sendMessage", {
+      from: ADMIN_ID,
+      fromModel: "Admin",
+      to: USER_ID,
+      toModel: "User",
+      text,
+    }, (ack: any) => {  // ACK من الباك
+      console.log(`✅ Admin confirmed message ${count} delivered:`, ack);
+    });
+    console.log(`📤 Admin message ${count} sent`);
+    count++;
+  }, 10000);
 });
 
-// استقبال إشعارات القراءة أو الحذف
-socket.on("messageSeen", (data) => console.log(`👀 Message seen:`, data));
-socket.on("conversationRead", (data) => console.log(`✅ Conversation read:`, data));
-socket.on("messageDeleted", (data) => console.log(`🗑️ Message deleted:`, data));
-socket.on("conversationDeleted", (data) => console.log(`🗑️ Conversation deleted:`, data));
+// استقبال الرسائل
+const setupListeners = (socket: any, role: "User" | "Admin") => {
+  socket.on("receiveMessage", (msg: any) => {
+    console.log(`📩 ${role} received:`, msg.text);
+  });
+  socket.on("disconnect", (reason: any) => console.log(`❌ ${role} disconnected. Reason:`, reason));
+  socket.on("connect_error", (err: any) => console.error(`⚠️ ${role} connect error:`, err.message));
+};
 
-// Disconnect و أخطاء الاتصال
-socket.on("disconnect", (reason) => console.log(`❌ ${ROLE} disconnected. Reason:`, reason));
-socket.on("connect_error", (err) => console.error(`⚠️ ${ROLE} connect error:`, err.message));
+setupListeners(userSocket, "User");
+setupListeners(adminSocket, "Admin");

@@ -14,13 +14,13 @@ const cors_1 = __importDefault(require("cors"));
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const helmet_1 = __importDefault(require("helmet"));
 const connection_1 = require("./models/connection");
-const chatSocket_1 = require("./utils/chatSocket");
+const chatSocket_1 = require("./utils/chatSocket"); // socket utils
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 (0, connection_1.connectDB)();
 // Middleware
 app.use((0, helmet_1.default)({ crossOriginResourcePolicy: false }));
-app.use((0, cors_1.default)({ origin: "*", methods: ["GET", "POST"], credentials: true }));
+app.use((0, cors_1.default)({ origin: "*" }));
 app.use((0, cookie_parser_1.default)());
 app.use(express_1.default.json({ limit: "20mb" }));
 app.use(express_1.default.urlencoded({ extended: true, limit: "20mb" }));
@@ -40,11 +40,10 @@ app.use(errorHandler_1.errorHandler);
 const PORT = process.env.PORT || 3000;
 // Create server
 const server = http_1.default.createServer(app);
-// ✅ Socket.IO مع Polling فقط و path مضبوط
+// ✅ Socket.IO مع CORS + Polling فقط
 const io = new socket_io_1.Server(server, {
-    cors: { origin: "*", methods: ["GET", "POST"], credentials: true },
-    transports: ["polling"], // Polling فقط
-    path: "/socket.io", // Path الافتراضي
+    cors: { origin: "*" },
+    transports: ["polling"], // ✅ Polling فقط
     pingInterval: 10000,
     pingTimeout: 20000,
 });
