@@ -21,8 +21,10 @@ export const createRoom = async (req: Request, res: Response) => {
       isPrivate,
       members: [userId],
       admins: [userId],
-      createdBy: userId,
-    });
+createdBy: { 
+    id: userId, 
+    role: req.user.role // "User" أو "Admin" حسب التوكن
+  },    });
 
     await room.save();
     SuccessResponse(res, { message: "Room created successfully", room });
