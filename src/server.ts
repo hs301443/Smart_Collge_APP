@@ -47,9 +47,10 @@ const server = http.createServer(app);
 // ✅ Socket.IO مع CORS + Polling فقط
 const io = new Server(server, {
   cors: { origin: "*" },
-  transports: ["polling"], // ✅ Polling فقط
+  transports: ["polling", "websocket"], 
   pingInterval: 10000,
   pingTimeout: 20000,
+
 });
 
 // اربط Socket.IO

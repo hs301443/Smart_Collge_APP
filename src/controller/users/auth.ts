@@ -344,5 +344,13 @@ export const completeProfileStudent = async (req: Request, res: Response) => {
   user.isNew = false;
   await user.save();
 
-  return SuccessResponse(res, "Profile completed successfully");
+  return SuccessResponse(res, {message:"Profile completed successfully", user:{
+    _id:user._id,
+    name:user.name,
+    email:user.email,
+    role:user.role,
+    level:user.level,
+    department:user.department
+  }
+   });
 };
