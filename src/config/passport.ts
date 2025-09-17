@@ -45,7 +45,7 @@ export const verifyGoogleToken = async (req: Request, res: Response) => {
         name,
         role,
         isVerified: true,
-        isNew: true, // ✅ ده المهم
+        isNew:true, // ✅ ده المهم
       });
       await user.save();
     } else {

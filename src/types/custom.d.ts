@@ -11,6 +11,8 @@ export interface AppUser {
   isSuperAdmin?: boolean;     // لو true يبقى معاه كل حاجة
   customPermissions?: string[];
   rolePermissions?: string[];
+  isOnline?: boolean;  // ✅ ضيف الحقل هنا
+  lastSeen?: Date;
 
   
 }

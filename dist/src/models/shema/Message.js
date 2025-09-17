@@ -36,45 +36,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MessageModel = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 const MessageSchema = new mongoose_1.Schema({
-    room: {
-        type: mongoose_1.Schema.Types.ObjectId,
-        ref: "Conversation", // أو Room حسب اللي عندك
-        required: true,
-    },
-    sender: {
-        id: {
-            type: mongoose_1.Schema.Types.ObjectId,
-            required: true,
-        },
-        role: {
-            type: String,
-            enum: ["Admin", "User"],
-            required: true,
-        },
-    },
-    content: {
-        type: String,
-        required: true,
-        maxlength: 1000,
-    },
-    messageType: {
-        type: String,
-        enum: ["text", "image", "file"],
-        default: "text",
-    },
-    timestamp: {
-        type: Date,
-        default: Date.now,
-    },
-    edited: {
-        type: Boolean,
-        default: false,
-    },
-    editedAt: {
-        type: Date,
-    },
+    senderUser: { type: mongoose_1.Types.ObjectId, ref: "User" },
+    senderAdmin: { type: mongoose_1.Types.ObjectId, ref: "Admin" },
+    receiverUser: { type: mongoose_1.Types.ObjectId, ref: "User" },
+    receiverAdmin: { type: mongoose_1.Types.ObjectId, ref: "Admin" },
+    content: { type: String, required: true },
+    timestamp: { type: Date, default: Date.now },
 }, { timestamps: true });
-// ✅ Indexes for performance
-MessageSchema.index({ room: 1, timestamp: -1 });
-MessageSchema.index({ "sender.id": 1 });
 exports.MessageModel = mongoose_1.default.model("Message", MessageSchema);

@@ -42,6 +42,8 @@ const adminSchema = new mongoose_1.Schema({
     imagePath: { type: String },
     isSuperAdmin: { type: Boolean, default: false },
     role: { type: mongoose_1.Types.ObjectId, ref: "Role", default: null },
+    isOnline: { type: Boolean, default: false },
+    lastSeen: { type: Date, default: Date.now },
     customPermissions: [{ type: String }]
 }, { timestamps: true });
 exports.AdminModel = mongoose_1.default.model("Admin", adminSchema);

@@ -1,42 +1,25 @@
 import { Server, Socket } from "socket.io";
-import jwt from "jsonwebtoken";
-import mongoose from "mongoose";
 import { UserModel } from "../models/shema/auth/User";
 import { AdminModel } from "../models/shema/auth/Admin";
 import { MessageModel } from "../models/shema/Message";
-import { RoomModel } from "../models/shema/Room";
 
-interface AuthSocket extends Socket {
+export interface AuthSocket extends Socket {
   userId?: string;
-  username?: string;
+  adminId?: string;
   role?: "User" | "Admin";
 }
 
-export const setupChatSockets = (io: Server) => {
+export const setupSocket = (io: Server) => {
   io.use(async (socket: AuthSocket, next) => {
+    const token = socket.handshake.auth.token;
+    if (!token) return next(new Error("Authentication error"));
+
     try {
-      const token = socket.handshake.auth.token;
-      if (!token) return next(new Error("Authentication error"));
-
-      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
-
-      let user: any = null;
-      if (decoded.role === "Admin") {
-        user = await AdminModel.findById(decoded.id);
-      } else {
-        user = await UserModel.findById(decoded.id);
-      }
-
-      if (!user) return next(new Error("Authentication error"));
-
-      socket.userId = user._id.toString();
-      socket.username = user.name;
-      socket.role = decoded.role;
-
-      user.isOnline = true;
-      user.lastSeen = new Date();
-      await user.save();
-
+      // TODO: تحقق من JWT هنا
+      // مثال:
+      // const decoded = jwt.verify(token, process.env.JWT_SECRET)
+      // socket.userId = decoded.id  أو socket.adminId
+      // socket.role = "User" أو "Admin"
       next();
     } catch (err) {
       next(new Error("Authentication error"));
@@ -44,74 +27,54 @@ export const setupChatSockets = (io: Server) => {
   });
 
   io.on("connection", (socket: AuthSocket) => {
-    console.log(`✅ ${socket.role} connected: ${socket.username}`);
+    console.log(`${socket.role} connected: ${socket.userId || socket.adminId}`);
 
-    socket.on("join-room", async (roomId: string) => {
-      const room = await RoomModel.findById(roomId);
-      if (!room) return socket.emit("error", { message: "Room not found" });
+    // تحديث حالة Online عند الاتصال
+    if (socket.role === "User" && socket.userId) {
+      UserModel.findByIdAndUpdate(socket.userId, { isOnline: true }).exec();
+    } else if (socket.role === "Admin" && socket.adminId) {
+      AdminModel.findByIdAndUpdate(socket.adminId, { isOnline: true }).exec();
+    }
 
-      const userObjectId = new mongoose.Types.ObjectId(socket.userId);
+    // انضمام لغرفة خاصة بين طرفين
+    socket.on("join-private", ({ userId, adminId }) => {
+      const roomId = [userId, adminId].sort().join("_");
+      socket.join(roomId);
+    });
 
-      if (socket.role === "Admin" || room.members.some(memberId => memberId.equals(userObjectId))) {
-        socket.join(roomId);
-        socket.emit("joined-room", { roomId });
+    // إرسال رسالة
+    socket.on("private-message", async ({ userId, adminId, content }) => {
+      const roomId = [userId, adminId].sort().join("_");
+      let message;
+
+      if (socket.role === "User") {
+        message = await MessageModel.create({ senderUser: socket.userId, receiverAdmin: adminId, content });
       } else {
-        socket.emit("error", { message: "Unauthorized" });
-      }
-    });
-
-    socket.on("send-message", async (data: { roomId: string; content: string }) => {
-      const { roomId, content } = data;
-      const room = await RoomModel.findById(roomId);
-      if (!room) return socket.emit("error", { message: "Room not found" });
-
-      const userObjectId = new mongoose.Types.ObjectId(socket.userId);
-
-      if (!(socket.role === "Admin" || room.members.some(memberId => memberId.equals(userObjectId)))) {
-        return socket.emit("error", { message: "Unauthorized" });
+        message = await MessageModel.create({ senderAdmin: socket.adminId, receiverUser: userId, content });
       }
 
-      const message = await MessageModel.create({
-        sender: socket.userId,
-        room: roomId,
-        content,
-        timestamp: new Date(),
-      });
-
-      io.to(roomId).emit("new-message", {
-        id: message._id,
-        sender: socket.username,
-        role: socket.role,
-        roomId,
-        content,
-        timestamp: message.timestamp,
-      });
+      io.to(roomId).emit("new-private-message", message);
     });
 
-    socket.on("typing-start", (roomId: string) => {
-      socket.to(roomId).emit("user-typing", { userId: socket.userId, username: socket.username, role: socket.role });
+    // typing indicators
+    socket.on("typing-start", ({ userId, adminId }) => {
+      const roomId = [userId, adminId].sort().join("_");
+      socket.to(roomId).emit("user-typing", { userId: socket.userId, adminId: socket.adminId });
     });
 
-    socket.on("typing-stop", (roomId: string) => {
-      socket.to(roomId).emit("user-stopped-typing", { userId: socket.userId, username: socket.username, role: socket.role });
+    socket.on("typing-stop", ({ userId, adminId }) => {
+      const roomId = [userId, adminId].sort().join("_");
+      socket.to(roomId).emit("user-stopped-typing", { userId: socket.userId, adminId: socket.adminId });
     });
 
+    // عند disconnect
     socket.on("disconnect", async () => {
-      console.log(`❌ ${socket.role} disconnected: ${socket.username}`);
-      let user: any = null;
-      if (socket.role === "Admin") {
-        user = await AdminModel.findById(socket.userId);
-      } else {
-        user = await UserModel.findById(socket.userId);
+      if (socket.role === "User" && socket.userId) {
+        await UserModel.findByIdAndUpdate(socket.userId, { isOnline: false, lastSeen: new Date() });
       }
-
-      if (user) {
-        user.isOnline = false;
-        user.lastSeen = new Date();
-        await user.save();
+      if (socket.role === "Admin" && socket.adminId) {
+        await AdminModel.findByIdAndUpdate(socket.adminId, { isOnline: false, lastSeen: new Date() });
       }
-
-      socket.broadcast.emit("user-offline", { userId: socket.userId, role: socket.role });
     });
   });
 };

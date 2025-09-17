@@ -10,6 +10,8 @@ const adminSchema = new Schema(
     isSuperAdmin: { type: Boolean, default: false },
 
     role: { type: Types.ObjectId, ref: "Role", default: null },
+     isOnline: { type: Boolean, default: false },
+    lastSeen: { type: Date, default: Date.now },
 
     customPermissions: [{ type: String }]
   },
