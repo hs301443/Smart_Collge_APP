@@ -338,18 +338,25 @@ export const completeProfileStudent = async (req: Request, res: Response) => {
     throw new BadRequest("Only students can complete student profile");
   }
 
+  // 🛑 تحقق إذا كان البروفايل مكتمل بالفعل
+  if (!user.isNew) {
+    throw new BadRequest("Profile already completed");
+  }
+
   user.department = department;
   user.level = level;
   user.isNew = false;
   await user.save();
 
-  return SuccessResponse(res, {message:"Profile completed successfully", user:{
-    _id:user._id,
-    name:user.name,
-    email:user.email,
-    role:user.role,
-    level:user.level,
-    department:user.department
-  }
-   });
+  return SuccessResponse(res, {
+    message: "Profile completed successfully",
+    user: {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      level: user.level,
+      department: user.department
+    }
+  });
 };
