@@ -23,6 +23,7 @@ const signup = async (req, res) => {
         throw new Errors_1.UniqueConstrainError("Email", "User already signed up with this email");
     // تشفير الباسورد
     const hashedPassword = await bcrypt_1.default.hash(password, 10);
+    // تجهيز الداتا حسب الـ role
     const userData = {
         name,
         email,
@@ -30,10 +31,12 @@ const signup = async (req, res) => {
         role,
         BaseImage64: BaseImage64 || null,
         isVerified: false,
-        level,
-        department,
-        isNew: false
+        isNew: false,
     };
+    if (role === "Student") {
+        userData.level = level;
+        userData.department = department;
+    }
     // إنشاء الـ User أولًا
     const newUser = new User_1.UserModel(userData);
     await newUser.save();

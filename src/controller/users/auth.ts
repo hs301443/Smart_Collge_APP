@@ -19,7 +19,7 @@ import { AuthenticatedRequest } from "../../types/custom";
 
 
 export const signup = async (req: Request, res: Response) => {
-  const { name, email, password, role, BaseImage64, graduatedData,level,department} = req.body;
+  const { name, email, password, role, BaseImage64, graduatedData, level, department } = req.body;
 
   // التحقق من وجود المستخدم مسبقًا
   const existing = await UserModel.findOne({ email });
@@ -28,6 +28,7 @@ export const signup = async (req: Request, res: Response) => {
   // تشفير الباسورد
   const hashedPassword = await bcrypt.hash(password, 10);
 
+  // تجهيز الداتا حسب الـ role
   const userData: any = {
     name,
     email,
@@ -35,11 +36,13 @@ export const signup = async (req: Request, res: Response) => {
     role,
     BaseImage64: BaseImage64 || null,
     isVerified: false,
-    level,
-    department,
-    isNew: false
-  
+    isNew: false,
   };
+
+  if (role === "Student") {
+    userData.level = level;
+    userData.department = department;
+  }
 
   // إنشاء الـ User أولًا
   const newUser = new UserModel(userData);
@@ -48,7 +51,7 @@ export const signup = async (req: Request, res: Response) => {
   // لو الدور Graduated أضف بيانات التخرج في جدول Graduated منفصل
   if (role === "Graduated" && graduatedData) {
     await GraduatedModel.create({
-      user: newUser._id,               // ربط بالـ User
+      user: newUser._id, // ربط بالـ User
       name: newUser.name,
       email: newUser.email,
       BaseImage64: newUser.BaseImage64,
@@ -87,7 +90,11 @@ Best regards,
 Smart College Team`
   );
 
-  SuccessResponse(res, { message: "Signup successful, check your email for code", userId: newUser._id }, 201);
+  SuccessResponse(
+    res,
+    { message: "Signup successful, check your email for code", userId: newUser._id },
+    201
+  );
 };
 
 

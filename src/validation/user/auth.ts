@@ -5,8 +5,8 @@ export const signupSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().min(6).required(),
   role: Joi.string().valid("Student","Graduated").required(),
-  level: Joi.number().min(1).max(5).required(),
-  department: Joi.string().valid("IT","CS","IS","AI").required(),
+  level: Joi.number().min(1).max(5),
+  department: Joi.string().valid("IT","CS","IS","AI"),
   imageBase64: Joi.string().optional(),
    graduatedData: Joi.object({
     cv: Joi.string().optional(),
@@ -44,3 +44,8 @@ export const resetPasswordSchema = Joi.object({
   newPassword: Joi.string().min(6).max(30).required(),
 }); 
 
+
+export const googlevalidateSchema = Joi.object({
+  token: Joi.string().required(),
+  role: Joi.string().valid("Student","Graduated").required(),
+});
