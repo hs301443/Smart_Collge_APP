@@ -9,7 +9,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import { connectDB } from "./models/connection";
-import { setupSocket } from "./utils/chatSocket";
+import { setupChatSockets } from "./utils/chatSocket";
 
 dotenv.config();
 
@@ -51,7 +51,7 @@ const io = new Server(server, {
     methods: ["GET", "POST"]
   }
 });
-setupSocket(io);
+setupChatSockets(io);
 
 
 

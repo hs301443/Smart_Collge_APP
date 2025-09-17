@@ -68,7 +68,7 @@ const roomSchema = new mongoose_1.Schema({
     // اللي أنشأ الغرفة (ممكن يكون Admin أو User)
     createdBy: {
         id: { type: mongoose_1.Schema.Types.ObjectId, required: true },
-        role: { type: String, enum: ["User", "Admin", "Student", "Graduated"], required: true },
+        role: { type: String, enum: ["Admin", "User"], required: true }
     },
 }, {
     timestamps: true,

@@ -47,7 +47,7 @@ const io = new socket_io_1.Server(server, {
         methods: ["GET", "POST"]
     }
 });
-(0, chatSocket_1.setupSocket)(io);
+(0, chatSocket_1.setupChatSockets)(io);
 server.listen(PORT, () => {
     console.log(`🚀 Server is running on http://localhost:${PORT}`);
 });

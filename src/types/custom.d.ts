@@ -29,3 +29,21 @@ declare global {
     } // extend default `User`
   }
 }
+
+export interface AppAdmin {
+  _id?: Types.ObjectId;
+  id?: string;
+  name?: string;
+  email?: string;
+  role?: string;
+  isSuperAdmin?: boolean;
+  customPermissions?: string[];
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      admin?: AppAdmin;
+    }
+  }
+}

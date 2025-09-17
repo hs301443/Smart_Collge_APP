@@ -1,14 +1,13 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = __importDefault(require("express"));
+const express_1 = require("express");
 const chat_1 = require("../../controller/admin/chat");
 const catchAsync_1 = require("../../utils/catchAsync");
-const router = express_1.default.Router();
-// Admin-only routes
-router.post("/", (0, catchAsync_1.catchAsync)(chat_1.createRoomByAdmin));
-router.get("/", (0, catchAsync_1.catchAsync)(chat_1.getAllRooms));
-router.delete("/:roomId", (0, catchAsync_1.catchAsync)(chat_1.deleteRoom));
+const router = (0, express_1.Router)();
+// ✅ Admin Routes for Chat
+router.post("/rooms", (0, catchAsync_1.catchAsync)(chat_1.adminCreateRoom)); // Create room
+router.post("/rooms/:roomId/join", (0, catchAsync_1.catchAsync)(chat_1.adminJoinRoom)); // Join room
+router.post("/rooms/:roomId/messages", (0, catchAsync_1.catchAsync)(chat_1.adminSendMessage)); // Send message
+router.delete("/messages/:messageId", (0, catchAsync_1.catchAsync)(chat_1.adminDeleteMessage)); // Delete message
+router.delete("/rooms/:roomId", (0, catchAsync_1.catchAsync)(chat_1.adminDeleteRoom)); // Delete room
 exports.default = router;

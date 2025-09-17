@@ -1,54 +1,115 @@
 import { Request, Response } from "express";
+import mongoose from "mongoose";
 import { RoomModel } from "../../models/shema/Room";
 import { MessageModel } from "../../models/shema/Message";
+import { NotFound, UnauthorizedError } from "../../Errors";
 import { BadRequest } from "../../Errors/BadRequest";
-import { NotFound } from "../../Errors";
-import { UnauthorizedError } from "../../Errors";
 import { SuccessResponse } from "../../utils/response";
 
-// Create room (Admin only)
-export const createRoomByAdmin = async (req: Request, res: Response) => {
-     if (!req.user || !req.user.isSuperAdmin)
-    throw new UnauthorizedError("Only Super Admin can perform this action");
-    const { name, description, isPrivate } = req.body;
-    if (!name || !description) throw new BadRequest("name is required and description is required");
-    const adminId = req.user.id;
+// ✅ Admin Create Room
+export const adminCreateRoom = async (req: Request, res: Response) => {
+  if (!req.admin || !req.admin.isSuperAdmin) throw new UnauthorizedError("super admin only");
 
-    const existingRoom = await RoomModel.findOne({ name });
-    if(existingRoom) throw new BadRequest("Room already exists");
-    const room = new RoomModel({
-      name,
-      description,
-      isPrivate,
-      createdBy: adminId,
-      admins: [adminId],
-    });
+  const { name, description, isPrivate } = req.body;
 
-    await room.save();
-    SuccessResponse(res,{ message: "Room created successfully by admin", room });
-  };
+  if (!name) throw new BadRequest("Room name is required");
 
-// Get all rooms (Admin sees all)
-export const getAllRooms = async (_req: Request, res: Response) => {
-  if (!_req.user || !_req.user.isSuperAdmin)
-    throw new UnauthorizedError("Only Super Admin can perform this action");
-    const rooms = await RoomModel.find().sort({ updatedAt: -1 });
-    res.json({ rooms });
-  
+  const room = await RoomModel.create({
+    name,
+    description,
+    isPrivate,
+    createdBy: {
+      id: req.admin._id,
+      role: "Admin",
+    },
+    admins: [req.admin._id],
+  });
+
+  SuccessResponse(res, { message: "Room created successfully", room });
 };
 
-// Delete a room
-export const deleteRoom = async (req: Request, res: Response) => {
-  if (!req.user || !req.user.isSuperAdmin)
-    throw new UnauthorizedError("Only Super Admin can perform this action");
-    const { roomId } = req.params;
-    if(!roomId) throw new BadRequest("Room ID is required");
-    const room = await RoomModel.findByIdAndDelete(roomId);
+// ✅ Admin Join Room (force join if needed)
+export const adminJoinRoom = async (req: Request, res: Response) => {
+  if (!req.admin || !req.admin.isSuperAdmin) {
+    throw new UnauthorizedError("super admin only");
+  }
 
-    if (!room) throw new NotFound("Room not found");
+  if (!req.admin._id) {
+    throw new UnauthorizedError("Invalid admin ID");
+  }
 
-    await MessageModel.deleteMany({ room: roomId });
+  const { roomId } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(roomId)) {
+    throw new BadRequest("Invalid room ID");
+  }
 
-    res.json({ message: "Room and its messages deleted successfully" });
-  
+  const room = await RoomModel.findById(roomId);
+  if (!room) throw new NotFound("Room not found");
+
+  const adminId = req.admin._id as mongoose.Types.ObjectId;
+
+  if (room.admins.includes(adminId)) {
+    throw new BadRequest("Already an admin in this room");
+  }
+
+  room.admins.push(adminId);
+  await room.save();
+
+  return SuccessResponse(res, { message: "Joined room successfully", room });
+};
+
+
+// ✅ Admin Send Message
+export const adminSendMessage = async (req: Request, res: Response) => {
+  if (!req.admin || !req.admin.isSuperAdmin) throw new UnauthorizedError("super admin only");
+
+  const { roomId } = req.params;
+  const { text } = req.body;
+
+  if (!mongoose.Types.ObjectId.isValid(roomId)) {
+    throw new BadRequest("Invalid room ID");
+  }
+
+  const room = await RoomModel.findById(roomId);
+  if (!room) throw new NotFound("Room not found");
+
+  const messages = await MessageModel.create({
+    room: roomId,
+    sender: req.admin._id,
+    text,
+  });
+
+  return SuccessResponse(res, { message: "Message sent successfully", messages });
+};
+
+// ✅ Admin Delete Message
+export const adminDeleteMessage = async (req: Request, res: Response) => {
+  if (!req.admin || !req.admin.isSuperAdmin) throw new UnauthorizedError("super admin only");
+
+  const { messageId } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(messageId)) {
+    throw new BadRequest("Invalid message ID");
+  }
+
+  const message = await MessageModel.findById(messageId);
+  if (!message) throw new NotFound("Message not found");
+
+  await message.deleteOne();
+  return SuccessResponse(res, { message: "Message deleted successfully" });
+};
+
+// ✅ Admin Delete Room
+export const adminDeleteRoom = async (req: Request, res: Response) => {
+  if (!req.admin || !req.admin.isSuperAdmin) throw new UnauthorizedError("super admin only");
+
+  const { roomId } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(roomId)) {
+    throw new BadRequest("Invalid room ID");
+  }
+
+  const room = await RoomModel.findById(roomId);
+  if (!room) throw new NotFound("Room not found");
+
+  await room.deleteOne();
+  return SuccessResponse(res, { message: "Room deleted successfully" });
 };

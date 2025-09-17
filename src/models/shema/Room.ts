@@ -37,7 +37,7 @@ const roomSchema = new Schema(
     // اللي أنشأ الغرفة (ممكن يكون Admin أو User)
     createdBy: {
       id: { type: Schema.Types.ObjectId, required: true },
-      role: { type: String, enum: ["User", "Admin","Student","Graduated"], required: true },
+      role: { type: String, enum: ["Admin", "User"], required: true }
     },
   },
   {

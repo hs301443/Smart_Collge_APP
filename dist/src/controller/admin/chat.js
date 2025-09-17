@@ -1,53 +1,106 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteRoom = exports.getAllRooms = exports.createRoomByAdmin = void 0;
+exports.adminDeleteRoom = exports.adminDeleteMessage = exports.adminSendMessage = exports.adminJoinRoom = exports.adminCreateRoom = void 0;
+const mongoose_1 = __importDefault(require("mongoose"));
 const Room_1 = require("../../models/shema/Room");
 const Message_1 = require("../../models/shema/Message");
-const BadRequest_1 = require("../../Errors/BadRequest");
 const Errors_1 = require("../../Errors");
-const Errors_2 = require("../../Errors");
+const BadRequest_1 = require("../../Errors/BadRequest");
 const response_1 = require("../../utils/response");
-// Create room (Admin only)
-const createRoomByAdmin = async (req, res) => {
-    if (!req.user || !req.user.isSuperAdmin)
-        throw new Errors_2.UnauthorizedError("Only Super Admin can perform this action");
+// ✅ Admin Create Room
+const adminCreateRoom = async (req, res) => {
+    if (!req.admin || !req.admin.isSuperAdmin)
+        throw new Errors_1.UnauthorizedError("super admin only");
     const { name, description, isPrivate } = req.body;
-    if (!name || !description)
-        throw new BadRequest_1.BadRequest("name is required and description is required");
-    const adminId = req.user.id;
-    const existingRoom = await Room_1.RoomModel.findOne({ name });
-    if (existingRoom)
-        throw new BadRequest_1.BadRequest("Room already exists");
-    const room = new Room_1.RoomModel({
+    if (!name)
+        throw new BadRequest_1.BadRequest("Room name is required");
+    const room = await Room_1.RoomModel.create({
         name,
         description,
         isPrivate,
-        createdBy: adminId,
-        admins: [adminId],
+        createdBy: {
+            id: req.admin._id,
+            role: "Admin",
+        },
+        admins: [req.admin._id],
     });
-    await room.save();
-    (0, response_1.SuccessResponse)(res, { message: "Room created successfully by admin", room });
+    (0, response_1.SuccessResponse)(res, { message: "Room created successfully", room });
 };
-exports.createRoomByAdmin = createRoomByAdmin;
-// Get all rooms (Admin sees all)
-const getAllRooms = async (_req, res) => {
-    if (!_req.user || !_req.user.isSuperAdmin)
-        throw new Errors_2.UnauthorizedError("Only Super Admin can perform this action");
-    const rooms = await Room_1.RoomModel.find().sort({ updatedAt: -1 });
-    res.json({ rooms });
-};
-exports.getAllRooms = getAllRooms;
-// Delete a room
-const deleteRoom = async (req, res) => {
-    if (!req.user || !req.user.isSuperAdmin)
-        throw new Errors_2.UnauthorizedError("Only Super Admin can perform this action");
+exports.adminCreateRoom = adminCreateRoom;
+// ✅ Admin Join Room (force join if needed)
+const adminJoinRoom = async (req, res) => {
+    if (!req.admin || !req.admin.isSuperAdmin) {
+        throw new Errors_1.UnauthorizedError("super admin only");
+    }
+    if (!req.admin._id) {
+        throw new Errors_1.UnauthorizedError("Invalid admin ID");
+    }
     const { roomId } = req.params;
-    if (!roomId)
-        throw new BadRequest_1.BadRequest("Room ID is required");
-    const room = await Room_1.RoomModel.findByIdAndDelete(roomId);
+    if (!mongoose_1.default.Types.ObjectId.isValid(roomId)) {
+        throw new BadRequest_1.BadRequest("Invalid room ID");
+    }
+    const room = await Room_1.RoomModel.findById(roomId);
     if (!room)
         throw new Errors_1.NotFound("Room not found");
-    await Message_1.MessageModel.deleteMany({ room: roomId });
-    res.json({ message: "Room and its messages deleted successfully" });
+    const adminId = req.admin._id;
+    if (room.admins.includes(adminId)) {
+        throw new BadRequest_1.BadRequest("Already an admin in this room");
+    }
+    room.admins.push(adminId);
+    await room.save();
+    return (0, response_1.SuccessResponse)(res, { message: "Joined room successfully", room });
 };
-exports.deleteRoom = deleteRoom;
+exports.adminJoinRoom = adminJoinRoom;
+// ✅ Admin Send Message
+const adminSendMessage = async (req, res) => {
+    if (!req.admin || !req.admin.isSuperAdmin)
+        throw new Errors_1.UnauthorizedError("super admin only");
+    const { roomId } = req.params;
+    const { text } = req.body;
+    if (!mongoose_1.default.Types.ObjectId.isValid(roomId)) {
+        throw new BadRequest_1.BadRequest("Invalid room ID");
+    }
+    const room = await Room_1.RoomModel.findById(roomId);
+    if (!room)
+        throw new Errors_1.NotFound("Room not found");
+    const messages = await Message_1.MessageModel.create({
+        room: roomId,
+        sender: req.admin._id,
+        text,
+    });
+    return (0, response_1.SuccessResponse)(res, { message: "Message sent successfully", messages });
+};
+exports.adminSendMessage = adminSendMessage;
+// ✅ Admin Delete Message
+const adminDeleteMessage = async (req, res) => {
+    if (!req.admin || !req.admin.isSuperAdmin)
+        throw new Errors_1.UnauthorizedError("super admin only");
+    const { messageId } = req.params;
+    if (!mongoose_1.default.Types.ObjectId.isValid(messageId)) {
+        throw new BadRequest_1.BadRequest("Invalid message ID");
+    }
+    const message = await Message_1.MessageModel.findById(messageId);
+    if (!message)
+        throw new Errors_1.NotFound("Message not found");
+    await message.deleteOne();
+    return (0, response_1.SuccessResponse)(res, { message: "Message deleted successfully" });
+};
+exports.adminDeleteMessage = adminDeleteMessage;
+// ✅ Admin Delete Room
+const adminDeleteRoom = async (req, res) => {
+    if (!req.admin || !req.admin.isSuperAdmin)
+        throw new Errors_1.UnauthorizedError("super admin only");
+    const { roomId } = req.params;
+    if (!mongoose_1.default.Types.ObjectId.isValid(roomId)) {
+        throw new BadRequest_1.BadRequest("Invalid room ID");
+    }
+    const room = await Room_1.RoomModel.findById(roomId);
+    if (!room)
+        throw new Errors_1.NotFound("Room not found");
+    await room.deleteOne();
+    return (0, response_1.SuccessResponse)(res, { message: "Room deleted successfully" });
+};
+exports.adminDeleteRoom = adminDeleteRoom;
