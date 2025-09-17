@@ -9,7 +9,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import { connectDB } from "./models/connection";
-import { setupSocket } from "./utils/chatSocket"; // socket utils
+import { setupChatSockets } from "./utils/chatSocket";
 
 dotenv.config();
 
@@ -46,17 +46,15 @@ const server = http.createServer(app);
 
 // ✅ Socket.IO مع CORS + Polling فقط
 const io = new Server(server, {
-  cors: { origin: "*" },
-  transports: ["polling", "websocket"], 
-  pingInterval: 10000,
-  pingTimeout: 20000,
-
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
 });
+setupChatSockets(io);
 
-// اربط Socket.IO
-setupSocket(io);
 
-// Start server
+
 server.listen(PORT, () => {
   console.log(`🚀 Server is running on http://localhost:${PORT}`);
 });

@@ -1,26 +1,14 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-// chat.ts
-const express_1 = require("express");
+const express_1 = __importDefault(require("express"));
 const chat_1 = require("../../controller/admin/chat");
-const authorized_1 = require("../../middlewares/authorized");
 const catchAsync_1 = require("../../utils/catchAsync");
-const router = (0, express_1.Router)();
-// المحادثات
-router.get("/conversations", authorized_1.auth, (0, catchAsync_1.catchAsync)(chat_1.getAdminConversations));
-router.get("/conversations/:conversationId", authorized_1.auth, (0, catchAsync_1.catchAsync)(chat_1.getConversation)); // ✅
-// الرسائل
-router.get("/messages/:conversationId", authorized_1.auth, (0, catchAsync_1.catchAsync)(chat_1.getMessages));
-// إرسال رسالة
-router.post("/messages/send", authorized_1.auth, (0, catchAsync_1.catchAsync)(chat_1.sendMessageByAdmin));
-// تعليم رسالة واحدة كمقروءة
-router.post("/messages/read/message/:messageId", authorized_1.auth, (0, catchAsync_1.catchAsync)(chat_1.markMessageAsRead));
-// تعليم كل الرسائل كمقروءة
-router.post("/messages/read/:conversationId", authorized_1.auth, (0, catchAsync_1.catchAsync)(chat_1.markAsRead));
-// حذف رسالة واحدة
-router.delete("/messages/:messageId", authorized_1.auth, (0, catchAsync_1.catchAsync)(chat_1.deleteMessage));
-// حذف محادثة كاملة
-router.delete("/conversations/:conversationId", authorized_1.auth, (0, catchAsync_1.catchAsync)(chat_1.deleteConversation));
-// ✅ عدد الرسائل الغير مقروءة
-router.get("/unread/count", authorized_1.auth, (0, catchAsync_1.catchAsync)(chat_1.getUnreadCount));
+const router = express_1.default.Router();
+// Admin-only routes
+router.post("/", (0, catchAsync_1.catchAsync)(chat_1.createRoomByAdmin));
+router.get("/", (0, catchAsync_1.catchAsync)(chat_1.getAllRooms));
+router.delete("/:roomId", (0, catchAsync_1.catchAsync)(chat_1.deleteRoom));
 exports.default = router;

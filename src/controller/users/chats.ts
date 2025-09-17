@@ -1,158 +1,77 @@
 import { Request, Response } from "express";
-import { ConversationModel } from "../../models/shema/Conversation";
+import { RoomModel } from "../../models/shema/Room";
 import { MessageModel } from "../../models/shema/Message";
-import { BadRequest } from "../../Errors/BadRequest";
 import { NotFound, UnauthorizedError } from "../../Errors";
 import { SuccessResponse } from "../../utils/response";
-import { getIO } from "../../utils/chatSocket";
+import { BadRequest } from "../../Errors/BadRequest";
+import mongoose from "mongoose";
 
-// 1️⃣ كل المحادثات الخاصة بيوزر
-export const getUserConversations = async (req: Request, res: Response) => {
-  if (!req.user) throw new UnauthorizedError("Only user can access conversations");
+// Create room
+export const createRoom = async (req: Request, res: Response) => {
+  if (!req.user || !req.user.id) throw new UnauthorizedError("Unauthorized");
+   const userId = req.user.id;
+    const { name, description, isPrivate } = req.body;
 
+    const existingRoom = await RoomModel.findOne({ name });
+    if (existingRoom) return res.status(400).json({ error: "Room already exists" });
+
+    const room = new RoomModel({
+      name,
+      description,
+      isPrivate,
+      members: [userId],
+      admins: [userId],
+      createdBy: userId,
+    });
+
+    await room.save();
+    SuccessResponse(res, { message: "Room created successfully", room });
+  } ;
+
+// Get all rooms for user
+export const getRooms = async (req: Request, res: Response) => {
+    if (!req.user || !req.user.id) throw new UnauthorizedError("Unauthorized");
+
+    const userId = req.user.id;
+
+    const rooms = await RoomModel.find({
+      $or: [{ members: userId }, { isPrivate: false }],
+    }).sort({ updatedAt: -1 });
+
+    SuccessResponse(res, { message: "Get all Room successfully", rooms });
+  };
+
+// Join room
+export const joinRoom = async (req: Request, res: Response) => {
+  if (!req.user || !req.user.id) throw new UnauthorizedError("Unauthorized");
+  
   const userId = req.user.id;
+  const { roomId } = req.params;
+  if (!roomId) throw new BadRequest("Room ID is required");
 
-  const conversations = await ConversationModel.find({ user: userId })
-    .populate("admin", "name email")
-    .sort({ updatedAt: -1 });
+  const room = await RoomModel.findById(roomId);
+  if (!room) throw new NotFound("Room not found");
 
-  if (!conversations) throw new NotFound("No conversations found");
+  const userObjectId = new mongoose.Types.ObjectId(userId);
 
-  SuccessResponse(res, { conversations });
-};
-
-// 2️⃣ كل الرسائل في محادثة معينة
-export const getUserMessages = async (req: Request, res: Response) => {
-  if (!req.user) throw new UnauthorizedError("Only user can access messages");
-
-  const { conversationId } = req.params;
-  if (!conversationId) throw new BadRequest("conversationId is required");
-
-  const messages = await MessageModel.find({ conversation: conversationId }).sort({ createdAt: 1 });
-  if (!messages) throw new NotFound("No messages found");
-
-  SuccessResponse(res, { messages });
-};
-
-// 3️⃣ إرسال رسالة
-export const sendMessageByUser = async (req: Request, res: Response) => {
-  const { userId, adminId, text } = req.body;
-
-  let conversation = await ConversationModel.findOne({ user: userId, admin: adminId });
-  if (!conversation) {
-    conversation = await ConversationModel.create({ user: userId, admin: adminId });
+  if (!room.members.includes(userObjectId)) {
+    room.members.push(userObjectId);
+    await room.save();
   }
 
-  const message = await MessageModel.create({
-    conversation: conversation._id,
-    from: userId,
-    fromModel: "User",
-    to: adminId,
-    toModel: "Admin",
-    text,
-  });
-
-  conversation.lastMessageAt = new Date();
-  if (!conversation.unread) conversation.unread = { user: 0, admin: 0 };
-  conversation.unread.admin += 1;
-  await conversation.save();
-
-  // 🔥 real-time للـ admin
-  const io = getIO();
-  io.to(adminId.toString()).emit("receiveMessage", { conversation, message });
-
-  SuccessResponse(res, { conversation, message });
+  SuccessResponse(res, { message: "Joined room successfully" });
 };
+// Get room messages
+export const getRoomMessages = async (req: Request, res: Response) => {
+    if (!req.user || !req.user.id) throw new UnauthorizedError("Unauthorized");
+    const { roomId } = req.params;
+    const { page = 1, limit = 50 } = req.query;
 
-// 4️⃣ تعليم رسالة واحدة كمقروءة
-export const markUserMessageAsRead = async (req: Request, res: Response) => {
-  if (!req.user) throw new UnauthorizedError("Only user can mark messages as read");
+    const messages = await MessageModel.find({ room: roomId })
+      .sort({ timestamp: -1 })
+      .limit(Number(limit))
+      .skip((Number(page) - 1) * Number(limit))
+      .populate("sender", "username avatar");
 
-  const { messageId } = req.params;
-  if (!messageId) throw new BadRequest("messageId is required");
-
-  const message = await MessageModel.findById(messageId);
-  if (!message) throw new NotFound("Message not found");
-
-  message.seenAt = new Date();
-  await message.save();
-
-  // 🔥 real-time للطرف الآخر (الـ Admin)
-  const io = getIO();
-  io.to(message.from.toString()).emit("messageSeen", { messageId });
-
-  SuccessResponse(res, { message });
-};
-
-// 5️⃣ تعليم كل الرسائل في محادثة كمقروءة
-export const markUserConversationAsRead = async (req: Request, res: Response) => {
-  if (!req.user) throw new UnauthorizedError("Only user can mark messages as read");
-
-  const { conversationId } = req.params;
-  if (!conversationId) throw new BadRequest("conversationId is required");
-
-  const conversation = await ConversationModel.findById(conversationId);
-  if (!conversation) throw new NotFound("Conversation not found");
-
-  if (!conversation.unread) conversation.unread = { user: 0, admin: 0 };
-  conversation.unread.user = 0;
-  await conversation.save();
-
-  // 🔥 real-time للـ Admin إن المحادثة اتقريت
-  const io = getIO();
-  io.to(conversation.admin.toString()).emit("conversationRead", { conversationId });
-
-  SuccessResponse(res, { conversation });
-};
-
-// 6️⃣ حذف رسالة واحدة
-export const deleteUserMessage = async (req: Request, res: Response) => {
-  if (!req.user) throw new UnauthorizedError("Only user can delete messages");
-
-  const { messageId } = req.params;
-  if (!messageId) throw new BadRequest("messageId is required");
-
-  const message = await MessageModel.findByIdAndDelete(messageId);
-  if (!message) throw new NotFound("Message not found");
-
-  // 🔥 real-time للطرف الآخر
-  const io = getIO();
-  io.to(message.to.toString()).emit("messageDeleted", { messageId });
-
-  SuccessResponse(res, { message });
-};
-
-// 7️⃣ حذف محادثة كاملة
-export const deleteUserConversation = async (req: Request, res: Response) => {
-  if (!req.user) throw new UnauthorizedError("Only user can delete conversations");
-
-  const { conversationId } = req.params;
-  if (!conversationId) throw new BadRequest("conversationId is required");
-
-  const conversation = await ConversationModel.findByIdAndDelete(conversationId);
-  if (!conversation) throw new NotFound("Conversation not found");
-
-  await MessageModel.deleteMany({ conversation: conversationId });
-
-  // 🔥 real-time للـ Admin
-  const io = getIO();
-  io.to(conversation.admin.toString()).emit("conversationDeleted", { conversationId });
-
-  SuccessResponse(res, { message: "Conversation and its messages deleted" });
-};
-
-// 8️⃣ عدد الرسائل الغير مقروءة لليوزر
-export const getUserUnreadCount = async (req: Request, res: Response) => {
-if (!req.user || !req.user.id) {
-  throw new UnauthorizedError("Only user can get unread count");
-}
- const userId = req.user.id;
-  const conversations = await ConversationModel.find({ user: userId });
-  const totalUnread = conversations.reduce((sum, conv) => {
-    return sum + (conv.unread?.user || 0);
-  }, 0);
-  const io = getIO();
-  io.to(userId.toString()).emit("unreadCount", { unread: totalUnread });
-
-  SuccessResponse(res, { unread: totalUnread });
-};
+    SuccessResponse(res,{ messages: messages.reverse() });
+  } ;

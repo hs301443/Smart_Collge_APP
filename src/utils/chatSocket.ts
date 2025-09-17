@@ -1,85 +1,117 @@
-import { Server } from "socket.io";
+import { Server, Socket } from "socket.io";
+import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
+import { UserModel } from "../models/shema/auth/User";
+import { AdminModel } from "../models/shema/auth/Admin";
 import { MessageModel } from "../models/shema/Message";
-import { ConversationModel } from "../models/shema/Conversation";
+import { RoomModel } from "../models/shema/Room";
 
-interface UserSocket {
-  userId: string;
-  socketId: string;
-  role: "Admin" | "User";
+interface AuthSocket extends Socket {
+  userId?: string;
+  username?: string;
+  role?: "User" | "Admin";
 }
 
-let io: Server;
-const connectedUsers: UserSocket[] = [];
+export const setupChatSockets = (io: Server) => {
+  io.use(async (socket: AuthSocket, next) => {
+    try {
+      const token = socket.handshake.auth.token;
+      if (!token) return next(new Error("Authentication error"));
 
-export const setupSocket = (serverIo: Server) => {
-  io = serverIo;
+      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
 
-  io.on("connection", (socket) => {
-    console.log(`✅ User connected: ${socket.id}`);
+      let user: any = null;
+      if (decoded.role === "Admin") {
+        user = await AdminModel.findById(decoded.id);
+      } else {
+        user = await UserModel.findById(decoded.id);
+      }
 
-    // تسجيل يوزر
-    socket.on("register", (data: { userId: string; role: "Admin" | "User" }) => {
-      console.log("➡️ Register event received:", data);
+      if (!user) return next(new Error("Authentication error"));
 
-      connectedUsers.push({ ...data, socketId: socket.id });
-      socket.join(data.userId);
-      console.log(`✅ Registered user ${data.userId} as ${data.role}`);
-    });
+      socket.userId = user._id.toString();
+      socket.username = user.name;
+      socket.role = decoded.role;
 
-    // إرسال رسالة
-    socket.on("sendMessage", async (data: { 
-      from: string; 
-      fromModel: "Admin" | "User"; 
-      to: string; 
-      toModel: "Admin" | "User"; 
-      text: string 
-    }) => {
-      console.log("➡️ sendMessage event received:", data);
+      user.isOnline = true;
+      user.lastSeen = new Date();
+      await user.save();
 
-      try {
-        const conversation = await ConversationModel.findOneAndUpdate(
-          {
-            user: data.fromModel === "User" ? data.from : data.to,
-            admin: data.fromModel === "Admin" ? data.from : data.to,
-          },
-          { 
-            lastMessageAt: new Date(), 
-            $inc: { [`unread.${data.toModel.toLowerCase()}`]: 1 } 
-          },
-          { upsert: true, new: true }
-        );
+      next();
+    } catch (err) {
+      next(new Error("Authentication error"));
+    }
+  });
 
-        const newMessage = new MessageModel({
-          conversation: conversation._id,
-          from: data.from,
-          fromModel: data.fromModel,
-          to: data.to,
-          toModel: data.toModel,
-          text: data.text,
-        });
+  io.on("connection", (socket: AuthSocket) => {
+    console.log(`✅ ${socket.role} connected: ${socket.username}`);
 
-        await newMessage.save();
-        console.log("✅ Message saved:", newMessage);
+    socket.on("join-room", async (roomId: string) => {
+      const room = await RoomModel.findById(roomId);
+      if (!room) return socket.emit("error", { message: "Room not found" });
 
-        io.to(data.to).emit("receiveMessage", newMessage);
-        console.log(`📤 Message sent to user ${data.to}`);
-      } catch (err) {
-        console.error("❌ Error in sendMessage:", err);
-        socket.emit("errorMessage", { error: "Failed to send message" });
+      const userObjectId = new mongoose.Types.ObjectId(socket.userId);
+
+      if (socket.role === "Admin" || room.members.some(memberId => memberId.equals(userObjectId))) {
+        socket.join(roomId);
+        socket.emit("joined-room", { roomId });
+      } else {
+        socket.emit("error", { message: "Unauthorized" });
       }
     });
 
-    // فصل يوزر
-    socket.on("disconnect", () => {
-      const index = connectedUsers.findIndex((u) => u.socketId === socket.id);
-      if (index !== -1) connectedUsers.splice(index, 1);
+    socket.on("send-message", async (data: { roomId: string; content: string }) => {
+      const { roomId, content } = data;
+      const room = await RoomModel.findById(roomId);
+      if (!room) return socket.emit("error", { message: "Room not found" });
 
-      console.log(`❌ User disconnected: ${socket.id}`);
+      const userObjectId = new mongoose.Types.ObjectId(socket.userId);
+
+      if (!(socket.role === "Admin" || room.members.some(memberId => memberId.equals(userObjectId)))) {
+        return socket.emit("error", { message: "Unauthorized" });
+      }
+
+      const message = await MessageModel.create({
+        sender: socket.userId,
+        room: roomId,
+        content,
+        timestamp: new Date(),
+      });
+
+      io.to(roomId).emit("new-message", {
+        id: message._id,
+        sender: socket.username,
+        role: socket.role,
+        roomId,
+        content,
+        timestamp: message.timestamp,
+      });
+    });
+
+    socket.on("typing-start", (roomId: string) => {
+      socket.to(roomId).emit("user-typing", { userId: socket.userId, username: socket.username, role: socket.role });
+    });
+
+    socket.on("typing-stop", (roomId: string) => {
+      socket.to(roomId).emit("user-stopped-typing", { userId: socket.userId, username: socket.username, role: socket.role });
+    });
+
+    socket.on("disconnect", async () => {
+      console.log(`❌ ${socket.role} disconnected: ${socket.username}`);
+      let user: any = null;
+      if (socket.role === "Admin") {
+        user = await AdminModel.findById(socket.userId);
+      } else {
+        user = await UserModel.findById(socket.userId);
+      }
+
+      if (user) {
+        user.isOnline = false;
+        user.lastSeen = new Date();
+        await user.save();
+      }
+
+      socket.broadcast.emit("user-offline", { userId: socket.userId, role: socket.role });
     });
   });
-};
-
-export const getIO = () => {
-  if (!io) throw new Error("Socket.io not initialized!");
-  return io;
 };

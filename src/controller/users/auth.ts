@@ -37,7 +37,7 @@ export const signup = async (req: Request, res: Response) => {
     isVerified: false,
     level,
     department,
-    isNew: true
+    isNew: false
   
   };
 
@@ -334,7 +334,6 @@ export const completeProfileStudent = async (req: Request, res: Response) => {
   const user = await UserModel.findById(req.user.id);
   if (!user) throw new NotFound("User not found");
 
-  // ✅ تأكد إن اليوزر طالب
   if (user.role !== "Student") {
     throw new BadRequest("Only students can complete student profile");
   }

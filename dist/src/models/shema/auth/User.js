@@ -18,6 +18,8 @@ const UserSchema = new mongoose_1.Schema({
     level: { type: Number, enum: [1, 2, 3, 4, 5], required: true },
     department: { type: String, enum: ["IT", "CS", "IS", "AI"], required: true },
     isNew: { type: Boolean, default: true },
+    isOnline: { type: Boolean, default: false },
+    lastSeen: { type: Date, default: Date.now },
 }, { timestamps: true, });
 exports.UserModel = mongoose_2.default.model('User', UserSchema);
 const GraduatedSchema = new mongoose_1.Schema({

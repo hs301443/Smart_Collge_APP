@@ -20,6 +20,6 @@ route.post("/reset-password", validate(resetPasswordSchema), resetPassword);
 route.post("/fcm-token",authenticated ,catchAsync(getFcmToken));
 route.post("/complete" ,catchAsync(completeProfile))
 route.patch("/update-image",authenticated ,catchAsync(updateProfileImage))
-route.post("/complete-student" ,catchAsync(completeProfileStudent))
+route.post("/complete-student",authenticated,catchAsync(completeProfileStudent))
 
 export default route;

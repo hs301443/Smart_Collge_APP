@@ -1,44 +1,14 @@
-// chat.ts
-import { Router } from "express";
-import { 
-  getConversation,
-  deleteMessage,
-  getAdminConversations,
-  getMessages,
-  markAsRead,
-  markMessageAsRead,
-  sendMessageByAdmin,
-  deleteConversation,
-  getUnreadCount
-} from "../../controller/admin/chat";
-import { auth } from "../../middlewares/authorized";
+import express from "express";
+
+import { createRoomByAdmin, getAllRooms, deleteRoom } from "../../controller/admin/chat";
 import { catchAsync } from "../../utils/catchAsync";
 
-const router = Router();
+const router = express.Router();
 
-// المحادثات
-router.get("/conversations", auth, catchAsync(getAdminConversations));
-router.get("/conversations/:conversationId", auth, catchAsync(getConversation)); // ✅
 
-// الرسائل
-router.get("/messages/:conversationId", auth, catchAsync(getMessages));
-
-// إرسال رسالة
-router.post("/messages/send", auth, catchAsync(sendMessageByAdmin));
-
-// تعليم رسالة واحدة كمقروءة
-router.post("/messages/read/message/:messageId", auth, catchAsync(markMessageAsRead));
-
-// تعليم كل الرسائل كمقروءة
-router.post("/messages/read/:conversationId", auth, catchAsync(markAsRead));
-
-// حذف رسالة واحدة
-router.delete("/messages/:messageId", auth, catchAsync(deleteMessage));
-
-// حذف محادثة كاملة
-router.delete("/conversations/:conversationId", auth, catchAsync(deleteConversation));
-
-// ✅ عدد الرسائل الغير مقروءة
-router.get("/unread/count", auth, catchAsync(getUnreadCount));
+// Admin-only routes
+router.post("/", catchAsync(createRoomByAdmin));
+router.get("/", catchAsync(getAllRooms));
+router.delete("/:roomId",catchAsync(deleteRoom));
 
 export default router;

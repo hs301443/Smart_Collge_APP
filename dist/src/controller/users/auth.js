@@ -32,7 +32,7 @@ const signup = async (req, res) => {
         isVerified: false,
         level,
         department,
-        isNew: true
+        isNew: false
     };
     // إنشاء الـ User أولًا
     const newUser = new User_1.UserModel(userData);
@@ -268,7 +268,6 @@ const completeProfileStudent = async (req, res) => {
     const user = await User_1.UserModel.findById(req.user.id);
     if (!user)
         throw new Errors_1.NotFound("User not found");
-    // ✅ تأكد إن اليوزر طالب
     if (user.role !== "Student") {
         throw new BadRequest_1.BadRequest("Only students can complete student profile");
     }

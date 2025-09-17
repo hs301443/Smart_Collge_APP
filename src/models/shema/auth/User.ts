@@ -14,6 +14,9 @@ import mongoose from "mongoose";
     level:{type:Number, enum:[1,2,3,4,5],required: true},
     department: { type: String,enum:["IT","CS","IS","AI"],required: true},
    isNew:{type: Boolean, default: true},  
+   isOnline: { type: Boolean, default: false },
+   lastSeen: { type: Date, default: Date.now },
+   
 
   },
   { timestamps: true, }

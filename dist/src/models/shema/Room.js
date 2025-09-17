@@ -33,48 +33,47 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.MessageModel = void 0;
+exports.RoomModel = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
-const MessageSchema = new mongoose_1.Schema({
-    room: {
-        type: mongoose_1.Schema.Types.ObjectId,
-        ref: "Conversation", // أو Room حسب اللي عندك
-        required: true,
-    },
-    sender: {
-        id: {
-            type: mongoose_1.Schema.Types.ObjectId,
-            required: true,
-        },
-        role: {
-            type: String,
-            enum: ["Admin", "User"],
-            required: true,
-        },
-    },
-    content: {
+const roomSchema = new mongoose_1.Schema({
+    name: {
         type: String,
         required: true,
-        maxlength: 1000,
+        unique: true,
+        trim: true,
+        maxlength: 50,
     },
-    messageType: {
+    description: {
         type: String,
-        enum: ["text", "image", "file"],
-        default: "text",
+        maxlength: 200,
     },
-    timestamp: {
-        type: Date,
-        default: Date.now,
-    },
-    edited: {
+    isPrivate: {
         type: Boolean,
         default: false,
     },
-    editedAt: {
-        type: Date,
+    // أعضاء الغرفة (Users فقط)
+    members: [
+        {
+            type: mongoose_1.Schema.Types.ObjectId,
+            ref: "User",
+        },
+    ],
+    // Admins منفصلين
+    admins: [
+        {
+            type: mongoose_1.Schema.Types.ObjectId,
+            ref: "Admin",
+        },
+    ],
+    // اللي أنشأ الغرفة (ممكن يكون Admin أو User)
+    createdBy: {
+        id: { type: mongoose_1.Schema.Types.ObjectId, required: true },
+        role: { type: String, enum: ["User", "Admin"], required: true },
     },
-}, { timestamps: true });
-// ✅ Indexes for performance
-MessageSchema.index({ room: 1, timestamp: -1 });
-MessageSchema.index({ "sender.id": 1 });
-exports.MessageModel = mongoose_1.default.model("Message", MessageSchema);
+}, {
+    timestamps: true,
+});
+// ✅ Indexes
+roomSchema.index({ name: 1 });
+roomSchema.index({ isPrivate: 1 });
+exports.RoomModel = mongoose_1.default.model("Room", roomSchema);

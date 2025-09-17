@@ -14,7 +14,7 @@ const cors_1 = __importDefault(require("cors"));
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const helmet_1 = __importDefault(require("helmet"));
 const connection_1 = require("./models/connection");
-const chatSocket_1 = require("./utils/chatSocket"); // socket utils
+const chatSocket_1 = require("./utils/chatSocket");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 (0, connection_1.connectDB)();
@@ -42,14 +42,12 @@ const PORT = process.env.PORT || 3000;
 const server = http_1.default.createServer(app);
 // ✅ Socket.IO مع CORS + Polling فقط
 const io = new socket_io_1.Server(server, {
-    cors: { origin: "*" },
-    transports: ["polling", "websocket"],
-    pingInterval: 10000,
-    pingTimeout: 20000,
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
 });
-// اربط Socket.IO
-(0, chatSocket_1.setupSocket)(io);
-// Start server
+(0, chatSocket_1.setupChatSockets)(io);
 server.listen(PORT, () => {
     console.log(`🚀 Server is running on http://localhost:${PORT}`);
 });
