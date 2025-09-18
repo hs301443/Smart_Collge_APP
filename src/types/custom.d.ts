@@ -1,20 +1,19 @@
 import { Request } from "express";
-import { Types } from "mongoose";
+import mongoose,{Types} from "mongoose";
+
 export interface AppUser {
- _id?: Types.ObjectId; // خليها اختيارية
+  _id?: mongoose.Types.ObjectId; // خليها اختيارية
   id?: string;
   email?: string;
   name?: string;
   role?: string;   
   level?: number;
   department?: string;           // admin / superAdmin / ...
-  isSuperAdmin?: boolean;     // لو true يبقى معاه كل حاجة
+  isSuperAdmin?: boolean;        // لو true يبقى معاه كل حاجة
   customPermissions?: string[];
   rolePermissions?: string[];
-  isOnline?: boolean;  // ✅ ضيف الحقل هنا
+  isOnline?: boolean;            // ✅ ضيف الحقل هنا
   lastSeen?: Date;
-
-  
 }
 
 // Extend Express Request with your custom user type
@@ -31,7 +30,7 @@ declare global {
 }
 
 export interface AppAdmin {
-  _id?: Types.ObjectId;
+  _id?: mongoose.Types.ObjectId;
   id?: string;
   name?: string;
   email?: string;

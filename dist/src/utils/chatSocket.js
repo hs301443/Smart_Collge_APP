@@ -5,12 +5,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.setupChatSockets = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const mongoose_1 = __importDefault(require("mongoose"));
 const User_1 = require("../models/shema/auth/User");
 const Admin_1 = require("../models/shema/auth/Admin");
 const Room_1 = require("../models/shema/Room");
 const Message_1 = require("../models/shema/Message");
 const setupChatSockets = (io) => {
-    // Middleware للتحقق من التوكن
     io.use(async (socket, next) => {
         try {
             const token = socket.handshake.auth.token;
@@ -38,9 +38,6 @@ const setupChatSockets = (io) => {
     });
     io.on("connection", (socket) => {
         console.log(`✅ ${socket.role} connected: ${socket.username}`);
-        // ==========================
-        // Join Room
-        // ==========================
         socket.on("join-room", async (roomId) => {
             const room = await Room_1.RoomModel.findById(roomId);
             if (!room)
@@ -49,18 +46,13 @@ const setupChatSockets = (io) => {
             if (!isParticipant)
                 return socket.emit("error", { message: "Unauthorized" });
             socket.join(roomId);
-            // إرسال كل الرسائل الموجودة في الغرفة
             const messages = await Message_1.MessageModel.find({ room: roomId, isDeleted: { $ne: true } });
             socket.emit("room-messages", messages);
             socket.emit("joined-room", { roomId });
         });
-        // ==========================
-        // Send Message
-        // ==========================
         socket.on("send-message", async (data) => {
             const { roomId, content, attachment } = data;
             let room = null;
-            // تحقق إذا الرسالة روم موجود
             if (roomId) {
                 room = await Room_1.RoomModel.findById(roomId);
                 if (!room)
@@ -68,17 +60,17 @@ const setupChatSockets = (io) => {
             }
             const message = await Message_1.MessageModel.create({
                 room: room?._id || null,
-                sender: { user: socket.userId, role: socket.role },
+                sender: { user: new mongoose_1.default.mongo.ObjectId(socket.userId), role: socket.role },
                 content: content || null,
                 attachment: attachment || null,
-                deliveredTo: room ? room.participants.map((p) => p.user.toString()) : [data.roomId],
+                deliveredTo: room
+                    ? room.participants.map((p) => p.user.toString())
+                    : [data.roomId],
             });
-            // إرسال الرسالة للجميع في الروم
             if (room)
                 io.to(room._id.toString()).emit("new-message", message);
             else
                 io.to(data.roomId).emit("new-message", message);
-            // إشعار لكل الأعضاء
             message.deliveredTo
                 .filter((uid) => uid !== socket.userId)
                 .forEach((uid) => {
@@ -89,22 +81,16 @@ const setupChatSockets = (io) => {
                 });
             });
         });
-        // ==========================
-        // Seen Message
-        // ==========================
         socket.on("seen-message", async ({ roomId, messageId }) => {
             const message = await Message_1.MessageModel.findById(messageId);
             if (!message || !socket.userId)
                 return;
             if (!message.seenBy.some((u) => u.toString() === socket.userId)) {
-                message.seenBy.push(socket.userId);
+                message.seenBy.push(new mongoose_1.default.mongo.ObjectId(socket.userId));
                 await message.save();
                 io.to(roomId).emit("message-seen", { messageId, userId: socket.userId });
             }
         });
-        // ==========================
-        // Typing
-        // ==========================
         socket.on("typing-start", (roomId) => {
             socket.to(roomId).emit("user-typing", {
                 userId: socket.userId,
@@ -119,22 +105,19 @@ const setupChatSockets = (io) => {
                 role: socket.role,
             });
         });
-        // ==========================
-        // Admin Actions
-        // ==========================
         socket.on("create-group", async (data) => {
             if (socket.role !== "Admin")
                 return;
-            const participants = data.memberIds.map((id) => ({ user: id, role: "User" }));
-            participants.push({ user: socket.userId, role: "Admin" });
+            const participants = data.memberIds.map((id) => ({ user: new mongoose_1.default.mongo.ObjectId(id), role: "User" }));
+            participants.push({ user: new mongoose_1.default.mongo.ObjectId(socket.userId), role: "Admin" });
             const group = await Room_1.RoomModel.create({
                 type: "group",
                 name: data.name,
                 participants,
-                createdBy: { user: socket.userId, role: "Admin" },
+                createdBy: { user: new mongoose_1.default.mongo.ObjectId(socket.userId), role: "Admin" },
             });
             socket.join(group._id.toString());
-            participants.forEach((p) => io.to(p.user).emit("new-group-notification", { roomId: group._id, name: group.name }));
+            participants.forEach((p) => io.to(p.user.toString()).emit("new-group-notification", { roomId: group._id, name: group.name }));
             io.to(group._id.toString()).emit("group-updated", group);
         });
         socket.on("add-to-group", async (data) => {
@@ -144,7 +127,7 @@ const setupChatSockets = (io) => {
             if (!room)
                 return socket.emit("error", { message: "Room not found" });
             if (!room.participants.some((p) => p.user.toString() === data.userId)) {
-                room.participants.push({ user: data.userId, role: data.role });
+                room.participants.push({ user: new mongoose_1.default.mongo.ObjectId(data.userId), role: data.role });
                 await room.save();
             }
             io.to(room._id.toString()).emit("group-updated", room);
@@ -161,9 +144,6 @@ const setupChatSockets = (io) => {
             io.to(room._id.toString()).emit("group-updated", room);
             io.to(data.userId).emit("removed-from-group", { roomId: room._id });
         });
-        // ==========================
-        // Disconnect
-        // ==========================
         socket.on("disconnect", async () => {
             if (!socket.userId)
                 return;
