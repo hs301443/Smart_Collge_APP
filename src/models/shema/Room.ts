@@ -2,43 +2,34 @@ import mongoose, { Schema } from "mongoose";
 
 const roomSchema = new Schema(
   {
+    // نوع الغرفة: شات خاص (واحد لواحد) أو جروب
+    type: {
+      type: String,
+      enum: ["direct", "group"],
+      default: "direct",
+    },
+
     name: {
       type: String,
-      required: true,
-      unique: true,
       trim: true,
       maxlength: 50,
     },
-    description: {
-      type: String,
-      maxlength: 200,
-    },
-    isPrivate: {
-      type: Boolean,
-      default: false,
-    },
 
-    // أعضاء الغرفة (Users فقط)
-    members: [
+    // المشاركين (User أو Admin)
+    participants: [
       {
-        type: Schema.Types.ObjectId,
-        ref: "User",
+        user: { type: Schema.Types.ObjectId, required: true },
+        role: { type: String, enum: ["User", "Admin"], required: true },
       },
     ],
 
-    // Admins منفصلين
-    admins: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: "Admin",
-      },
-    ],
-
-    // اللي أنشأ الغرفة (ممكن يكون Admin أو User)
+    // اللي أنشأ الغرفة
     createdBy: {
-      id: { type: Schema.Types.ObjectId, required: true },
-      role: { type: String, enum: ["Admin", "User"], required: true }
+      user: { type: Schema.Types.ObjectId, required: true },
+      role: { type: String, enum: ["User", "Admin"], required: true },
     },
+         isDeleted: { type: Boolean, default: false },
+
   },
   {
     timestamps: true,
@@ -46,7 +37,7 @@ const roomSchema = new Schema(
 );
 
 // ✅ Indexes
-roomSchema.index({ name: 1 });
-roomSchema.index({ isPrivate: 1 });
+roomSchema.index({ type: 1 });
+roomSchema.index({ "participants.user": 1 });
 
 export const RoomModel = mongoose.model("Room", roomSchema);

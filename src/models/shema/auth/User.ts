@@ -1,4 +1,4 @@
-import { model, Schema, Types } from "mongoose";
+import { model, Schema } from "mongoose";
 import mongoose from "mongoose";
  const UserSchema = new Schema(
   {
@@ -29,7 +29,7 @@ export const UserModel = mongoose.model('User', UserSchema);
 
 const GraduatedSchema = new Schema(
   {
-    user: { type: Types.ObjectId, ref: "User", required: true, unique: true },
+  user: { type: Schema.Types.ObjectId, ref: "User", required: true, unique: true },
     cv: { type: String },
     employment_status: { type: String, enum:["Employed", "Job Seeker", "Freelancer","Postgraduate Studies"] },
     job_title: { type: String },

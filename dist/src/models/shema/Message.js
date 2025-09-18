@@ -36,11 +36,19 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MessageModel = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 const MessageSchema = new mongoose_1.Schema({
-    senderUser: { type: mongoose_1.Types.ObjectId, ref: "User" },
-    senderAdmin: { type: mongoose_1.Types.ObjectId, ref: "Admin" },
-    receiverUser: { type: mongoose_1.Types.ObjectId, ref: "User" },
-    receiverAdmin: { type: mongoose_1.Types.ObjectId, ref: "Admin" },
-    content: { type: String, required: true },
+    room: { type: mongoose_1.Schema.Types.ObjectId, ref: "Room", required: true },
+    sender: {
+        user: { type: mongoose_1.Schema.Types.ObjectId, required: true },
+        role: { type: String, enum: ["User", "Admin"], required: true },
+    },
+    content: { type: String, trim: true },
+    attachment: {
+        type: { type: String, enum: ["image", "file", "audio"], default: null },
+        url: { type: String, default: null },
+    },
+    deliveredTo: [{ type: mongoose_1.Schema.Types.ObjectId, ref: "User" }],
+    seenBy: [{ type: mongoose_1.Schema.Types.ObjectId, ref: "User" }],
     timestamp: { type: Date, default: Date.now },
+    isDeleted: { type: Boolean, default: false }, // ✅ إضافة هنا
 }, { timestamps: true });
 exports.MessageModel = mongoose_1.default.model("Message", MessageSchema);

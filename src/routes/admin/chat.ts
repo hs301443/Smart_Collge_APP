@@ -1,20 +1,31 @@
 import { Router } from "express";
-import {
-  adminCreateRoom,
-  adminJoinRoom,
-  adminSendMessage,
-  adminDeleteMessage,
-  adminDeleteRoom,
-} from "../../controller/admin/chat";
+import { addToGroup, createGroup, deleteMessage, deleteRoomMessages, getAdminRooms, getRoomMessages, removeFromGroup
+, 
+ } from "../../controller/admin/chat";
 import { catchAsync } from "../../utils/catchAsync";
 
 const router = Router();
 
 // ✅ Admin Routes for Chat
-router.post("/rooms", catchAsync(adminCreateRoom));             // Create room
-router.post("/rooms/:roomId/join", catchAsync(adminJoinRoom));  // Join room
-router.post("/rooms/:roomId/messages", catchAsync(adminSendMessage)); // Send message
-router.delete("/messages/:messageId", catchAsync(adminDeleteMessage)); // Delete message
-router.delete("/rooms/:roomId", catchAsync(adminDeleteRoom));   // Delete room
+router.get("/rooms", catchAsync(getAdminRooms));
+
+// إنشاء جروب جديد
+router.post("/rooms/group", catchAsync(createGroup));
+
+// إضافة عضو للجروب
+router.post("/rooms/group/add", catchAsync(addToGroup));
+
+// إزالة عضو من الجروب
+router.post("/rooms/group/remove", catchAsync(removeFromGroup));
+
+// جلب كل الرسائل في روم معين
+router.get("/rooms/:roomId/messages", catchAsync(getRoomMessages));
+
+// مسح رسالة واحدة (Soft Delete)
+router.delete("/messages/:messageId", catchAsync(deleteMessage));
+
+
+// مسح كل الرسائل في روم (Soft Delete)
+router.delete("/rooms/:roomId/messages", catchAsync(deleteRoomMessages));   // Delete room
 
 export default router;

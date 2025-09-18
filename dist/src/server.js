@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.io = void 0;
 const express_1 = __importDefault(require("express"));
 const http_1 = __importDefault(require("http"));
 const socket_io_1 = require("socket.io");
@@ -25,12 +26,21 @@ app.use((0, cookie_parser_1.default)());
 app.use(express_1.default.json({ limit: "20mb" }));
 app.use(express_1.default.urlencoded({ extended: true, limit: "20mb" }));
 app.use("/uploads", express_1.default.static("uploads"));
+const server = http_1.default.createServer(app);
+// ✅ Socket.IO مع CORS + Polling فقط
+exports.io = new socket_io_1.Server(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
 // Route للتجربة
 app.get("/", (req, res) => {
     res.send("✅ API & Socket.IO Server is running on Railway...");
 });
 // Routes
 app.use("/api", routes_1.default);
+(0, chatSocket_1.setupChatSockets)(exports.io);
 // Not found handler
 app.use((req, res, next) => {
     throw new Errors_1.NotFound("Route not found");
@@ -39,15 +49,6 @@ app.use(errorHandler_1.errorHandler);
 // Port
 const PORT = process.env.PORT || 3000;
 // Create server
-const server = http_1.default.createServer(app);
-// ✅ Socket.IO مع CORS + Polling فقط
-const io = new socket_io_1.Server(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-    }
-});
-(0, chatSocket_1.setupChatSockets)(io);
 server.listen(PORT, () => {
     console.log(`🚀 Server is running on http://localhost:${PORT}`);
 });

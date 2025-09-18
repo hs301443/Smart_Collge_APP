@@ -1,115 +1,193 @@
 import { Request, Response } from "express";
-import mongoose from "mongoose";
+import { io } from "../../server"; // استيراد الـ io
+import { BadRequest } from "../../Errors/BadRequest";
+import { NotFound, UnauthorizedError } from "../../Errors";
+import { SuccessResponse } from "../../utils/response";
 import { RoomModel } from "../../models/shema/Room";
 import { MessageModel } from "../../models/shema/Message";
-import { NotFound, UnauthorizedError } from "../../Errors";
-import { BadRequest } from "../../Errors/BadRequest";
-import { SuccessResponse } from "../../utils/response";
 
-// ✅ Admin Create Room
-export const adminCreateRoom = async (req: Request, res: Response) => {
-  if (!req.admin || !req.admin.isSuperAdmin) throw new UnauthorizedError("super admin only");
+// نوع للمشارك لتجنب 'any'
+interface Participant {
+  user: string;
+  role: "User" | "Admin";
+}
 
-  const { name, description, isPrivate } = req.body;
+// =========================
+// Get All Rooms for Admin
+// =========================
+export const getAdminRooms = async (req: Request, res: Response) => {
+  if (!req.admin) throw new UnauthorizedError("Admin not found");
 
-  if (!name) throw new BadRequest("Room name is required");
-
-  const room = await RoomModel.create({
-    name,
-    description,
-    isPrivate,
-    createdBy: {
-      id: req.admin._id,
-      role: "Admin",
-    },
-    admins: [req.admin._id],
-  });
-
-  SuccessResponse(res, { message: "Room created successfully", room });
+  const rooms = await RoomModel.find({ "participants.user": req.admin._id });
+  SuccessResponse(res, { rooms });
 };
 
-// ✅ Admin Join Room (force join if needed)
-export const adminJoinRoom = async (req: Request, res: Response) => {
-  if (!req.admin || !req.admin.isSuperAdmin) {
-    throw new UnauthorizedError("super admin only");
-  }
+// =========================
+// Create Group
+// =========================
+export const createGroup = async (req: Request, res: Response) => {
+  if (!req.admin) throw new UnauthorizedError("Admin not found");
 
-  if (!req.admin._id) {
-    throw new UnauthorizedError("Invalid admin ID");
-  }
+  const { name, memberIds } = req.body;
+  if (!name || !memberIds) throw new BadRequest("Missing required fields");
 
-  const { roomId } = req.params;
-  if (!mongoose.Types.ObjectId.isValid(roomId)) {
-    throw new BadRequest("Invalid room ID");
-  }
+  const participants: Participant[] = memberIds.map((id: string) => ({ user: id, role: "User" }));
+  participants.push({ user: req.admin._id.toString(), role: "Admin" });
+
+  const group = await RoomModel.create({
+    type: "group",
+    name,
+    participants,
+    createdBy: { user: req.admin._id, role: "Admin" },
+  });
+
+  // إخطار كل أعضاء المجموعة في الوقت الحقيقي
+  participants.forEach(p => {
+    io.to(p.user).emit("new-group-notification", { roomId: group._id, name: group.name });
+  });
+
+  io.to(group._id.toString()).emit("group-updated", group);
+
+  SuccessResponse(res, { group });
+};
+
+// =========================
+// Add Member to Group
+// =========================
+export const addToGroup = async (req: Request, res: Response) => {
+  if (!req.admin) throw new UnauthorizedError("Admin not found");
+
+  const { roomId, userId, role } = req.body;
+  if (!roomId || !userId || !role) throw new BadRequest("Missing required fields");
 
   const room = await RoomModel.findById(roomId);
   if (!room) throw new NotFound("Room not found");
 
-  const adminId = req.admin._id as mongoose.Types.ObjectId;
-
-  if (room.admins.includes(adminId)) {
-    throw new BadRequest("Already an admin in this room");
+  if (room.participants.some((p: Participant) => p.user === userId)) {
+    throw new BadRequest("User already in group");
   }
 
-  room.admins.push(adminId);
+  room.participants.push({ user: userId, role });
   await room.save();
 
-  return SuccessResponse(res, { message: "Joined room successfully", room });
+  io.to(room._id.toString()).emit("group-updated", room);
+  io.to(userId).emit("added-to-group", { roomId: room._id, name: room.name });
+
+  SuccessResponse(res, { message: "User added to group", room });
 };
 
+// =========================
+// Remove Member from Group
+// =========================
+export const removeFromGroup = async (req: Request, res: Response) => {
+  if (!req.admin) throw new UnauthorizedError("Admin not found");
 
-// ✅ Admin Send Message
-export const adminSendMessage = async (req: Request, res: Response) => {
-  if (!req.admin || !req.admin.isSuperAdmin) throw new UnauthorizedError("super admin only");
-
-  const { roomId } = req.params;
-  const { text } = req.body;
-
-  if (!mongoose.Types.ObjectId.isValid(roomId)) {
-    throw new BadRequest("Invalid room ID");
-  }
+  const { roomId, userId } = req.body;
+  if (!roomId || !userId) throw new BadRequest("Missing required fields");
 
   const room = await RoomModel.findById(roomId);
   if (!room) throw new NotFound("Room not found");
 
-  const messages = await MessageModel.create({
-    room: roomId,
-    sender: req.admin._id,
-    text,
-  });
+  room.participants = room.participants.filter((p: Participant) => p.user !== userId);
+  await room.save();
 
-  return SuccessResponse(res, { message: "Message sent successfully", messages });
+  io.to(room._id.toString()).emit("group-updated", room);
+  io.to(userId).emit("removed-from-group", { roomId: room._id });
+
+  SuccessResponse(res, { message: "User removed from group", room });
 };
 
-// ✅ Admin Delete Message
-export const adminDeleteMessage = async (req: Request, res: Response) => {
-  if (!req.admin || !req.admin.isSuperAdmin) throw new UnauthorizedError("super admin only");
+// =========================
+// Get Messages in a Room
+// =========================
+export const getRoomMessages = async (req: Request, res: Response) => {
+  if (!req.admin) throw new UnauthorizedError("Admin not found");
+
+  const { roomId } = req.params;
+  if (!roomId) throw new BadRequest("Missing required fields");
+
+  const messages = await MessageModel.find({ room: roomId });
+  if (!messages) throw new NotFound("Messages not found");
+
+  SuccessResponse(res, { messages });
+};
+
+// =========================
+// Send Message as Admin
+// =========================
+export const sendMessageAdmin = async (req: Request, res: Response) => {
+  if (!req.admin) throw new UnauthorizedError("Admin not found");
+
+  const { roomId, content, attachment } = req.body;
+  if (!roomId) throw new BadRequest("roomId is required");
+
+  const room = await RoomModel.findById(roomId);
+  if (!room) throw new NotFound("Room not found");
+
+  const message = await MessageModel.create({
+    room: room._id,
+    sender: { user: req.admin._id.toString(), role: "Admin" },
+    content: content || null,
+    attachment: attachment || null,
+    deliveredTo: room.participants.map(p => p.user),
+  });
+
+  io.to(room._id.toString()).emit("new-message", {
+    id: message._id,
+    sender: req.admin.name,
+    role: "Admin",
+    content: message.content,
+    attachment: message.attachment,
+    timestamp: message.createdAt,
+  });
+
+  message.deliveredTo
+    .filter(uid => uid !== req.admin!._id.toString())
+    .forEach(uid => {
+      io.to(uid).emit("new-message-notification", {
+        roomId: room._id,
+        messageId: message._id,
+        sender: req.admin!.name,
+      });
+    });
+
+  SuccessResponse(res, { message: "Message sent successfully", messageData: message });
+};
+
+// =========================
+// Delete a Message (Soft Delete)
+// =========================
+export const deleteMessage = async (req: Request, res: Response) => {
+  if (!req.admin) throw new UnauthorizedError("Admin not found");
 
   const { messageId } = req.params;
-  if (!mongoose.Types.ObjectId.isValid(messageId)) {
-    throw new BadRequest("Invalid message ID");
-  }
+  if (!messageId) throw new BadRequest("Missing required fields");
 
   const message = await MessageModel.findById(messageId);
   if (!message) throw new NotFound("Message not found");
 
-  await message.deleteOne();
-  return SuccessResponse(res, { message: "Message deleted successfully" });
-};
+  message.isDeleted = true;
+  await message.save();
 
-// ✅ Admin Delete Room
-export const adminDeleteRoom = async (req: Request, res: Response) => {
-  if (!req.admin || !req.admin.isSuperAdmin) throw new UnauthorizedError("super admin only");
-
-  const { roomId } = req.params;
-  if (!mongoose.Types.ObjectId.isValid(roomId)) {
-    throw new BadRequest("Invalid room ID");
+  if (message.room) {
+    io.to(message.room.toString()).emit("message-deleted", { messageId });
   }
 
-  const room = await RoomModel.findById(roomId);
-  if (!room) throw new NotFound("Room not found");
+  SuccessResponse(res, { message: "Message deleted successfully" });
+};
 
-  await room.deleteOne();
-  return SuccessResponse(res, { message: "Room deleted successfully" });
+// =========================
+// Delete All Messages in a Room
+// =========================
+export const deleteRoomMessages = async (req: Request, res: Response) => {
+  if (!req.admin) throw new UnauthorizedError("Admin not found");
+
+  const { roomId } = req.params;
+  if (!roomId) throw new BadRequest("Missing required fields");
+
+  await MessageModel.updateMany({ room: roomId }, { $set: { isDeleted: true } });
+
+  io.to(roomId).emit("all-messages-deleted", { roomId });
+
+  SuccessResponse(res, { message: "All messages in room deleted" });
 };

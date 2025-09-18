@@ -36,44 +36,34 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.RoomModel = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 const roomSchema = new mongoose_1.Schema({
+    // نوع الغرفة: شات خاص (واحد لواحد) أو جروب
+    type: {
+        type: String,
+        enum: ["direct", "group"],
+        default: "direct",
+    },
     name: {
         type: String,
-        required: true,
-        unique: true,
         trim: true,
         maxlength: 50,
     },
-    description: {
-        type: String,
-        maxlength: 200,
-    },
-    isPrivate: {
-        type: Boolean,
-        default: false,
-    },
-    // أعضاء الغرفة (Users فقط)
-    members: [
+    // المشاركين (User أو Admin)
+    participants: [
         {
-            type: mongoose_1.Schema.Types.ObjectId,
-            ref: "User",
+            user: { type: mongoose_1.Schema.Types.ObjectId, required: true },
+            role: { type: String, enum: ["User", "Admin"], required: true },
         },
     ],
-    // Admins منفصلين
-    admins: [
-        {
-            type: mongoose_1.Schema.Types.ObjectId,
-            ref: "Admin",
-        },
-    ],
-    // اللي أنشأ الغرفة (ممكن يكون Admin أو User)
+    // اللي أنشأ الغرفة
     createdBy: {
-        id: { type: mongoose_1.Schema.Types.ObjectId, required: true },
-        role: { type: String, enum: ["Admin", "User"], required: true }
+        user: { type: mongoose_1.Schema.Types.ObjectId, required: true },
+        role: { type: String, enum: ["User", "Admin"], required: true },
     },
+    isDeleted: { type: Boolean, default: false },
 }, {
     timestamps: true,
 });
 // ✅ Indexes
-roomSchema.index({ name: 1 });
-roomSchema.index({ isPrivate: 1 });
+roomSchema.index({ type: 1 });
+roomSchema.index({ "participants.user": 1 });
 exports.RoomModel = mongoose_1.default.model("Room", roomSchema);

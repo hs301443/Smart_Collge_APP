@@ -14,7 +14,6 @@ const Errors_1 = require("../../Errors");
 const auth_1 = require("../../utils/auth");
 const sendEmails_1 = require("../../utils/sendEmails");
 const BadRequest_1 = require("../../Errors/BadRequest");
-const mongoose_1 = require("mongoose");
 const signup = async (req, res) => {
     const { name, email, password, role, BaseImage64, graduatedData, level, department } = req.body;
     // التحقق من وجود المستخدم مسبقًا
@@ -137,13 +136,14 @@ const login = async (req, res) => {
 };
 exports.login = login;
 const getFcmToken = async (req, res) => {
-    if (!req.user) {
-        return res.status(401).json({ message: "Unauthorized" });
+    const userId = req.user?.id;
+    if (!userId) {
+        throw new Errors_1.UnauthorizedError("User not found");
     }
-    const userId = new mongoose_1.Types.ObjectId(req.user.id);
     const user = await User_1.UserModel.findById(userId);
-    if (!user)
-        return res.status(404).json({ message: "User not found" });
+    if (!user) {
+        throw new Errors_1.NotFound("User not found");
+    }
     user.fcmtoken = req.body.token;
     await user.save();
     (0, response_1.SuccessResponse)(res, { message: "FCM token updated successfully" }, 200);

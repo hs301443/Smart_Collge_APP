@@ -1,101 +1,124 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getMessages = exports.sendMessage = exports.joinRoom = exports.createRoom = void 0;
-const mongoose_1 = __importDefault(require("mongoose"));
+exports.deleteRoom = exports.deleteMessage = exports.sendMessage = exports.getRoomMessages = exports.createRoom = exports.getUserRooms = void 0;
+const BadRequest_1 = require("../../Errors/BadRequest");
+const Errors_1 = require("../../Errors");
+const response_1 = require("../../utils/response");
 const Room_1 = require("../../models/shema/Room");
 const Message_1 = require("../../models/shema/Message");
-const Errors_1 = require("../../Errors");
-const BadRequest_1 = require("../../Errors/BadRequest");
-const response_1 = require("../../utils/response");
-// ✅ Create Room
+// socket.io instance لازم يبقى مستورد هنا
+const server_1 = require("../../server"); // افترض إنك مهيأ io في server.ts
+// ✅ جلب كل الرومات الخاصة بالـ User
+const getUserRooms = async (req, res) => {
+    if (!req.user)
+        return res.status(401).json({ message: "Unauthorized" });
+    const rooms = await Room_1.RoomModel.find({
+        "participants.user": req.user.id,
+        isDeleted: { $ne: true },
+    }).sort({ updatedAt: -1 });
+    (0, response_1.SuccessResponse)(res, { rooms });
+};
+exports.getUserRooms = getUserRooms;
+// ✅ إنشاء روم جديد مع User أو Admin
 const createRoom = async (req, res) => {
-    if (!req.user || !req.user.id)
-        throw new Errors_1.UnauthorizedError("Unauthorized");
-    const { name, description, isPrivate } = req.body;
-    if (!name)
-        throw new BadRequest_1.BadRequest("Room name is required");
-    const userId = new mongoose_1.default.Types.ObjectId(req.user.id);
+    const { participants, type, name } = req.body;
+    if (!req.user)
+        throw new Errors_1.UnauthorizedError("User not found");
+    if (!participants || participants.length === 0)
+        throw new BadRequest_1.BadRequest("Participants are required");
     const room = await Room_1.RoomModel.create({
-        name,
-        description,
-        isPrivate,
-        createdBy: {
-            id: userId,
-            role: "User",
-        },
-        members: [userId],
+        type: type || "direct",
+        name: name || null,
+        participants: [
+            { user: req.user.id, role: "User" },
+            ...participants,
+        ],
+        createdBy: { user: req.user.id, role: "User" },
+    });
+    // ريل تايم: إخطار كل المشاركين بالروم الجديد
+    room.participants.forEach((p) => {
+        server_1.io.to(p.user.toString()).emit("new-room", { room });
     });
     (0, response_1.SuccessResponse)(res, { message: "Room created successfully", room });
 };
 exports.createRoom = createRoom;
-// ✅ Join Room
-const joinRoom = async (req, res) => {
-    if (!req.user || !req.user.id)
-        throw new Errors_1.UnauthorizedError("Unauthorized");
+// ✅ جلب كل الرسائل في روم معين
+const getRoomMessages = async (req, res) => {
+    if (!req.user)
+        throw new Errors_1.UnauthorizedError("User not found");
     const { roomId } = req.params;
-    if (!mongoose_1.default.Types.ObjectId.isValid(roomId)) {
-        throw new BadRequest_1.BadRequest("Invalid room ID");
-    }
-    const room = await Room_1.RoomModel.findById(roomId);
-    if (!room)
-        throw new Errors_1.NotFound("Room not found");
-    const userId = new mongoose_1.default.Types.ObjectId(req.user.id);
-    if (room.members.some((m) => m.equals(userId))) {
-        throw new BadRequest_1.BadRequest("Already a member of this room");
-    }
-    room.members.push(userId);
-    await room.save();
-    return (0, response_1.SuccessResponse)(res, { message: "Joined room successfully", room });
+    const messages = await Message_1.MessageModel.find({
+        room: roomId,
+        isDeleted: { $ne: true },
+    }).sort({ createdAt: 1 });
+    (0, response_1.SuccessResponse)(res, { messages });
 };
-exports.joinRoom = joinRoom;
-// ✅ Send Message
+exports.getRoomMessages = getRoomMessages;
+// ✅ إرسال رسالة في روم
 const sendMessage = async (req, res) => {
-    if (!req.user || !req.user.id)
-        throw new Errors_1.UnauthorizedError("Unauthorized");
-    const { roomId } = req.params;
-    const { text } = req.body;
-    if (!mongoose_1.default.Types.ObjectId.isValid(roomId)) {
-        throw new BadRequest_1.BadRequest("Invalid room ID");
-    }
+    if (!req.user)
+        throw new Errors_1.UnauthorizedError("User not found");
+    const { roomId, content, attachment } = req.body;
     const room = await Room_1.RoomModel.findById(roomId);
     if (!room)
         throw new Errors_1.NotFound("Room not found");
-    const userId = new mongoose_1.default.Types.ObjectId(req.user.id);
-    if (!room.members.some((m) => m.equals(userId))) {
-        throw new Errors_1.UnauthorizedError("You are not a member of this room");
-    }
     const messages = await Message_1.MessageModel.create({
         room: roomId,
-        sender: userId,
-        text,
+        sender: { user: req.user.id, role: "User" },
+        content: content || null,
+        attachment: attachment || null,
+        deliveredTo: room.participants.map((p) => p.user),
     });
-    return (0, response_1.SuccessResponse)(res, { message: "Message sent successfully", messages });
+    // ريل تايم: إرسال الرسالة لكل المشاركين في الغرفة
+    server_1.io.to(roomId).emit("new-message", {
+        id: messages._id,
+        sender: req.user.name,
+        role: "User",
+        content: messages.content,
+        attachment: messages.attachment,
+        timestamp: messages.createdAt,
+    });
+    (0, response_1.SuccessResponse)(res, { message: "Message sent successfully", messages });
 };
 exports.sendMessage = sendMessage;
-// ✅ Get Room Messages
-const getMessages = async (req, res) => {
-    if (!req.user || !req.user.id)
+// ✅ حذف رسالة (soft delete)
+const deleteMessage = async (req, res) => {
+    const { messageId } = req.params;
+    if (!req.user)
+        throw new Errors_1.UnauthorizedError("User not found");
+    const message = await Message_1.MessageModel.findById(messageId);
+    if (!message)
+        throw new Errors_1.NotFound("Message not found");
+    if (!message.sender || message.sender.user.toString() !== req.user.id) {
         throw new Errors_1.UnauthorizedError("Unauthorized");
-    const userId = new mongoose_1.default.Types.ObjectId(req.user.id);
-    const { roomId } = req.params;
-    if (!mongoose_1.default.Types.ObjectId.isValid(roomId)) {
-        throw new BadRequest_1.BadRequest("Invalid room ID");
     }
+    message.isDeleted = true;
+    await message.save();
+    // إخطار المشاركين بالحذف
+    if (message.room) {
+        server_1.io.to(message.room.toString()).emit("message-deleted", { messageId });
+    }
+    (0, response_1.SuccessResponse)(res, { message: "Message deleted successfully" });
+};
+exports.deleteMessage = deleteMessage;
+// ✅ حذف روم (soft delete)
+const deleteRoom = async (req, res) => {
+    const { roomId } = req.params;
+    if (!req.user)
+        throw new Errors_1.UnauthorizedError("User not found");
+    const userId = req.user.id;
     const room = await Room_1.RoomModel.findById(roomId);
     if (!room)
         throw new Errors_1.NotFound("Room not found");
-    if (!room.members.some((m) => m.equals(userId))) {
-        throw new Errors_1.UnauthorizedError("You are not a member of this room");
-    }
-    const messages = await Message_1.MessageModel.find({ room: roomId })
-        .populate("sender", "name email")
-        .sort({ createdAt: 1 });
-    (0, response_1.SuccessResponse)(res, {
-        message: "Messages fetched successfully",
-        messages,
+    const participant = room.participants.find((p) => p.user.toString() === userId);
+    if (!participant)
+        throw new Errors_1.UnauthorizedError("Unauthorized");
+    room.isDeleted = true;
+    await room.save();
+    // إخطار المشاركين بحذف الروم
+    room.participants.forEach((p) => {
+        server_1.io.to(p.user.toString()).emit("room-deleted", { roomId });
     });
+    (0, response_1.SuccessResponse)(res, { message: "Room deleted successfully" });
 };
-exports.getMessages = getMessages;
+exports.deleteRoom = deleteRoom;

@@ -23,6 +23,16 @@ app.use(cookieParser());
 app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 app.use("/uploads", express.static("uploads"));
+const server = http.createServer(app);
+
+// ✅ Socket.IO مع CORS + Polling فقط
+export const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
 
 // Route للتجربة
 app.get("/", (req, res) => {
@@ -31,6 +41,7 @@ app.get("/", (req, res) => {
 
 // Routes
 app.use("/api", ApiRoute);
+setupChatSockets(io);
 
 // Not found handler
 app.use((req, res, next) => {
@@ -42,17 +53,6 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 3000;
 
 // Create server
-const server = http.createServer(app);
-
-// ✅ Socket.IO مع CORS + Polling فقط
-const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
-});
-setupChatSockets(io);
-
 
 
 server.listen(PORT, () => {

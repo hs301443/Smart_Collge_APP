@@ -14,7 +14,7 @@ import {
 import { generateToken } from "../../utils/auth";
 import { sendEmail } from "../../utils/sendEmails";
 import { BadRequest } from "../../Errors/BadRequest";
-import { Types } from "mongoose";
+import mongoose, { ObjectId } from "mongoose";
 import { AuthenticatedRequest } from "../../types/custom";
 
 
@@ -178,22 +178,20 @@ export const login = async (req: Request, res: Response) => {
 
 
 export const getFcmToken = async (req: AuthenticatedRequest, res: Response) => {
-
-  if (!req.user) {
-    return res.status(401).json({ message: "Unauthorized" });
+  const userId = req.user?.id;
+  if (!userId) {
+    throw new UnauthorizedError("User not found");
   }
 
-  const userId: Types.ObjectId = new Types.ObjectId(req.user.id);
-
   const user = await UserModel.findById(userId);
-  if (!user) return res.status(404).json({ message: "User not found" });
-
+  if (!user) {
+    throw new NotFound("User not found");
+  }
   user.fcmtoken = req.body.token;
   await user.save();
 
   SuccessResponse(res, { message: "FCM token updated successfully" }, 200);
 };
-
 
 
 

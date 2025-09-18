@@ -23,7 +23,7 @@ const UserSchema = new mongoose_1.Schema({
 }, { timestamps: true, });
 exports.UserModel = mongoose_2.default.model('User', UserSchema);
 const GraduatedSchema = new mongoose_1.Schema({
-    user: { type: mongoose_1.Types.ObjectId, ref: "User", required: true, unique: true },
+    user: { type: mongoose_1.Schema.Types.ObjectId, ref: "User", required: true, unique: true },
     cv: { type: String },
     employment_status: { type: String, enum: ["Employed", "Job Seeker", "Freelancer", "Postgraduate Studies"] },
     job_title: { type: String },
