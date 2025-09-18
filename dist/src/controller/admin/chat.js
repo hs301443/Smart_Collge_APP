@@ -46,7 +46,8 @@ exports.createGroup = createGroup;
 // Add Member to Group
 // =========================
 const addToGroup = async (req, res) => {
-    if (!req.admin)
+    const adminId = req.admin?._id?.toString();
+    if (!adminId)
         throw new Errors_1.UnauthorizedError("Admin not found");
     const { roomId, userId, role } = req.body;
     if (!roomId || !userId || !role)
@@ -54,13 +55,14 @@ const addToGroup = async (req, res) => {
     const room = await Room_1.RoomModel.findById(roomId);
     if (!room)
         throw new Errors_1.NotFound("Room not found");
-    if (room.participants.some((p) => p.user === userId)) {
+    // تحويل ObjectId إلى string قبل المقارنة
+    if (room.participants.some((p) => p.user.toString() === userId)) {
         throw new BadRequest_1.BadRequest("User already in group");
     }
     room.participants.push({ user: userId, role });
     await room.save();
     server_1.io.to(room._id.toString()).emit("group-updated", room);
-    server_1.io.to(userId).emit("added-to-group", { roomId: room._id, name: room.name });
+    server_1.io.to(userId).emit("added-to-group", { roomId: room._id.toString(), name: room.name });
     (0, response_1.SuccessResponse)(res, { message: "User added to group", room });
 };
 exports.addToGroup = addToGroup;

@@ -55,7 +55,8 @@ export const createGroup = async (req: Request, res: Response) => {
 // Add Member to Group
 // =========================
 export const addToGroup = async (req: Request, res: Response) => {
-  if (!req.admin) throw new UnauthorizedError("Admin not found");
+  const adminId = req.admin?._id?.toString();
+  if (!adminId) throw new UnauthorizedError("Admin not found");
 
   const { roomId, userId, role } = req.body;
   if (!roomId || !userId || !role) throw new BadRequest("Missing required fields");
@@ -63,7 +64,8 @@ export const addToGroup = async (req: Request, res: Response) => {
   const room = await RoomModel.findById(roomId);
   if (!room) throw new NotFound("Room not found");
 
-  if (room.participants.some((p: Participant) => p.user === userId)) {
+  // تحويل ObjectId إلى string قبل المقارنة
+  if (room.participants.some((p: any) => p.user.toString() === userId)) {
     throw new BadRequest("User already in group");
   }
 
@@ -71,10 +73,11 @@ export const addToGroup = async (req: Request, res: Response) => {
   await room.save();
 
   io.to(room._id.toString()).emit("group-updated", room);
-  io.to(userId).emit("added-to-group", { roomId: room._id, name: room.name });
+  io.to(userId).emit("added-to-group", { roomId: room._id.toString(), name: room.name });
 
   SuccessResponse(res, { message: "User added to group", room });
 };
+
 
 // =========================
 // Remove Member from Group
