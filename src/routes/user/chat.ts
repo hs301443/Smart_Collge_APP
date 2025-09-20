@@ -13,7 +13,7 @@ router.get("/rooms",authenticated ,catchAsync(getUserRooms));
 router.post("/rooms", authenticated, catchAsync(createRoom));
 
 // جلب كل الرسائل في روم
-router.get("/rooms/:roomId/messages",authenticated, catchAsync(getRoomMessages));
+router.get("/:roomId/messages",authenticated, catchAsync(getRoomMessages));
 
 // إرسال رسالة في روم
 router.post("/rooms/:roomId/messages", authenticated, catchAsync(sendMessage));

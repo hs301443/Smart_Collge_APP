@@ -12,7 +12,7 @@ router.get("/rooms", authenticated_1.authenticated, (0, catchAsync_1.catchAsync)
 // إنشاء روم جديد
 router.post("/rooms", authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(chats_1.createRoom));
 // جلب كل الرسائل في روم
-router.get("/rooms/:roomId/messages", authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(chats_1.getRoomMessages));
+router.get("/:roomId/messages", authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(chats_1.getRoomMessages));
 // إرسال رسالة في روم
 router.post("/rooms/:roomId/messages", authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(chats_1.sendMessage));
 // حذف رسالة (soft delete)
