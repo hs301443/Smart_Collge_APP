@@ -18,4 +18,5 @@ router.get("/rooms/:roomId/messages", (0, catchAsync_1.catchAsync)(chat_1.getRoo
 router.delete("/messages/:messageId", (0, catchAsync_1.catchAsync)(chat_1.deleteMessage));
 // مسح كل الرسائل في روم (Soft Delete)
 router.delete("/rooms/:roomId/messages", (0, catchAsync_1.catchAsync)(chat_1.deleteRoomMessages)); // Delete room
+router.post("/rooms/:roomId/messages", (0, catchAsync_1.catchAsync)(chat_1.sendMessageAdmin));
 exports.default = router;

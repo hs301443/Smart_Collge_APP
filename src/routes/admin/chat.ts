@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { addToGroup, createGroup, deleteMessage, deleteRoomMessages, getAdminRooms, getRoomMessages, removeFromGroup
+import { addToGroup, createGroup, deleteMessage, deleteRoomMessages, getAdminRooms, getRoomMessages,sendMessageAdmin ,removeFromGroup
 , 
  } from "../../controller/admin/chat";
 import { catchAsync } from "../../utils/catchAsync";
@@ -27,5 +27,9 @@ router.delete("/messages/:messageId", catchAsync(deleteMessage));
 
 // مسح كل الرسائل في روم (Soft Delete)
 router.delete("/rooms/:roomId/messages", catchAsync(deleteRoomMessages));   // Delete room
+
+router.post("/rooms/:roomId/messages", catchAsync(sendMessageAdmin));
+
+
 
 export default router;
