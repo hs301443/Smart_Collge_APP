@@ -12,7 +12,7 @@ const mongoose_1 = require("mongoose");
 // Get All Rooms for Admin
 // =========================
 const getAdminRooms = async (req, res) => {
-    if (!req.admin || !req.admin._id)
+    if (!req.admin || !req.admin.isSuperAdmin)
         throw new Errors_1.UnauthorizedError("Admin not found");
     const rooms = await Room_1.RoomModel.find({ "participants.user": req.admin._id });
     (0, response_1.SuccessResponse)(res, { rooms });
@@ -22,7 +22,7 @@ exports.getAdminRooms = getAdminRooms;
 // Create Group
 // =========================
 const createGroup = async (req, res) => {
-    if (!req.admin || !req.admin._id)
+    if (!req.admin || !req.admin.isSuperAdmin || !req.admin._id)
         throw new Errors_1.UnauthorizedError("Admin not found");
     const adminId = req.admin._id.toString();
     const { name, memberIds } = req.body;
@@ -47,7 +47,7 @@ exports.createGroup = createGroup;
 // Add Member to Group
 // =========================
 const addToGroup = async (req, res) => {
-    if (!req.admin || !req.admin._id)
+    if (!req.admin || !req.admin.isSuperAdmin || !req.admin._id)
         throw new Errors_1.UnauthorizedError("Admin not found");
     const { roomId, userId, role } = req.body;
     if (!roomId || !userId || !role)
@@ -69,7 +69,7 @@ exports.addToGroup = addToGroup;
 // Remove Member from Group
 // =========================
 const removeFromGroup = async (req, res) => {
-    if (!req.admin || !req.admin._id)
+    if (!req.admin || !req.admin.isSuperAdmin || !req.admin._id)
         throw new Errors_1.UnauthorizedError("Admin not found");
     const { roomId, userId } = req.body;
     if (!roomId || !userId)
@@ -89,7 +89,7 @@ exports.removeFromGroup = removeFromGroup;
 // Get Messages in a Room
 // =========================
 const getRoomMessages = async (req, res) => {
-    if (!req.admin || !req.admin._id)
+    if (!req.admin || !req.admin.isSuperAdmin || !req.admin._id)
         throw new Errors_1.UnauthorizedError("Admin not found");
     const { roomId } = req.params;
     if (!roomId)
@@ -104,7 +104,7 @@ exports.getRoomMessages = getRoomMessages;
 // Send Message as Admin
 // =========================
 const sendMessageAdmin = async (req, res) => {
-    if (!req.admin || !req.admin.id)
+    if (!req.admin || !req.admin.isSuperAdmin || !req.admin.id)
         throw new Errors_1.UnauthorizedError("Admin not found");
     const { roomId, content, attachment } = req.body;
     if (!roomId)
@@ -145,7 +145,7 @@ exports.sendMessageAdmin = sendMessageAdmin;
 // Delete a Message (Soft Delete)
 // =========================
 const deleteMessage = async (req, res) => {
-    if (!req.admin || !req.admin._id)
+    if (!req.admin || !req.admin.isSuperAdmin || !req.admin._id)
         throw new Errors_1.UnauthorizedError("Admin not found");
     const { messageId } = req.params;
     if (!messageId)
@@ -165,7 +165,7 @@ exports.deleteMessage = deleteMessage;
 // Delete All Messages in a Room
 // =========================
 const deleteRoomMessages = async (req, res) => {
-    if (!req.admin || !req.admin._id)
+    if (!req.admin || !req.admin.isSuperAdmin || !req.admin._id)
         throw new Errors_1.UnauthorizedError("Admin not found");
     const { roomId } = req.params;
     if (!roomId)

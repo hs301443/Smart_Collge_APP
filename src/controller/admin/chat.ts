@@ -11,7 +11,7 @@ import { ObjectId, Types } from "mongoose";
 // Get All Rooms for Admin
 // =========================
 export const getAdminRooms = async (req: Request, res: Response) => {
-  if (!req.admin || !req.admin._id) throw new UnauthorizedError("Admin not found");
+  if (!req.admin || !req.admin.isSuperAdmin) throw new UnauthorizedError("Admin not found");
 
   const rooms = await RoomModel.find({ "participants.user": req.admin._id });
   SuccessResponse(res, { rooms });
@@ -21,7 +21,7 @@ export const getAdminRooms = async (req: Request, res: Response) => {
 // Create Group
 // =========================
 export const createGroup = async (req: Request, res: Response) => {
-  if (!req.admin || !req.admin._id) throw new UnauthorizedError("Admin not found");
+  if (!req.admin || !req.admin.isSuperAdmin|| !req.admin._id) throw new UnauthorizedError("Admin not found");
   const adminId = req.admin._id.toString();
 
   const { name, memberIds } = req.body;
@@ -52,7 +52,7 @@ export const createGroup = async (req: Request, res: Response) => {
 // Add Member to Group
 // =========================
 export const addToGroup = async (req: Request, res: Response) => {
-  if (!req.admin || !req.admin._id) throw new UnauthorizedError("Admin not found");
+  if (!req.admin || !req.admin.isSuperAdmin|| !req.admin._id) throw new UnauthorizedError("Admin not found");
 
   const { roomId, userId, role } = req.body;
   if (!roomId || !userId || !role) throw new BadRequest("Missing required fields");
@@ -77,7 +77,7 @@ export const addToGroup = async (req: Request, res: Response) => {
 // Remove Member from Group
 // =========================
 export const removeFromGroup = async (req: Request, res: Response) => {
-  if (!req.admin || !req.admin._id) throw new UnauthorizedError("Admin not found");
+  if (!req.admin || !req.admin.isSuperAdmin|| !req.admin._id) throw new UnauthorizedError("Admin not found");
 
   const { roomId, userId } = req.body;
   if (!roomId || !userId) throw new BadRequest("Missing required fields");
@@ -105,7 +105,7 @@ export const removeFromGroup = async (req: Request, res: Response) => {
 // Get Messages in a Room
 // =========================
 export const getRoomMessages = async (req: Request, res: Response) => {
-  if (!req.admin || !req.admin._id) throw new UnauthorizedError("Admin not found");
+  if (!req.admin || !req.admin.isSuperAdmin|| !req.admin._id) throw new UnauthorizedError("Admin not found");
 
   const { roomId } = req.params;
   if (!roomId) throw new BadRequest("Missing required fields");
@@ -120,7 +120,7 @@ export const getRoomMessages = async (req: Request, res: Response) => {
 // Send Message as Admin
 // =========================
 export const sendMessageAdmin = async (req: Request, res: Response) => {
-  if (!req.admin || !req.admin.id) throw new UnauthorizedError("Admin not found");
+  if (!req.admin || !req.admin.isSuperAdmin|| !req.admin.id) throw new UnauthorizedError("Admin not found");
 
   const { roomId, content, attachment } = req.body;
   if (!roomId) throw new BadRequest("roomId is required");
@@ -165,7 +165,7 @@ message.deliveredTo
 // Delete a Message (Soft Delete)
 // =========================
 export const deleteMessage = async (req: Request, res: Response) => {
-  if (!req.admin || !req.admin._id) throw new UnauthorizedError("Admin not found");
+  if (!req.admin || !req.admin.isSuperAdmin|| !req.admin._id) throw new UnauthorizedError("Admin not found");
 
   const { messageId } = req.params;
   if (!messageId) throw new BadRequest("Missing required fields");
@@ -187,7 +187,7 @@ export const deleteMessage = async (req: Request, res: Response) => {
 // Delete All Messages in a Room
 // =========================
 export const deleteRoomMessages = async (req: Request, res: Response) => {
-  if (!req.admin || !req.admin._id) throw new UnauthorizedError("Admin not found");
+  if (!req.admin || !req.admin.isSuperAdmin|| !req.admin._id) throw new UnauthorizedError("Admin not found");
 
   const { roomId } = req.params;
   if (!roomId) throw new BadRequest("Missing required fields");
