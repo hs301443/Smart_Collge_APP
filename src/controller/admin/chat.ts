@@ -11,7 +11,7 @@ import { ObjectId, Types } from "mongoose";
 // Get All Rooms for Admin
 // =========================
 export const getAdminRooms = async (req: Request, res: Response) => {
-  if (!req.admin || !req.admin.isSuperAdmin) throw new UnauthorizedError("Admin not found");
+  if (!req.admin || !req.admin.isSuperAdmin|| !req.admin._id) throw new UnauthorizedError("Admin not found");
 
   const rooms = await RoomModel.find({ "participants.user": req.admin._id });
   SuccessResponse(res, { rooms });

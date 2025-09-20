@@ -4,9 +4,8 @@ import { NotFound, UnauthorizedError } from "../../Errors";
 import { SuccessResponse } from "../../utils/response";
 import { RoomModel } from "../../models/shema/Room";
 import { MessageModel } from "../../models/shema/Message";
-
-// socket.io instance لازم يبقى مستورد هنا
-import { io } from "../../server"; // افترض إنك مهيأ io في server.ts
+import { io } from "../../server"; // socket.io instance
+import { Types } from "mongoose";
 
 // ✅ جلب كل الرومات الخاصة بالـ User
 export const getUserRooms = async (req: Request, res: Response) => {
@@ -25,22 +24,20 @@ export const createRoom = async (req: Request, res: Response) => {
   const { participants, type, name } = req.body;
   if (!req.user) throw new UnauthorizedError("User not found");
 
-  if (!participants || participants.length === 0) throw new BadRequest("Participants are required");
+  if (!participants || participants.length === 0)
+    throw new BadRequest("Participants are required");
 
   const room = await RoomModel.create({
     type: type || "direct",
     name: name || null,
-    participants: [
-      { user: req.user.id, role: "User" },
-      ...participants,
-    ],
+    participants: [{ user: req.user.id, role: "User" }, ...participants],
     createdBy: { user: req.user.id, role: "User" },
   });
 
   // ريل تايم: إخطار كل المشاركين بالروم الجديد
-  room.participants.forEach((p) => {
+  for (const p of room.participants) {
     io.to(p.user.toString()).emit("new-room", { room });
-  });
+  }
 
   SuccessResponse(res, { message: "Room created successfully", room });
 };
@@ -67,12 +64,14 @@ export const sendMessage = async (req: Request, res: Response) => {
   const room = await RoomModel.findById(roomId);
   if (!room) throw new NotFound("Room not found");
 
-  const messages= await MessageModel.create({
+  const messages = await MessageModel.create({
     room: roomId,
     sender: { user: req.user.id, role: "User" },
     content: content || null,
     attachment: attachment || null,
-    deliveredTo: room.participants.map((p) => p.user),
+    deliveredTo: room.participants.map(
+      (p: { user: Types.ObjectId }) => p.user.toString()
+    ),
   });
 
   // ريل تايم: إرسال الرسالة لكل المشاركين في الغرفة
@@ -115,20 +114,18 @@ export const deleteMessage = async (req: Request, res: Response) => {
 export const deleteRoom = async (req: Request, res: Response) => {
   const { roomId } = req.params;
   if (!req.user) throw new UnauthorizedError("User not found");
-  const userId=req.user.id
+  const userId = req.user.id;
+
   const room = await RoomModel.findById(roomId);
   if (!room) throw new NotFound("Room not found");
 
-  const participant = room.participants.find((p) => p.user.toString() === userId);
-  if (!participant) throw new UnauthorizedError("Unauthorized");
+  // إخطار كل المشاركين قبل الحذف
+  room.participants.forEach((p: any) => {
+    io.to(p.user.toString()).emit("room-deleted", { roomId });
+  });
 
   room.isDeleted = true;
   await room.save();
-
-  // إخطار المشاركين بحذف الروم
-  room.participants.forEach((p) => {
-    io.to(p.user.toString()).emit("room-deleted", { roomId });
-  });
 
   SuccessResponse(res, { message: "Room deleted successfully" });
 };

@@ -6,8 +6,7 @@ const Errors_1 = require("../../Errors");
 const response_1 = require("../../utils/response");
 const Room_1 = require("../../models/shema/Room");
 const Message_1 = require("../../models/shema/Message");
-// socket.io instance لازم يبقى مستورد هنا
-const server_1 = require("../../server"); // افترض إنك مهيأ io في server.ts
+const server_1 = require("../../server"); // socket.io instance
 // ✅ جلب كل الرومات الخاصة بالـ User
 const getUserRooms = async (req, res) => {
     if (!req.user)
@@ -29,16 +28,13 @@ const createRoom = async (req, res) => {
     const room = await Room_1.RoomModel.create({
         type: type || "direct",
         name: name || null,
-        participants: [
-            { user: req.user.id, role: "User" },
-            ...participants,
-        ],
+        participants: [{ user: req.user.id, role: "User" }, ...participants],
         createdBy: { user: req.user.id, role: "User" },
     });
     // ريل تايم: إخطار كل المشاركين بالروم الجديد
-    room.participants.forEach((p) => {
+    for (const p of room.participants) {
         server_1.io.to(p.user.toString()).emit("new-room", { room });
-    });
+    }
     (0, response_1.SuccessResponse)(res, { message: "Room created successfully", room });
 };
 exports.createRoom = createRoom;
@@ -67,7 +63,7 @@ const sendMessage = async (req, res) => {
         sender: { user: req.user.id, role: "User" },
         content: content || null,
         attachment: attachment || null,
-        deliveredTo: room.participants.map((p) => p.user),
+        deliveredTo: room.participants.map((p) => p.user.toString()),
     });
     // ريل تايم: إرسال الرسالة لكل المشاركين في الغرفة
     server_1.io.to(roomId).emit("new-message", {
@@ -110,15 +106,12 @@ const deleteRoom = async (req, res) => {
     const room = await Room_1.RoomModel.findById(roomId);
     if (!room)
         throw new Errors_1.NotFound("Room not found");
-    const participant = room.participants.find((p) => p.user.toString() === userId);
-    if (!participant)
-        throw new Errors_1.UnauthorizedError("Unauthorized");
-    room.isDeleted = true;
-    await room.save();
-    // إخطار المشاركين بحذف الروم
+    // إخطار كل المشاركين قبل الحذف
     room.participants.forEach((p) => {
         server_1.io.to(p.user.toString()).emit("room-deleted", { roomId });
     });
+    room.isDeleted = true;
+    await room.save();
     (0, response_1.SuccessResponse)(res, { message: "Room deleted successfully" });
 };
 exports.deleteRoom = deleteRoom;

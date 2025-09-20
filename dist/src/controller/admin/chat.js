@@ -12,7 +12,7 @@ const mongoose_1 = require("mongoose");
 // Get All Rooms for Admin
 // =========================
 const getAdminRooms = async (req, res) => {
-    if (!req.admin || !req.admin.isSuperAdmin)
+    if (!req.admin || !req.admin.isSuperAdmin || !req.admin._id)
         throw new Errors_1.UnauthorizedError("Admin not found");
     const rooms = await Room_1.RoomModel.find({ "participants.user": req.admin._id });
     (0, response_1.SuccessResponse)(res, { rooms });
