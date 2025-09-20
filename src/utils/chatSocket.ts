@@ -48,7 +48,7 @@ export const setupChatSockets = (io: Server) => {
       if (!room) return socket.emit("error", { message: "Room not found" });
 
       const isParticipant = room.participants.some(
-        (p: { user: mongoose.mongo.ObjectId }) => p.user.toString() === socket.userId
+        (p) => p.user.toString() === socket.userId
       );
       if (!isParticipant) return socket.emit("error", { message: "Unauthorized" });
 
@@ -72,11 +72,11 @@ export const setupChatSockets = (io: Server) => {
 
         const message = await MessageModel.create({
           room: room?._id || null,
-          sender: { user: new mongoose.mongo.ObjectId(socket.userId!), role: socket.role },
+          sender: { user: new mongoose.Types.ObjectId(socket.userId!), role: socket.role },
           content: content || null,
           attachment: attachment || null,
           deliveredTo: room
-            ? room.participants.map((p: { user: mongoose.mongo.ObjectId }) => p.user.toString())
+            ? room.participants.map((p) => p.user.toString())
             : [data.roomId],
         });
 
@@ -84,9 +84,9 @@ export const setupChatSockets = (io: Server) => {
         else io.to(data.roomId).emit("new-message", message);
 
         message.deliveredTo
-          .filter((uid: string) => uid !== socket.userId)
-          .forEach((uid: string) => {
-            io.to(uid).emit("new-message-notification", {
+          .filter((uid) => socket.userId && uid.toString() !== socket.userId)
+          .forEach((uid) => {
+            io.to(uid.toString()).emit("new-message-notification", {
               roomId: room?._id || data.roomId,
               messageId: message._id,
               sender: socket.username,
@@ -99,8 +99,12 @@ export const setupChatSockets = (io: Server) => {
       const message = await MessageModel.findById(messageId);
       if (!message || !socket.userId) return;
 
-      if (!message.seenBy.some((u: mongoose.mongo.ObjectId | string) => u.toString() === socket.userId)) {
-        message.seenBy.push(new mongoose.mongo.ObjectId(socket.userId));
+      if (
+        !message.seenBy.some(
+          (u) => socket.userId && u.toString() === socket.userId
+        )
+      ) {
+        message.seenBy.push(new mongoose.Types.ObjectId(socket.userId));
         await message.save();
         io.to(roomId).emit("message-seen", { messageId, userId: socket.userId });
       }
@@ -113,7 +117,6 @@ export const setupChatSockets = (io: Server) => {
         role: socket.role,
       });
     });
-
     socket.on("typing-stop", (roomId: string) => {
       socket.to(roomId).emit("user-stopped-typing", {
         userId: socket.userId,
@@ -125,14 +128,14 @@ export const setupChatSockets = (io: Server) => {
     socket.on("create-group", async (data: { name: string; memberIds: string[] }) => {
       if (socket.role !== "Admin") return;
 
-      const participants = data.memberIds.map((id) => ({ user: new mongoose.mongo.ObjectId(id), role: "User" }));
-      participants.push({ user: new mongoose.mongo.ObjectId(socket.userId!), role: "Admin" });
+      const participants = data.memberIds.map((id) => ({ user: new mongoose.Types.ObjectId(id), role: "User" }));
+      participants.push({ user: new mongoose.Types.ObjectId(socket.userId!), role: "Admin" });
 
       const group = await RoomModel.create({
         type: "group",
         name: data.name,
         participants,
-        createdBy: { user: new mongoose.mongo.ObjectId(socket.userId!), role: "Admin" },
+        createdBy: { user: new mongoose.Types.ObjectId(socket.userId!), role: "Admin" },
       });
 
       socket.join(group._id.toString());
@@ -150,8 +153,8 @@ export const setupChatSockets = (io: Server) => {
         const room = await RoomModel.findById(data.roomId);
         if (!room) return socket.emit("error", { message: "Room not found" });
 
-        if (!room.participants.some((p: { user: mongoose.mongo.ObjectId }) => p.user.toString() === data.userId)) {
-          room.participants.push({ user: new mongoose.mongo.ObjectId(data.userId), role: data.role });
+        if (!room.participants.some((p) => p.user.toString() === data.userId)) {
+          room.participants.push({ user: new mongoose.Types.ObjectId(data.userId), role: data.role });
           await room.save();
         }
 
@@ -165,10 +168,12 @@ export const setupChatSockets = (io: Server) => {
       const room = await RoomModel.findById(data.roomId);
       if (!room) return socket.emit("error", { message: "Room not found" });
 
-      room.participants = room.participants.filter(
-        (p: { user: mongoose.mongo.ObjectId }) => p.user.toString() !== data.userId
-      );
+      const participant = room.participants.id(data.userId);
+      if (participant) {
+     room.participants.pull(participant);
       await room.save();
+      }
+
 
       io.to(room._id.toString()).emit("group-updated", room);
       io.to(data.userId).emit("removed-from-group", { roomId: room._id });
