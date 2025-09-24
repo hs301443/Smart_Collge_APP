@@ -9,7 +9,7 @@ const QuestionSchema = new Schema({
   exam: { type: Schema.Types.ObjectId, ref: 'Exam' },
   type: { 
     type: String, 
-    enum: ['choice','file-upload',] 
+    enum: ['choice','file-upload','short-answer'], 
   },
   text: String,
   choices: [ChoiceSchema],       // للـ MCQ بس
