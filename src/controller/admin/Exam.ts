@@ -57,14 +57,12 @@ export const createExamWithQuestions = async (req: any, res: Response) => {
   // إنشاء الأسئلة وربطها بالامتحان
   if (Array.isArray(questions) && questions.length > 0) {
     for (const q of questions) {
-      // تحويل choices من نص JSON لو جاي String
-      let parsedChoices = Array.isArray(q.choices) ? q.choices : [];
-      if (typeof q.choices === "string") {
-        try {
-          parsedChoices = JSON.parse(q.choices);
-        } catch (err) {
-          throw new BadRequest("Invalid JSON format for choices");
-        }
+      // تحويل choices من array of strings إلى array of objects
+      let parsedChoices: any[] = [];
+      if (Array.isArray(q.choices) && typeof q.choices[0] === "string") {
+        parsedChoices = q.choices.map((c: string) => ({ text: c }));
+      } else if (Array.isArray(q.choices)) {
+        parsedChoices = q.choices; // لو أصلاً array of objects
       }
 
       // حفظ الصورة لو موجودة
@@ -92,6 +90,7 @@ export const createExamWithQuestions = async (req: any, res: Response) => {
 
   SuccessResponse(res, { exam: newExam }, 201);
 };
+
 
 // باقي الـ CRUD للامتحان والأسئلة ممكن تفضل كما هو، لكن هنا دمجنا الإنشاء
 

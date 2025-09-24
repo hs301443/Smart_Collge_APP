@@ -42,15 +42,13 @@ const createExamWithQuestions = async (req, res) => {
     // إنشاء الأسئلة وربطها بالامتحان
     if (Array.isArray(questions) && questions.length > 0) {
         for (const q of questions) {
-            // تحويل choices من نص JSON لو جاي String
-            let parsedChoices = Array.isArray(q.choices) ? q.choices : [];
-            if (typeof q.choices === "string") {
-                try {
-                    parsedChoices = JSON.parse(q.choices);
-                }
-                catch (err) {
-                    throw new BadRequest_1.BadRequest("Invalid JSON format for choices");
-                }
+            // تحويل choices من array of strings إلى array of objects
+            let parsedChoices = [];
+            if (Array.isArray(q.choices) && typeof q.choices[0] === "string") {
+                parsedChoices = q.choices.map((c) => ({ text: c }));
+            }
+            else if (Array.isArray(q.choices)) {
+                parsedChoices = q.choices; // لو أصلاً array of objects
             }
             // حفظ الصورة لو موجودة
             let imageUrl = null;
