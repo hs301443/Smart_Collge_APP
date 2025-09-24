@@ -43,7 +43,7 @@ const QuestionSchema = new mongoose_1.Schema({
     exam: { type: mongoose_1.Schema.Types.ObjectId, ref: 'Exam' },
     type: {
         type: String,
-        enum: ['choice', 'file-upload', 'short-answer'],
+        enum: ['MCQ', 'file-upload', 'short-answer'],
     },
     text: String,
     choices: [ChoiceSchema], // للـ MCQ بس
