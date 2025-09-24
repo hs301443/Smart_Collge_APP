@@ -1,35 +1,179 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getExamByIdForStudent = exports.getExamsForStudent = void 0;
+exports.getMyAttempts = exports.submitAttempt = exports.saveAnswer = exports.startAttempt = exports.getQuestionsForExam = exports.getExamByIdForStudent = exports.getExamsForStudent = void 0;
 const Exam_1 = require("../../models/shema/Exam");
-const BadRequest_1 = require("../../Errors/BadRequest");
+const Attempt_1 = require("../../models/shema/Attempt");
 const Errors_1 = require("../../Errors");
 const response_1 = require("../../utils/response");
-// ✅ Get all exams for logged-in student (filtered by department & level)
+const BadRequest_1 = require("../../Errors/BadRequest");
+const multer_1 = require("../../utils/multer");
 const getExamsForStudent = async (req, res) => {
     if (!req.user)
         throw new Errors_1.UnauthorizedError("Unauthorized");
-    const level = req.user.level;
-    const department = req.user.department;
-    if (!level || !department)
-        throw new BadRequest_1.BadRequest("User must have level and department");
-    const exams = await Exam_1.ExamModel.find({ level, department }).select("-questions");
+    const exams = await Exam_1.ExamModel.find({
+        level: req.user.level,
+        department: req.user.department,
+        isPublished: true
+    }).select("-questions");
     (0, response_1.SuccessResponse)(res, { exams }, 200);
 };
 exports.getExamsForStudent = getExamsForStudent;
-// ✅ Get single exam by ID
+// ✅ جلب امتحان محدد
 const getExamByIdForStudent = async (req, res) => {
     if (!req.user)
         throw new Errors_1.UnauthorizedError("Unauthorized");
-    const { id } = req.params;
-    if (!id)
-        throw new BadRequest_1.BadRequest("Exam ID is required");
-    const exam = await Exam_1.ExamModel.findById(id);
-    if (!exam)
+    const exam = await Exam_1.ExamModel.findById(req.params.id);
+    if (!exam || !exam.isPublished)
         throw new Errors_1.NotFound("Exam not found");
-    if (exam.isPublished == false) {
-        throw new Errors_1.UnauthorizedError("exam is not published");
-    }
     (0, response_1.SuccessResponse)(res, { exam }, 200);
 };
 exports.getExamByIdForStudent = getExamByIdForStudent;
+// ✅ جلب الأسئلة بدون الإجابات الصحيحة
+const getQuestionsForExam = async (req, res) => {
+    if (!req.user)
+        throw new Errors_1.UnauthorizedError("Unauthorized");
+    const exam = await Exam_1.ExamModel.findById(req.params.examId);
+    if (!exam || !exam.isPublished)
+        throw new Errors_1.NotFound("Exam not found");
+    const questions = exam.questions.map(q => ({
+        _id: q._id,
+        text: q.text,
+        type: q.type,
+        choices: q.choices,
+        points: q.points,
+        image: q.image
+    }));
+    (0, response_1.SuccessResponse)(res, { questions }, 200);
+};
+exports.getQuestionsForExam = getQuestionsForExam;
+// ✅ بدء Attempt
+const startAttempt = async (req, res) => {
+    if (!req.user)
+        throw new Errors_1.UnauthorizedError("Unauthorized");
+    const { examId } = req.body;
+    if (!examId)
+        throw new BadRequest_1.BadRequest("Exam ID is required");
+    const exam = await Exam_1.ExamModel.findById(examId);
+    if (!exam || !exam.isPublished)
+        throw new Errors_1.NotFound("Exam not found");
+    const existing = await Attempt_1.AttemptModel.findOne({
+        exam: examId,
+        student: req.user.id,
+        status: "in-progress"
+    });
+    if (existing)
+        return (0, response_1.SuccessResponse)(res, { attempt: existing }, 200);
+    const attempt = await Attempt_1.AttemptModel.create({
+        exam: examId,
+        student: req.user.id,
+        answers: [],
+        status: "in-progress",
+        startedAt: new Date(),
+        endAt: new Date(Date.now() + exam.durationMinutes * 60 * 1000)
+    });
+    (0, response_1.SuccessResponse)(res, { attempt }, 201);
+};
+exports.startAttempt = startAttempt;
+// ✅ حفظ إجابة
+// ✅ Save Answer (while in-progress)
+const saveAnswer = async (req, res) => {
+    if (!req.user || !req.user.id)
+        throw new Errors_1.UnauthorizedError("Unauthorized");
+    const userId = req.user.id;
+    multer_1.uploadAnswerFile.single("file")(req, res, async (err) => {
+        if (err)
+            return res.status(400).json({ message: err.message });
+        const { attemptId, questionId, answer } = req.body;
+        if (!attemptId || !questionId)
+            throw new BadRequest_1.BadRequest("attemptId and questionId are required");
+        // جلب Attempt
+        const attempt = await Attempt_1.AttemptModel.findById(attemptId);
+        if (!attempt)
+            throw new Errors_1.NotFound("Attempt not found");
+        if (attempt.student?.toString() !== userId.toString()) {
+            throw new Errors_1.UnauthorizedError("You are not allowed to modify this attempt");
+        }
+        if (attempt.status !== "in-progress") {
+            throw new BadRequest_1.BadRequest("Attempt is already submitted");
+        }
+        const exam = await Exam_1.ExamModel.findOne({ "questions._id": questionId });
+        if (!exam)
+            throw new Errors_1.NotFound("Question not found");
+        const question = exam.questions.id(questionId);
+        if (!question)
+            throw new Errors_1.NotFound("Question not found");
+        // ملف الطالب مع رابط كامل
+        const filePath = req.file
+            ? `${req.protocol}://${req.get('host')}/uploads/answers/${req.file.filename}`
+            : null;
+        // تحديث أو إضافة الإجابة
+        const existingAnswer = attempt.answers.find((a) => a.question && a.question.toString() === questionId);
+        if (existingAnswer) {
+            existingAnswer.answer = answer;
+            if (filePath)
+                existingAnswer.file = filePath;
+        }
+        else {
+            attempt.answers.push({ question: questionId, answer, file: filePath });
+        }
+        await attempt.save();
+        (0, response_1.SuccessResponse)(res, { attempt }, 200);
+    });
+};
+exports.saveAnswer = saveAnswer;
+// ✅ Submit Attempt
+const submitAttempt = async (req, res) => {
+    if (!req.user || !req.user.id)
+        throw new Errors_1.UnauthorizedError("Unauthorized");
+    const { attemptId } = req.body;
+    if (!attemptId)
+        throw new BadRequest_1.BadRequest("attemptId is required");
+    const attempt = await Attempt_1.AttemptModel.findById(attemptId).populate("answers.question");
+    if (!attempt)
+        throw new Errors_1.NotFound("Attempt not found");
+    if (attempt.student?.toString() !== req.user.id.toString()) {
+        throw new Errors_1.UnauthorizedError("You are not allowed to submit this attempt");
+    }
+    if (attempt.status !== "in-progress") {
+        throw new BadRequest_1.BadRequest("Attempt already submitted or graded");
+    }
+    // Auto-grading simple questions
+    let totalPoints = 0;
+    let correctCount = 0;
+    let wrongCount = 0;
+    for (const ans of attempt.answers) {
+        const q = ans.question;
+        if (!q)
+            continue; // لو السؤال غير موجود نتخطاه
+        let awarded = 0;
+        if (["single-choice", "multiple-choice", "true-false", "short-answer"].includes(q.type)) {
+            if (JSON.stringify(ans.answer) === JSON.stringify(q.correctAnswer)) {
+                awarded = q.points ?? 0;
+                correctCount++;
+            }
+            else {
+                wrongCount++;
+            }
+        }
+        ans.pointsAwarded = awarded;
+        totalPoints += awarded;
+    }
+    attempt.totalPoints = totalPoints;
+    attempt.correctCount = correctCount;
+    attempt.wrongCount = wrongCount;
+    attempt.status = "submitted";
+    attempt.submittedAt = new Date();
+    await attempt.save();
+    (0, response_1.SuccessResponse)(res, { attempt }, 200);
+};
+exports.submitAttempt = submitAttempt;
+// ✅ جلب كل محاولات الطالب
+const getMyAttempts = async (req, res) => {
+    if (!req.user)
+        throw new Errors_1.UnauthorizedError("Unauthorized");
+    const attempts = await Attempt_1.AttemptModel.find({ student: req.user.id })
+        .populate("exam", "title subject_name level department startAt endAt durationMinutes")
+        .populate("answers.question", "text type points");
+    (0, response_1.SuccessResponse)(res, { attempts }, 200);
+};
+exports.getMyAttempts = getMyAttempts;

@@ -35,17 +35,26 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ExamModel = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
-const ExamSchema = new mongoose_1.default.Schema({
-    title: { type: String, required: true },
-    description: { String },
-    doctorname: { type: String, required: true },
-    level: { type: Number, enum: [1, 2, 3, 4, 5], required: true },
-    department: { type: String, enum: ["IT", "CS", "Is", "AI"], required: true },
-    questions: [{ type: mongoose_1.Schema.Types.ObjectId, ref: 'Question', required: true }],
-    isPublished: { type: Boolean, default: false },
-    subject_name: { type: String, required: true },
-    startAt: Date,
-    endAt: Date,
-    durationMinutes: Number
+const ChoiceSchema = new mongoose_1.Schema({
+    text: String
+}, { _id: true });
+const QuestionSchema = new mongoose_1.Schema({
+    text: { type: String, required: true },
+    type: { type: String, enum: ["MCQ", "short-answer", "file-upload"], required: true },
+    choices: [ChoiceSchema],
+    correctAnswer: mongoose_1.Schema.Types.Mixed,
+    points: { type: Number, default: 1 },
+    image: String
 }, { timestamps: true });
-exports.ExamModel = mongoose_1.default.model('Exam', ExamSchema);
+const ExamSchema = new mongoose_1.Schema({
+    title: { type: String, required: true },
+    subject_name: { type: String, required: true },
+    level: { type: Number, required: true },
+    department: { type: String, required: true },
+    startAt: { type: Date, required: true },
+    endAt: { type: Date, required: true },
+    durationMinutes: { type: Number, required: true },
+    questions: [QuestionSchema],
+    isPublished: { type: Boolean, default: false }
+}, { timestamps: true });
+exports.ExamModel = mongoose_1.default.model("Exam", ExamSchema);

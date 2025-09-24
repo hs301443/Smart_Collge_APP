@@ -34,21 +34,23 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AttemptModel = void 0;
-// models/Attempt.ts
 const mongoose_1 = __importStar(require("mongoose"));
 const AnswerSchema = new mongoose_1.Schema({
-    question: { type: mongoose_1.Schema.Types.ObjectId, ref: 'Question' },
+    question: { type: mongoose_1.Schema.Types.ObjectId, ref: "Question" },
     answer: mongoose_1.Schema.Types.Mixed,
     file: String,
-    pointsAwarded: Number
+    pointsAwarded: { type: Number, default: 0 },
 }, { _id: false });
 const AttemptSchema = new mongoose_1.Schema({
-    exam: { type: mongoose_1.Schema.Types.ObjectId, ref: 'Exam' },
-    student: { type: mongoose_1.Schema.Types.ObjectId, ref: 'User', required: true },
+    exam: { type: mongoose_1.Schema.Types.ObjectId, ref: "Exam" },
+    student: { type: mongoose_1.Schema.Types.ObjectId, ref: "User" },
     answers: [AnswerSchema],
-    totalPoints: Number,
-    status: { type: String, enum: ['in-progress', 'submitted', 'graded'], default: 'in-progress' },
+    totalPoints: { type: Number, default: 0 },
+    correctCount: { type: Number, default: 0 },
+    wrongCount: { type: Number, default: 0 },
+    status: { type: String, enum: ["in-progress", "submitted", "expired"], default: "in-progress" },
     startedAt: { type: Date, default: Date.now },
-    submittedAt: Date
+    endAt: { type: Date },
+    submittedAt: { type: Date }
 }, { timestamps: true });
-exports.AttemptModel = mongoose_1.default.model('Attempt', AttemptSchema);
+exports.AttemptModel = mongoose_1.default.model("Attempt", AttemptSchema);

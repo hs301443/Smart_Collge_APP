@@ -1,21 +1,20 @@
 import { Request, Response } from "express";
 import { ExamModel } from "../../models/shema/Exam";
-import { QuestionModel } from "../../models/shema/Questions";
 import { BadRequest } from "../../Errors/BadRequest";
-import { NotFound } from "../../Errors";
-import { UnauthorizedError } from "../../Errors";
+import { NotFound, UnauthorizedError } from "../../Errors";
 import { SuccessResponse } from "../../utils/response";
 import { saveBase64Image } from "../../utils/handleImages";
 
 const allowedLevels = [1, 2, 3, 4, 5];
 const allowedDepartments = ["CS", "IT", "IS", "CE", "EE"];
 
+// ✅ إنشاء امتحان مع أسئلة
 export const createExamWithQuestions = async (req: any, res: Response) => {
   if (!req.user || !req.user.isSuperAdmin) {
     throw new UnauthorizedError("Only Super Admin can create exams");
-}
+  }
 
-const adminId = req.user.id; // استخدمه لاحقًا بدل req.admin.id
+  const adminId = req.user.id;
 
   const {
     title,
@@ -56,26 +55,23 @@ const adminId = req.user.id; // استخدمه لاحقًا بدل req.admin.id
     durationMinutes
   });
 
-  // إنشاء الأسئلة وربطها بالامتحان
+  // إضافة الأسئلة مباشرة داخل Exam
   if (Array.isArray(questions) && questions.length > 0) {
     for (const q of questions) {
-      // تحويل choices من array of strings إلى array of objects
       let parsedChoices: any[] = [];
       if (Array.isArray(q.choices) && typeof q.choices[0] === "string") {
         parsedChoices = q.choices.map((c: string) => ({ text: c }));
       } else if (Array.isArray(q.choices)) {
-        parsedChoices = q.choices; // لو أصلاً array of objects
+        parsedChoices = q.choices;
       }
 
-      // حفظ الصورة لو موجودة
       let imageUrl: string | null = null;
       if (q.imageBase64) {
         imageUrl = await saveBase64Image(q.imageBase64, adminId.toString(), req, "questions");
       }
 
-      // إنشاء السؤال
-      const question = await QuestionModel.create({
-        exam: newExam._id,
+      // إضافة السؤال في المصفوفة مباشرة
+      newExam.questions.push({
         text: q.text,
         type: q.type,
         choices: parsedChoices,
@@ -83,8 +79,6 @@ const adminId = req.user.id; // استخدمه لاحقًا بدل req.admin.id
         points: q.points,
         image: imageUrl
       });
-
-      newExam.questions.push(question._id);
     }
 
     await newExam.save();
@@ -93,29 +87,25 @@ const adminId = req.user.id; // استخدمه لاحقًا بدل req.admin.id
   SuccessResponse(res, { exam: newExam }, 201);
 };
 
-
-// باقي الـ CRUD للامتحان والأسئلة ممكن تفضل كما هو، لكن هنا دمجنا الإنشاء
-
-// جلب كل الامتحانات
+// ✅ جلب كل الامتحانات
 export const getAllExams = async (req: Request, res: Response) => {
   if (!req.user || !req.user.isSuperAdmin) throw new UnauthorizedError();
-
-  const exams = await ExamModel.find().populate("questions").sort({ createdAt: -1 });
+  const exams = await ExamModel.find().sort({ createdAt: -1 });
   SuccessResponse(res, { exams }, 200);
 };
 
-// جلب امتحان معين
+// ✅ جلب امتحان محدد
 export const getExamById = async (req: Request, res: Response) => {
   if (!req.user || !req.user.isSuperAdmin) throw new UnauthorizedError();
   const { id } = req.params;
   if (!id) throw new BadRequest("id is required");
 
-  const exam = await ExamModel.findById(id).populate("questions");
+  const exam = await ExamModel.findById(id);
   if (!exam) throw new NotFound("Exam not found");
   SuccessResponse(res, { exam }, 200);
 };
 
-// حذف امتحان
+// ✅ حذف امتحان
 export const deleteExam = async (req: Request, res: Response) => {
   if (!req.user || !req.user.isSuperAdmin) throw new UnauthorizedError();
   const { id } = req.params;
@@ -126,7 +116,7 @@ export const deleteExam = async (req: Request, res: Response) => {
   SuccessResponse(res, { message: "Exam deleted successfully" }, 200);
 };
 
-// تعديل امتحان
+// ✅ تعديل امتحان
 export const updateExam = async (req: Request, res: Response) => {
   if (!req.user || !req.user.isSuperAdmin) throw new UnauthorizedError();
   const { id } = req.params;
@@ -135,52 +125,66 @@ export const updateExam = async (req: Request, res: Response) => {
   const exam = await ExamModel.findByIdAndUpdate(id, req.body, { new: true });
   if (!exam) throw new NotFound("Exam not found");
   SuccessResponse(res, { exam }, 200);
-}; 
+};
 
-
-// جلب كل أسئلة امتحان معين
+// ✅ جلب كل أسئلة امتحان معين
 export const getAllQuestionsForExam = async (req: Request, res: Response) => {
   if (!req.user || !req.user.isSuperAdmin) throw new UnauthorizedError();
   const { examId } = req.params;
   if (!examId) throw new BadRequest("examId is required");
 
-  const questions = await QuestionModel.find({ exam: examId });
-  SuccessResponse(res, { questions }, 200);
+  const exam = await ExamModel.findById(examId);
+  if (!exam) throw new NotFound("Exam not found");
+
+  SuccessResponse(res, { questions: exam.questions }, 200);
 };
 
-// جلب سؤال واحد
+// ✅ جلب سؤال واحد
 export const getQuestionById = async (req: Request, res: Response) => {
   if (!req.user || !req.user.isSuperAdmin) throw new UnauthorizedError();
-  const { id } = req.params;
-  if (!id) throw new BadRequest("id is required");
+  const { examId, questionId } = req.params;
+  if (!examId || !questionId) throw new BadRequest("examId and questionId are required");
 
-  const question = await QuestionModel.findById(id);
+  const exam = await ExamModel.findById(examId);
+  if (!exam) throw new NotFound("Exam not found");
+
+  const question = exam.questions.id(questionId);
   if (!question) throw new NotFound("Question not found");
+
   SuccessResponse(res, { question }, 200);
 };
 
-// حذف سؤال
+// ✅ حذف سؤال
 export const deleteQuestionById = async (req: Request, res: Response) => {
   if (!req.user || !req.user.isSuperAdmin) throw new UnauthorizedError();
-  const { id } = req.params;
-  if (!id) throw new BadRequest("id is required");
+  const { examId, questionId } = req.params;
+  if (!examId || !questionId) throw new BadRequest("examId and questionId are required");
 
-  const question = await QuestionModel.findByIdAndDelete(id);
+  const exam = await ExamModel.findById(examId);
+  if (!exam) throw new NotFound("Exam not found");
+
+  const question = exam.questions.id(questionId);
   if (!question) throw new NotFound("Question not found");
+
+  exam.questions.pull(questionId);
+  await exam.save();
   SuccessResponse(res, { message: "Question deleted successfully" }, 200);
 };
 
-// تعديل سؤال
+// ✅ تعديل سؤال
 export const updateQuestionById = async (req: Request, res: Response) => {
   if (!req.user || !req.user.isSuperAdmin) throw new UnauthorizedError();
-  const { id } = req.params;
-  if (!id) throw new BadRequest("id is required");
+  const { examId, questionId } = req.params;
+  if (!examId || !questionId) throw new BadRequest("examId and questionId are required");
 
-  const question = await QuestionModel.findByIdAndUpdate(id, req.body, { new: true });
+  const exam = await ExamModel.findById(examId);
+  if (!exam) throw new NotFound("Exam not found");
+
+  const question = exam.questions.id(questionId);
   if (!question) throw new NotFound("Question not found");
+
+  question.set(req.body);
+  await exam.save();
+
   SuccessResponse(res, { question }, 200);
 };
-export function createExam(createExam: any): import("express-serve-static-core").RequestHandler<import("express-serve-static-core").ParamsDictionary, any, any, import("qs").ParsedQs, Record<string, any>> {
-    throw new Error('Function not implemented.');
-}
-

@@ -1,17 +1,28 @@
 import mongoose, { Schema } from "mongoose";
 
-const ExamSchema =new mongoose.Schema({
- title: { type: String, required: true },
-  description: {String},
-  doctorname: { type: String, required: true },
-  level: { type: Number, enum: [1,2,3,4,5], required: true },
-  department: { type: String,enum:["IT","CS","Is","AI"],required: true},
-  questions: [{ type: Schema.Types.ObjectId, ref: 'Question', required: true }],
-  isPublished: { type: Boolean, default: false },
-  subject_name:{type: String, required: true},
-  startAt: Date,
-  endAt: Date,
-  durationMinutes: Number
-},{timestamps: true});
+const ChoiceSchema = new Schema({
+  text: String
+}, { _id: true });
 
-export const ExamModel = mongoose.model('Exam', ExamSchema);
+const QuestionSchema = new Schema({
+  text: { type: String, required: true },
+  type: { type: String, enum: ["MCQ", "short-answer", "file-upload"], required: true },
+  choices: [ChoiceSchema],
+  correctAnswer: Schema.Types.Mixed,
+  points: { type: Number, default: 1 },
+  image: String
+}, { timestamps: true });
+
+const ExamSchema = new Schema({
+  title: { type: String, required: true },
+  subject_name: { type: String, required: true },
+  level: { type: Number, required: true },
+  department: { type: String, required: true },
+  startAt: { type: Date, required: true },
+  endAt: { type: Date, required: true },
+  durationMinutes: { type: Number, required: true },
+  questions: [QuestionSchema],
+  isPublished: { type: Boolean, default: false }
+}, { timestamps: true });
+
+export const ExamModel = mongoose.model("Exam", ExamSchema);
