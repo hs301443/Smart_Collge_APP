@@ -9,7 +9,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import { connectDB } from "./models/connection";
-import { setupChatSockets } from "./utils/chatSocket";
+import { initChatSocket } from "./utils/chatSocket";
 
 dotenv.config();
 
@@ -41,7 +41,7 @@ app.get("/", (req, res) => {
 
 // Routes
 app.use("/api", ApiRoute);
-setupChatSockets(io);
+initChatSocket(io);
 
 // Not found handler
 app.use((req, res, next) => {

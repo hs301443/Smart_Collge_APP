@@ -40,7 +40,7 @@ app.get("/", (req, res) => {
 });
 // Routes
 app.use("/api", routes_1.default);
-(0, chatSocket_1.setupChatSockets)(exports.io);
+(0, chatSocket_1.initChatSocket)(exports.io);
 // Not found handler
 app.use((req, res, next) => {
     throw new Errors_1.NotFound("Route not found");

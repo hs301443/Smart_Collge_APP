@@ -33,13 +33,12 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.MessageModel = void 0;
+exports.ChatModel = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
-const MessageSchema = new mongoose_1.Schema({
-    chat: { type: mongoose_1.Schema.Types.ObjectId, ref: "Chat", required: true },
-    senderModel: { type: String, enum: ["User", "Admin"], required: true },
-    sender: { type: mongoose_1.Schema.Types.ObjectId, required: true, refPath: "senderModel" },
-    content: { type: String, required: true },
-    readBy: [{ type: mongoose_1.Schema.Types.ObjectId, refPath: "senderModel" }],
+const ChatSchema = new mongoose_1.Schema({
+    user: { type: mongoose_1.Schema.Types.ObjectId, ref: "User", required: true },
+    admin: { type: mongoose_1.Schema.Types.ObjectId, ref: "Admin", required: true },
 }, { timestamps: true });
-exports.MessageModel = mongoose_1.default.model("Message", MessageSchema);
+// ensure unique chat per user-admin
+ChatSchema.index({ user: 1, admin: 1 }, { unique: true });
+exports.ChatModel = mongoose_1.default.model("Chat", ChatSchema);
