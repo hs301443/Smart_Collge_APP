@@ -1,14 +1,22 @@
 import { Router } from 'express';
-import {createExam,getAllExams,getExamById,deleteExam,updateExam} from '../../controller/admin/Exam'
 import { catchAsync } from '../../utils/catchAsync';
+import * as EXamController from '../../controller/admin/Exam';
 
-const router =Router();
+const router = Router();
 
+/** ======= Exam Routes ======= **/
 router
-    .post('/', catchAsync(createExam))
-    .get('/', catchAsync(getAllExams))
-    .get('/:id', catchAsync(getExamById))
-    .delete('/:id', catchAsync(deleteExam))
-    .put('/:id', catchAsync(updateExam))
+  .post('/create', catchAsync(EXamController.createExamWithQuestions))          // إنشاء امتحان
+  .get('/get', catchAsync(EXamController.getAllExams))           // جلب كل الامتحانات
+  .get('/get/:id', catchAsync(EXamController.getExamById))       // جلب امتحان محدد
+  .put('/update/:id', catchAsync(EXamController.updateExam))        // تعديل امتحان
+  .delete('/delete/:id', catchAsync(EXamController.deleteExam));    // حذف امتحان
 
-export default router
+/** ======= Question Routes ======= **/
+router
+  .get('/questions/:examId', catchAsync(EXamController.getAllQuestionsForExam))   // جلب كل أسئلة الامتحان
+  .get('/question/:id', catchAsync(EXamController.getQuestionById))               // جلب سؤال واحد
+  .put('/question/:id', catchAsync(EXamController.updateQuestionById))            // تعديل سؤال
+  .delete('/question/:id', catchAsync(EXamController.deleteQuestionById));        // حذف سؤال
+
+export default router;

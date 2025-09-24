@@ -8,7 +8,6 @@ import adminRouter from "./admin";
 import NewsRouter from "./News";
 import TempletsRouter from "./templates"
 import ExamRouter from './Exam'
-import QuestionsRouter from './Questions'
 import AttemptRouter from './Attempt'
 
 export const route = Router();
@@ -21,6 +20,5 @@ route.use("/roles", rolesRouter);
 route.use("/admins", adminRouter);
 route.use("/templates", TempletsRouter);
 route.use("/exam",ExamRouter);
-route.use("/questions",QuestionsRouter)
 route.use("/attempt",AttemptRouter)
 export default route;

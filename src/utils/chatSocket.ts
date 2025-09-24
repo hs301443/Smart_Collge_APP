@@ -55,29 +55,66 @@ export function initChatSocket(io: Server) {
     console.log(`✅ ${userType} connected: ${user._id}`);
 
     // 🎯 join_chat
-    socket.on("join_chat", async ({ chatId }) => {
-      const chat = await ChatModel.findById(chatId);
-      if (!chat) return socket.emit("error", "Chat not found");
+    socket.on("join_chat", async ({ chatId, adminId }) => {
+      try {
+        let chat;
+        if (chatId) {
+          chat = await ChatModel.findById(chatId);
+          if (!chat) return socket.emit("error", "Chat not found");
+        } else {
+          if (!adminId) return socket.emit("error", "Admin ID required");
+          chat = await ChatModel.findOne({ user: user._id, admin: adminId });
+          if (!chat) chat = await ChatModel.create({ user: user._id, admin: adminId });
+          chatId = chat._id;
+        }
 
-      socket.join(`chat_${chatId}`);
+        socket.join(`chat_${chatId}`);
 
-      const messages = await MessageModel.find({ chat: chatId }).sort({ createdAt: 1 });
-      socket.emit("chat_history", messages);
+        const messages = await MessageModel.find({ chat: chatId }).sort({ createdAt: 1 });
+        socket.emit("chat_history", messages);
+      } catch (err) {
+        console.error(err);
+        socket.emit("error", "Join chat failed");
+      }
     });
 
     // 🎯 send_message
-    socket.on("send_message", async ({ chatId, content }) => {
-      if (!chatId || !content) return;
+    socket.on("send_message", async ({ chatId, adminId, content }) => {
+      try {
+        if (!content) return;
 
-      const msg = await MessageModel.create({
-        chat: chatId,
-        senderModel: userType === "user" ? "User" : "Admin",
-        sender: user._id,
-        content,
-        readBy: [user._id],
-      });
+        let chat;
+        if (chatId) {
+          chat = await ChatModel.findById(chatId);
+          if (!chat) return socket.emit("error", "Chat not found");
+        } else {
+          if (!adminId) return socket.emit("error", "Admin ID required for new chat");
+          chat = await ChatModel.findOne({ user: user._id, admin: adminId });
+          if (!chat) chat = await ChatModel.create({ user: user._id, admin: adminId });
+          chatId = chat._id;
+        }
 
-      io.to(`chat_${chatId}`).emit("message", msg);
+        const msg = await MessageModel.create({
+          chat: chatId,
+          senderModel: userType === "user" ? "User" : "Admin",
+          sender: user._id,
+          content,
+          readBy: [user._id],
+        });
+
+        // إرسال الرسالة لكل المتصلين بالشات
+        io.to(`chat_${chatId}`).emit("message", msg);
+
+        // إشعار للطرف الآخر
+        io.to(`chat_${chatId}`).emit("notification", {
+          chatId,
+          sender: user._id,
+          content,
+        });
+      } catch (err) {
+        console.error(err);
+        socket.emit("error", "Send message failed");
+      }
     });
 
     // 🎯 typing indicator
