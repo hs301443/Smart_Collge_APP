@@ -12,9 +12,10 @@ const handleImages_1 = require("../../utils/handleImages");
 const allowedLevels = [1, 2, 3, 4, 5];
 const allowedDepartments = ["CS", "IT", "IS", "CE", "EE"];
 const createExamWithQuestions = async (req, res) => {
-    if (!req.user || !req.user.isSuperAdmin) {
+    if (!req.admin || !req.admin.isSuperAdmin) {
         throw new Errors_2.UnauthorizedError("Only Super Admin can create exams");
     }
+    const AdminId = req.admin.id;
     const { title, description, doctorname, level, department, questions, // Array of questions
     subject_name, startAt, endAt, durationMinutes } = req.body;
     if (!title || !description || !doctorname || !level || !department || !subject_name || !startAt || !endAt || !durationMinutes) {
@@ -53,7 +54,7 @@ const createExamWithQuestions = async (req, res) => {
             // حفظ الصورة لو موجودة
             let imageUrl = null;
             if (q.imageBase64) {
-                imageUrl = await (0, handleImages_1.saveBase64Image)(q.imageBase64, req.user._id.toString(), req, "questions");
+                imageUrl = await (0, handleImages_1.saveBase64Image)(q.imageBase64, AdminId.toString(), req, "questions");
             }
             // إنشاء السؤال
             const question = await Questions_1.QuestionModel.create({

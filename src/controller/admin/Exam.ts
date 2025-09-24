@@ -11,10 +11,10 @@ const allowedLevels = [1, 2, 3, 4, 5];
 const allowedDepartments = ["CS", "IT", "IS", "CE", "EE"];
 
 export const createExamWithQuestions = async (req: any, res: Response) => {
-  if (!req.user || !req.user.isSuperAdmin) {
+  if (!req.admin || !req.admin.isSuperAdmin) {
     throw new UnauthorizedError("Only Super Admin can create exams");
   }
-
+ const AdminId = req.admin.id
   const {
     title,
     description,
@@ -68,7 +68,7 @@ export const createExamWithQuestions = async (req: any, res: Response) => {
       // حفظ الصورة لو موجودة
       let imageUrl: string | null = null;
       if (q.imageBase64) {
-        imageUrl = await saveBase64Image(q.imageBase64, req.user._id.toString(), req, "questions");
+        imageUrl = await saveBase64Image(q.imageBase64, AdminId.toString(), req, "questions");
       }
 
       // إنشاء السؤال
