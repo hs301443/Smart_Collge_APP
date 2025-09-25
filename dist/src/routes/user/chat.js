@@ -1,1 +1,10 @@
 "use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const catchAsync_1 = require("../../utils/catchAsync");
+const authenticated_1 = require("../../middlewares/authenticated");
+const chats_1 = require("../../controller/users/chats");
+const router = (0, express_1.Router)();
+router.post('/', authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(chats_1.sendMessage));
+router.get('/messages', authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(chats_1.getMessages));
+exports.default = router;
