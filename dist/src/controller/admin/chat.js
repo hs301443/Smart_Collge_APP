@@ -14,7 +14,7 @@ const sendMessageByAdmin = async (req, res) => {
         throw new Errors_1.UnauthorizedError("No token provided");
     const decoded = (0, auth_1.verifyToken)(token);
     // ✅ التحقق من الدور مباشرة
-    if (!(decoded.role === "Admin" || decoded.role === "SuperAdmin")) {
+    if (!decoded.role || (decoded.role !== "Admin" && decoded.role !== "SuperAdmin")) {
         throw new Errors_1.UnauthorizedError("Only admins can send messages");
     }
     const { chatId } = req.params;
@@ -40,12 +40,22 @@ const getAdminChats = async (req, res) => {
     if (!token)
         throw new Errors_1.UnauthorizedError("No token provided");
     const decoded = (0, auth_1.verifyToken)(token);
-    if (!(decoded.role === "Admin" || decoded.role === "SuperAdmin")) {
+    if (!decoded.role || (decoded.role !== "Admin" && decoded.role !== "SuperAdmin")) {
         throw new Errors_1.UnauthorizedError("Only admins can view chats");
     }
-    const chats = await chat_1.ChatModel.find({ admin: decoded.id })
-        .populate("user", "name email role")
-        .sort({ updatedAt: -1 });
+    // 📌 SuperAdmin يشوف كل الشاتات
+    let chats;
+    if (decoded.role === "SuperAdmin") {
+        chats = await chat_1.ChatModel.find()
+            .populate("user", "name email role")
+            .populate("admin", "name email role")
+            .sort({ updatedAt: -1 });
+    }
+    else {
+        chats = await chat_1.ChatModel.find({ admin: decoded.id })
+            .populate("user", "name email role")
+            .sort({ updatedAt: -1 });
+    }
     (0, response_1.SuccessResponse)(res, chats);
 };
 exports.getAdminChats = getAdminChats;
@@ -55,14 +65,18 @@ const getMessagesByChatId = async (req, res) => {
     if (!token)
         throw new Errors_1.UnauthorizedError("No token provided");
     const decoded = (0, auth_1.verifyToken)(token);
-    if (!(decoded.role === "Admin" || decoded.role === "SuperAdmin")) {
+    if (!decoded.role || (decoded.role !== "Admin" && decoded.role !== "SuperAdmin")) {
         throw new Errors_1.UnauthorizedError("Only admins can view messages");
     }
     const { chatId } = req.params;
+    if (!chatId)
+        throw new BadRequest_1.BadRequest("Chat ID is required");
     const chat = await chat_1.ChatModel.findById(chatId);
     if (!chat)
         throw new Errors_1.NotFound("Chat not found");
-    const messages = await Message_1.MessageModel.find({ chat: chatId }).sort({ createdAt: 1 });
+    const messages = await Message_1.MessageModel.find({ chat: chatId })
+        .sort({ createdAt: 1 })
+        .populate("sender", "name email role");
     (0, response_1.SuccessResponse)(res, messages);
 };
 exports.getMessagesByChatId = getMessagesByChatId;

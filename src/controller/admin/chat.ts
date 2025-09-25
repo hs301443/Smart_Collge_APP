@@ -14,7 +14,7 @@ export const sendMessageByAdmin = async (req: Request, res: Response) => {
   const decoded: any = verifyToken(token);
 
   // ✅ التحقق من الدور مباشرة
-  if (!(decoded.role === "Admin" || decoded.role === "SuperAdmin")) {
+  if (!decoded.role || (decoded.role !== "Admin" && decoded.role !== "SuperAdmin")) {
     throw new UnauthorizedError("Only admins can send messages");
   }
 
@@ -44,13 +44,22 @@ export const getAdminChats = async (req: Request, res: Response) => {
 
   const decoded: any = verifyToken(token);
 
-  if (!(decoded.role === "Admin" || decoded.role === "SuperAdmin")) {
+  if (!decoded.role || (decoded.role !== "Admin" && decoded.role !== "SuperAdmin")) {
     throw new UnauthorizedError("Only admins can view chats");
   }
 
-  const chats = await ChatModel.find({ admin: decoded.id })
-    .populate("user", "name email role")
-    .sort({ updatedAt: -1 });
+  // 📌 SuperAdmin يشوف كل الشاتات
+  let chats;
+  if (decoded.role === "SuperAdmin") {
+    chats = await ChatModel.find()
+      .populate("user", "name email role")
+      .populate("admin", "name email role")
+      .sort({ updatedAt: -1 });
+  } else {
+    chats = await ChatModel.find({ admin: decoded.id })
+      .populate("user", "name email role")
+      .sort({ updatedAt: -1 });
+  }
 
   SuccessResponse(res, chats);
 };
@@ -62,16 +71,19 @@ export const getMessagesByChatId = async (req: Request, res: Response) => {
 
   const decoded: any = verifyToken(token);
 
-  if (!(decoded.role === "Admin" || decoded.role === "SuperAdmin")) {
+  if (!decoded.role || (decoded.role !== "Admin" && decoded.role !== "SuperAdmin")) {
     throw new UnauthorizedError("Only admins can view messages");
   }
 
   const { chatId } = req.params;
+  if (!chatId) throw new BadRequest("Chat ID is required");
 
   const chat = await ChatModel.findById(chatId);
   if (!chat) throw new NotFound("Chat not found");
 
-  const messages = await MessageModel.find({ chat: chatId }).sort({ createdAt: 1 });
+  const messages = await MessageModel.find({ chat: chatId })
+    .sort({ createdAt: 1 })
+    .populate("sender", "name email role");
 
   SuccessResponse(res, messages);
 };

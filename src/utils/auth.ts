@@ -5,46 +5,52 @@ import { UnauthorizedError } from "../Errors";
 dotenv.config();
 
 export const generateToken = (user: any, type: "admin" | "user"): string => {
-  let userType: string;
-
   if (type === "admin") {
-    // من جدول الأدمن
-    userType = user.role === "SuperAdmin" ? "SuperAdmin" : "Admin";
+    // للأدمن
+    return jwt.sign(
+      {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        role: user.role,             // "Admin" أو "SuperAdmin"
+        roleId: user.roleId?._id || null,
+      },
+      process.env.JWT_SECRET as string,
+      { expiresIn: "7d" }
+    );
   } else {
-    // من جدول اليوزر
-    userType = user.role === "Graduated" ? "Graduated" : "Student";
+    // لليوزر
+    return jwt.sign(
+      {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        userType: user.role === "Graduated" ? "Graduated" : "Student",
+        level: user.level,
+        department: user.department,
+      },
+      process.env.JWT_SECRET as string,
+      { expiresIn: "7d" }
+    );
   }
-
-  return jwt.sign(
-    {
-      id: user.id?.toString(),
-      name: user.name,
-      email: user.email,
-      userType, // 👈 أضفنا الحقل ده
-      level: user.level,
-      department: user.department,
-    },
-    process.env.JWT_SECRET as string,
-    { expiresIn: "7d" }
-  );
 };
+
 
 
 
 export const verifyToken = (token: string) => {
   try {
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET as string
-    ) as jwt.JwtPayload;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as any;
 
     return {
       id: decoded.id,
       name: decoded.name,
       email: decoded.email,
-      userType: decoded.userType, // 👈 هنا بترجع طالب / خريج / أدمن / سوبر أدمن
-      level: decoded.level,
-      department: decoded.department,
+      role: decoded.role || null,        // للأدمن
+      roleId: decoded.roleId || null,    // للأدمن
+      userType: decoded.userType || null,// لليوزر
+      level: decoded.level || null,
+      department: decoded.department || null,
     };
   } catch (error) {
     throw new UnauthorizedError("Invalid token");

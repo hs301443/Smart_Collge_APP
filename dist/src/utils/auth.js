@@ -9,23 +9,27 @@ const dotenv_1 = __importDefault(require("dotenv"));
 const Errors_1 = require("../Errors");
 dotenv_1.default.config();
 const generateToken = (user, type) => {
-    let userType;
     if (type === "admin") {
-        // من جدول الأدمن
-        userType = user.role === "SuperAdmin" ? "SuperAdmin" : "Admin";
+        // للأدمن
+        return jsonwebtoken_1.default.sign({
+            id: user._id.toString(),
+            name: user.name,
+            email: user.email,
+            role: user.role, // "Admin" أو "SuperAdmin"
+            roleId: user.roleId?._id || null,
+        }, process.env.JWT_SECRET, { expiresIn: "7d" });
     }
     else {
-        // من جدول اليوزر
-        userType = user.role === "Graduated" ? "Graduated" : "Student";
+        // لليوزر
+        return jsonwebtoken_1.default.sign({
+            id: user._id.toString(),
+            name: user.name,
+            email: user.email,
+            userType: user.role === "Graduated" ? "Graduated" : "Student",
+            level: user.level,
+            department: user.department,
+        }, process.env.JWT_SECRET, { expiresIn: "7d" });
     }
-    return jsonwebtoken_1.default.sign({
-        id: user.id?.toString(),
-        name: user.name,
-        email: user.email,
-        userType, // 👈 أضفنا الحقل ده
-        level: user.level,
-        department: user.department,
-    }, process.env.JWT_SECRET, { expiresIn: "7d" });
 };
 exports.generateToken = generateToken;
 const verifyToken = (token) => {
@@ -35,9 +39,11 @@ const verifyToken = (token) => {
             id: decoded.id,
             name: decoded.name,
             email: decoded.email,
-            userType: decoded.userType, // 👈 هنا بترجع طالب / خريج / أدمن / سوبر أدمن
-            level: decoded.level,
-            department: decoded.department,
+            role: decoded.role || null, // للأدمن
+            roleId: decoded.roleId || null, // للأدمن
+            userType: decoded.userType || null, // لليوزر
+            level: decoded.level || null,
+            department: decoded.department || null,
         };
     }
     catch (error) {
