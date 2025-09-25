@@ -11,9 +11,9 @@ export const sendMessageByAdmin = async (req: Request, res: Response) => {
   const token = req.headers.authorization?.split(" ")[1];
   if (!token) throw new UnauthorizedError("No token provided");
 
-  const decoded: any = verifyToken(token);
+const decoded: any = verifyToken(token);
 
-if (!(decoded.userType === "Admin" || decoded.userType === "SuperAdmin")) {
+if (!(decoded.role === "Admin" || decoded.role === "SuperAdmin")) {
   throw new UnauthorizedError("Only admins can send messages");
 }
 
@@ -45,7 +45,7 @@ export const getAdminChats = async (req: Request, res: Response) => {
 
   const decoded: any = verifyToken(token);
 
-if (!(decoded.userType === "Admin" || decoded.userType === "SuperAdmin")) {
+if (!(decoded.role === "Admin" || decoded.role === "SuperAdmin")) {
   throw new UnauthorizedError("Only admins can send messages");
 }
 
@@ -62,10 +62,9 @@ if (!(decoded.userType === "Admin" || decoded.userType === "SuperAdmin")) {
 export const getMessagesByChatId = async (req: Request, res: Response) => {
   const token = req.headers.authorization?.split(" ")[1];
   if (!token) throw new UnauthorizedError("No token provided");
+const decoded: any = verifyToken(token);
 
-  const decoded: any = verifyToken(token);
-
-if (!(decoded.userType === "Admin" || decoded.userType === "SuperAdmin")) {
+if (!(decoded.role === "Admin" || decoded.role === "SuperAdmin")) {
   throw new UnauthorizedError("Only admins can send messages");
 }
 
