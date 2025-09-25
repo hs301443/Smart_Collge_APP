@@ -15,19 +15,26 @@ export function initChatSocket(io: Server) {
       const token = socket.handshake.auth?.token;
       if (!token) return next(new Error("No token"));
 
-      const payload: any = jwt.verify(token, process.env.JWT_SECRET || "changeme");
+      const payload: any = jwt.verify(
+        token,
+        process.env.JWT_SECRET || "changeme"
+      );
 
       let user: any = null;
-      if (payload.type === "user") {
+      let userType: "user" | "admin" | null = null;
+
+      if (payload.userType === "Student" || payload.userType === "Graduated") {
         user = await UserModel.findById(payload.id);
-      } else if (payload.type === "admin") {
+        userType = "user";
+      } else if (payload.userType === "Admin" || payload.userType === "SuperAdmin") {
         user = await AdminModel.findById(payload.id);
+        userType = "admin";
       }
 
       if (!user) return next(new Error("Invalid user"));
 
       (socket as any).user = user;
-      (socket as any).userType = payload.type;
+      (socket as any).userType = userType;
 
       next();
     } catch (err) {
@@ -70,7 +77,10 @@ export function initChatSocket(io: Server) {
 
         socket.join(`chat_${chatId}`);
 
-        const messages = await MessageModel.find({ chat: chatId }).sort({ createdAt: 1 });
+        const messages = await MessageModel.find({ chat: chatId })
+          .sort({ createdAt: 1 })
+          .populate("sender");
+
         socket.emit("chat_history", messages);
       } catch (err) {
         console.error(err);
@@ -102,11 +112,14 @@ export function initChatSocket(io: Server) {
           readBy: [user._id],
         });
 
+        // رجع الرسالة مع بيانات المرسل
+        const populatedMsg = await msg.populate("sender");
+
         // إرسال الرسالة لكل المتصلين بالشات
-        io.to(`chat_${chatId}`).emit("message", msg);
+        io.to(`chat_${chatId}`).emit("message", populatedMsg);
 
         // إشعار للطرف الآخر
-        io.to(`chat_${chatId}`).emit("notification", {
+        socket.to(`chat_${chatId}`).emit("notification", {
           chatId,
           sender: user._id,
           content,
@@ -119,7 +132,9 @@ export function initChatSocket(io: Server) {
 
     // 🎯 typing indicator
     socket.on("typing", ({ chatId, isTyping }) => {
-      socket.to(`chat_${chatId}`).emit("typing", { chatId, userId: user._id, isTyping });
+      socket
+        .to(`chat_${chatId}`)
+        .emit("typing", { chatId, userId: user._id, isTyping });
     });
 
     // 🎯 disconnect

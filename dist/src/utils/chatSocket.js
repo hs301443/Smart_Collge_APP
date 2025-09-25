@@ -19,16 +19,19 @@ function initChatSocket(io) {
                 return next(new Error("No token"));
             const payload = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET || "changeme");
             let user = null;
-            if (payload.type === "user") {
+            let userType = null;
+            if (payload.userType === "Student" || payload.userType === "Graduated") {
                 user = await User_1.UserModel.findById(payload.id);
+                userType = "user";
             }
-            else if (payload.type === "admin") {
+            else if (payload.userType === "Admin" || payload.userType === "SuperAdmin") {
                 user = await Admin_1.AdminModel.findById(payload.id);
+                userType = "admin";
             }
             if (!user)
                 return next(new Error("Invalid user"));
             socket.user = user;
-            socket.userType = payload.type;
+            socket.userType = userType;
             next();
         }
         catch (err) {
@@ -69,7 +72,9 @@ function initChatSocket(io) {
                     chatId = chat._id;
                 }
                 socket.join(`chat_${chatId}`);
-                const messages = await Message_1.MessageModel.find({ chat: chatId }).sort({ createdAt: 1 });
+                const messages = await Message_1.MessageModel.find({ chat: chatId })
+                    .sort({ createdAt: 1 })
+                    .populate("sender");
                 socket.emit("chat_history", messages);
             }
             catch (err) {
@@ -103,10 +108,12 @@ function initChatSocket(io) {
                     content,
                     readBy: [user._id],
                 });
+                // رجع الرسالة مع بيانات المرسل
+                const populatedMsg = await msg.populate("sender");
                 // إرسال الرسالة لكل المتصلين بالشات
-                io.to(`chat_${chatId}`).emit("message", msg);
+                io.to(`chat_${chatId}`).emit("message", populatedMsg);
                 // إشعار للطرف الآخر
-                io.to(`chat_${chatId}`).emit("notification", {
+                socket.to(`chat_${chatId}`).emit("notification", {
                     chatId,
                     sender: user._id,
                     content,
@@ -119,7 +126,9 @@ function initChatSocket(io) {
         });
         // 🎯 typing indicator
         socket.on("typing", ({ chatId, isTyping }) => {
-            socket.to(`chat_${chatId}`).emit("typing", { chatId, userId: user._id, isTyping });
+            socket
+                .to(`chat_${chatId}`)
+                .emit("typing", { chatId, userId: user._id, isTyping });
         });
         // 🎯 disconnect
         socket.on("disconnect", () => {
