@@ -13,6 +13,7 @@ const sendMessageByAdmin = async (req, res) => {
     if (!token)
         throw new Errors_1.UnauthorizedError("No token provided");
     const decoded = (0, auth_1.verifyToken)(token);
+    // ✅ التحقق من الدور مباشرة
     if (!(decoded.role === "Admin" || decoded.role === "SuperAdmin")) {
         throw new Errors_1.UnauthorizedError("Only admins can send messages");
     }
@@ -40,7 +41,7 @@ const getAdminChats = async (req, res) => {
         throw new Errors_1.UnauthorizedError("No token provided");
     const decoded = (0, auth_1.verifyToken)(token);
     if (!(decoded.role === "Admin" || decoded.role === "SuperAdmin")) {
-        throw new Errors_1.UnauthorizedError("Only admins can send messages");
+        throw new Errors_1.UnauthorizedError("Only admins can view chats");
     }
     const chats = await chat_1.ChatModel.find({ admin: decoded.id })
         .populate("user", "name email role")
@@ -55,7 +56,7 @@ const getMessagesByChatId = async (req, res) => {
         throw new Errors_1.UnauthorizedError("No token provided");
     const decoded = (0, auth_1.verifyToken)(token);
     if (!(decoded.role === "Admin" || decoded.role === "SuperAdmin")) {
-        throw new Errors_1.UnauthorizedError("Only admins can send messages");
+        throw new Errors_1.UnauthorizedError("Only admins can view messages");
     }
     const { chatId } = req.params;
     const chat = await chat_1.ChatModel.findById(chatId);
