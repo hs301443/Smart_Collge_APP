@@ -1,62 +1,72 @@
 import { Request, Response } from "express";
-import { AdminModel } from "../../models/shema/auth/Admin";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { UnauthorizedError } from "../../Errors";
+import { AdminModel, RoleModel, ActionModel } from "../../models/shema/auth/Admin";
+import { BadRequest } from "../../Errors/BadRequest";
+import { NotFound } from "../../Errors";
 import { SuccessResponse } from "../../utils/response";
-
 
 export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
-    throw new UnauthorizedError("Email and password are required");
+    throw new BadRequest("Email and password are required");
   }
 
-  const admin = await AdminModel.findOne({ email }).populate("role");
+  // ✅ جبنا الأدمن ومعاه الدور + الأكشنز
+  const admin = await AdminModel.findOne({ email }).populate({
+    path: "roleId",
+    populate: { path: "actionIds", model: ActionModel },
+  });
+
   if (!admin) {
-    throw new UnauthorizedError("Invalid email or password");
+    throw new NotFound("Admin not found");
   }
 
-  const isPasswordValid = await bcrypt.compare(password, admin.hashedPassword);
-  if (!isPasswordValid) {
-    throw new UnauthorizedError("Invalid email or password");
+  // ✅ تحقق من الباسورد
+  const isMatch = await bcrypt.compare(password, admin.hashedPassword);
+  if (!isMatch) {
+    throw new BadRequest("Invalid credentials");
   }
 
-  // تحديد الدور والصلاحيات
-  const roleName = (admin.role as any)?.name || null;
-  const rolePermissions = (admin.role as any)?.permissions || [];
+  // ✅ جهز بيانات الدور
+  let role = null;
+  if (admin.role === "SuperAdmin") {
+    role = {
+      id: null,
+      name: "SuperAdmin",
+      actions: [{ id: "*", name: "all" }],
+    };
+  } else if (admin.roleId) {
+    role = {
+      id: (admin.roleId as any)._id,
+      name: (admin.roleId as any).name,
+      actions: (admin.roleId as any).actionIds.map((a: any) => ({
+        id: a._id,
+        name: a.name,
+      })),
+    };
+  }
 
-  const permissions = admin.isSuperAdmin ? ["*"] : rolePermissions;
-
-  // توليد التوكن
+  // ✅ التوكن
   const token = jwt.sign(
     {
-      sub: admin._id.toString(),
-      name: admin.name,
-      email: admin.email,
-      role: roleName,
-      isSuperAdmin: admin.isSuperAdmin,
-      permissions,
+      id: admin._id,
+      role,
     },
     process.env.JWT_SECRET as string,
     { expiresIn: "7d" }
   );
 
-  return SuccessResponse(
-    res,
-    {
-      message: "Login successful",
-      token,
-      admin: {
-        id: admin._id.toString(),
-        name: admin.name,
-        email: admin.email,
-        role: roleName,
-        isSuperAdmin: admin.isSuperAdmin,
-        permissions,
-      },
+  // ✅ الريسبونس
+  return SuccessResponse(res, {
+    message: "Login successful",
+    token,
+    admin: {
+      id: admin._id,
+      name: admin.name,
+      email: admin.email,
+      role,
     },
-    200
-  );
+  });
 };

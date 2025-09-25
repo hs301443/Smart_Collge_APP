@@ -4,136 +4,85 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteAdmin = exports.updateAdmin = exports.getAdminById = exports.getAdmins = exports.createAdmin = void 0;
-const response_1 = require("../../utils/response");
-const Errors_1 = require("../../Errors");
-const Errors_2 = require("../../Errors");
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const Admin_1 = require("../../models/shema/auth/Admin");
+const response_1 = require("../../utils/response");
+const Errors_1 = require("../../Errors");
+const BadRequest_1 = require("../../Errors/BadRequest");
+// ✅ Create Admin
 const createAdmin = async (req, res) => {
-    if (!req.user || !req.user.isSuperAdmin) {
-        throw new Errors_2.UnauthorizedError("Only Super Admin can create admins");
-    }
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, roleId } = req.body;
+    const existing = await Admin_1.AdminModel.findOne({ email });
+    if (existing)
+        throw new BadRequest_1.BadRequest("Email already exists");
     const hashedPassword = await bcrypt_1.default.hash(password, 10);
-    const admin = new Admin_1.AdminModel({
+    const admin = await Admin_1.AdminModel.create({
         name,
         email,
         hashedPassword,
         role,
+        roleId,
     });
-    await admin.save();
-    return (0, response_1.SuccessResponse)(res, { message: "Admin created", admin });
+    (0, response_1.SuccessResponse)(res, { message: "Admin created successfully", admin });
 };
 exports.createAdmin = createAdmin;
-// ✅ Get All Admins
+// ✅ Get all admins with role + actions
 const getAdmins = async (req, res) => {
-    if (!req.user || !req.user.isSuperAdmin) {
-        throw new Errors_2.UnauthorizedError("Only Super Admin can access admins");
-    }
-    // جلب الـ admins مع الدور، واستبعاد كلمة المرور
     const admins = await Admin_1.AdminModel.find()
-        .populate("role")
-        .select("-hashedPassword");
-    if (admins.length === 0)
-        throw new Errors_1.NotFound("Admins not found");
-    // ترتيب الـ response
-    const formattedAdmins = admins.map(admin => ({
-        _id: admin._id,
-        name: admin.name,
-        email: admin.email,
-        imagePath: admin.imagePath,
-        isSuperAdmin: admin.isSuperAdmin,
-        role: admin.role && typeof admin.role === "object" && "_id" in admin.role
-            ? {
-                _id: admin.role._id,
-                name: admin.role.name,
-                permissions: admin.role.permissions, // حقل الصلاحيات الصحيح
-                description: admin.role.description,
-            }
-            : null,
-        customPermissions: admin.customPermissions,
-        createdAt: admin.createdAt,
-        updatedAt: admin.updatedAt,
-    }));
-    return (0, response_1.SuccessResponse)(res, { admins: formattedAdmins });
+        .populate({
+        path: "roleId",
+        populate: { path: "actionIds" },
+    })
+        .lean();
+    return (0, response_1.SuccessResponse)(res, { message: "Admins fetched successfully", admins });
 };
 exports.getAdmins = getAdmins;
-// ✅ Get Single Admin
+// ✅ Get one admin with role + actions
 const getAdminById = async (req, res) => {
-    if (!req.user || !req.user.isSuperAdmin) {
-        throw new Errors_2.UnauthorizedError("Only Super Admin can access admins");
-    }
     const { id } = req.params;
-    const admin = await Admin_1.AdminModel.findById(id).populate("role").select("-hashedPassword");
+    const admin = await Admin_1.AdminModel.findById(id)
+        .populate({
+        path: "roleId",
+        populate: { path: "actionIds" },
+    })
+        .lean();
     if (!admin)
         throw new Errors_1.NotFound("Admin not found");
-    const formattedAdmin = {
-        _id: admin._id,
-        name: admin.name,
-        email: admin.email,
-        imagePath: admin.imagePath,
-        isSuperAdmin: admin.isSuperAdmin,
-        role: admin.role && typeof admin.role === "object" && "_id" in admin.role
-            ? {
-                _id: admin.role._id,
-                name: admin.role.name,
-                permissions: admin.role.permissions,
-                description: admin.role.description,
-            }
-            : null,
-        customPermissions: admin.customPermissions,
-        createdAt: admin.createdAt,
-        updatedAt: admin.updatedAt,
-    };
-    return (0, response_1.SuccessResponse)(res, { admin: formattedAdmin });
+    return (0, response_1.SuccessResponse)(res, { message: "Admin fetched successfully", admin });
 };
 exports.getAdminById = getAdminById;
 // ✅ Update Admin
 const updateAdmin = async (req, res) => {
-    if (!req.user || !req.user.isSuperAdmin) {
-        throw new Errors_2.UnauthorizedError("Only Super Admin can update admins");
-    }
     const { id } = req.params;
-    const { name, email, password, role } = req.body;
-    let updateData = { name, email, role };
-    if (password) {
-        updateData.hashedPassword = await bcrypt_1.default.hash(password, 10);
-    }
-    const admin = await Admin_1.AdminModel.findByIdAndUpdate(id, updateData, { new: true })
-        .populate("role")
-        .select("-hashedPassword");
+    const { name, email, password, role, roleId } = req.body;
+    const admin = await Admin_1.AdminModel.findById(id);
     if (!admin)
         throw new Errors_1.NotFound("Admin not found");
-    const formattedAdmin = {
-        _id: admin._id,
-        name: admin.name,
-        email: admin.email,
-        imagePath: admin.imagePath,
-        isSuperAdmin: admin.isSuperAdmin,
-        role: admin.role && typeof admin.role === "object" && "name" in admin.role
-            ? {
-                _id: admin.role._id,
-                name: admin.role.name,
-                permissions: admin.role.permissions,
-                description: admin.role.description,
-            }
-            : null,
-        customPermissions: admin.customPermissions,
-        createdAt: admin.createdAt,
-        updatedAt: admin.updatedAt,
-    };
-    return (0, response_1.SuccessResponse)(res, { message: "Admin updated", admin: formattedAdmin });
+    if (email && email !== admin.email) {
+        const exists = await Admin_1.AdminModel.findOne({ email });
+        if (exists)
+            throw new BadRequest_1.BadRequest("Email already in use");
+        admin.email = email;
+    }
+    if (password) {
+        admin.hashedPassword = await bcrypt_1.default.hash(password, 10);
+    }
+    if (name)
+        admin.name = name;
+    if (role)
+        admin.role = role;
+    if (roleId)
+        admin.roleId = roleId;
+    await admin.save();
+    return (0, response_1.SuccessResponse)(res, { message: "Admin updated successfully", admin });
 };
 exports.updateAdmin = updateAdmin;
 // ✅ Delete Admin
 const deleteAdmin = async (req, res) => {
-    if (!req.user || !req.user.isSuperAdmin) {
-        throw new Errors_2.UnauthorizedError("Only Super Admin can delete admins");
-    }
     const { id } = req.params;
     const admin = await Admin_1.AdminModel.findByIdAndDelete(id);
     if (!admin)
         throw new Errors_1.NotFound("Admin not found");
-    return (0, response_1.SuccessResponse)(res, { message: "Admin deleted successfully" });
+    return (0, response_1.SuccessResponse)(res, "Admin deleted successfully");
 };
 exports.deleteAdmin = deleteAdmin;

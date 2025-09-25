@@ -8,8 +8,24 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const Errors_1 = require("../Errors");
 dotenv_1.default.config();
-const generateToken = (user) => {
-    return jsonwebtoken_1.default.sign({ id: user.id?.toString(), role: user.role, name: user.name, level: user.level, department: user.department }, process.env.JWT_SECRET, { expiresIn: "7d" });
+const generateToken = (user, type) => {
+    let userType;
+    if (type === "admin") {
+        // من جدول الأدمن
+        userType = user.role === "SuperAdmin" ? "SuperAdmin" : "Admin";
+    }
+    else {
+        // من جدول اليوزر
+        userType = user.role === "Graduated" ? "Graduated" : "Student";
+    }
+    return jsonwebtoken_1.default.sign({
+        id: user.id?.toString(),
+        name: user.name,
+        email: user.email,
+        userType, // 👈 أضفنا الحقل ده
+        level: user.level,
+        department: user.department,
+    }, process.env.JWT_SECRET, { expiresIn: "7d" });
 };
 exports.generateToken = generateToken;
 const verifyToken = (token) => {
@@ -18,9 +34,10 @@ const verifyToken = (token) => {
         return {
             id: decoded.id,
             name: decoded.name,
-            role: decoded.role,
+            email: decoded.email,
+            userType: decoded.userType, // 👈 هنا بترجع طالب / خريج / أدمن / سوبر أدمن
             level: decoded.level,
-            department: decoded.department
+            department: decoded.department,
         };
     }
     catch (error) {

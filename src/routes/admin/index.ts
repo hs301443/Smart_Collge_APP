@@ -1,7 +1,7 @@
 import { Router } from "express";
 import authRouter from "./auth";
 import { authenticated } from "../../middlewares/authenticated";
-import { auth, authorizeRoles } from "../../middlewares/authorized";
+import { authorizeRoles } from "../../middlewares/authorized";
 import notificationRouter from "./notification"
 import rolesRouter from"./roles";
 import adminRouter from "./admin";
@@ -13,7 +13,7 @@ import AttemptRouter from './Attempt'
 export const route = Router();
 
 route.use("/auth", authRouter);
-route.use(auth, authorizeRoles("admin", "superadmin"));
+route.use(authenticated, authorizeRoles("Admin","SuperAdmin"));
 route.use("/notification",notificationRouter);
 route.use("/news", NewsRouter);
 route.use("/roles", rolesRouter);

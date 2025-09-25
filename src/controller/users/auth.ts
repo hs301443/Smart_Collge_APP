@@ -160,7 +160,7 @@ export const login = async (req: Request, res: Response) => {
     name: user.name,
     role: user.role,
     email: user.email,
-  });
+  },"user");
 
   SuccessResponse(res, {
     message: "Login Successful",

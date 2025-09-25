@@ -4,13 +4,31 @@ import { UnauthorizedError } from "../Errors";
 
 dotenv.config();
 
-export const generateToken = (user: any): string => {
+export const generateToken = (user: any, type: "admin" | "user"): string => {
+  let userType: string;
+
+  if (type === "admin") {
+    // من جدول الأدمن
+    userType = user.role === "SuperAdmin" ? "SuperAdmin" : "Admin";
+  } else {
+    // من جدول اليوزر
+    userType = user.role === "Graduated" ? "Graduated" : "Student";
+  }
+
   return jwt.sign(
-    { id: user.id?.toString(), role: user.role, name: user.name, level: user.level, department: user.department },
+    {
+      id: user.id?.toString(),
+      name: user.name,
+      email: user.email,
+      userType, // 👈 أضفنا الحقل ده
+      level: user.level,
+      department: user.department,
+    },
     process.env.JWT_SECRET as string,
     { expiresIn: "7d" }
   );
 };
+
 
 
 export const verifyToken = (token: string) => {
@@ -23,9 +41,10 @@ export const verifyToken = (token: string) => {
     return {
       id: decoded.id,
       name: decoded.name,
-      role: decoded.role,
+      email: decoded.email,
+      userType: decoded.userType, // 👈 هنا بترجع طالب / خريج / أدمن / سوبر أدمن
       level: decoded.level,
-      department: decoded.department
+      department: decoded.department,
     };
   } catch (error) {
     throw new UnauthorizedError("Invalid token");

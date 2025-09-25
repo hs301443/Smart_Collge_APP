@@ -10,9 +10,7 @@ const allowedDepartments = ["CS", "IT", "IS", "CE", "EE"];
 
 // ✅ إنشاء امتحان مع أسئلة
 export const createExamWithQuestions = async (req: any, res: Response) => {
-  if (!req.user || !req.user.isSuperAdmin) {
-    throw new UnauthorizedError("Only Super Admin can create exams");
-  }
+  
 
   const adminId = req.user.id;
 
@@ -89,14 +87,12 @@ export const createExamWithQuestions = async (req: any, res: Response) => {
 
 // ✅ جلب كل الامتحانات
 export const getAllExams = async (req: Request, res: Response) => {
-  if (!req.user || !req.user.isSuperAdmin) throw new UnauthorizedError();
   const exams = await ExamModel.find().sort({ createdAt: -1 });
   SuccessResponse(res, { exams }, 200);
 };
 
 // ✅ جلب امتحان محدد
 export const getExamById = async (req: Request, res: Response) => {
-  if (!req.user || !req.user.isSuperAdmin) throw new UnauthorizedError();
   const { id } = req.params;
   if (!id) throw new BadRequest("id is required");
 
@@ -107,7 +103,6 @@ export const getExamById = async (req: Request, res: Response) => {
 
 // ✅ حذف امتحان
 export const deleteExam = async (req: Request, res: Response) => {
-  if (!req.user || !req.user.isSuperAdmin) throw new UnauthorizedError();
   const { id } = req.params;
   if (!id) throw new BadRequest("id is required");
 
@@ -118,7 +113,6 @@ export const deleteExam = async (req: Request, res: Response) => {
 
 // ✅ تعديل امتحان
 export const updateExam = async (req: Request, res: Response) => {
-  if (!req.user || !req.user.isSuperAdmin) throw new UnauthorizedError();
   const { id } = req.params;
   if (!id) throw new BadRequest("id is required");
 
@@ -129,7 +123,6 @@ export const updateExam = async (req: Request, res: Response) => {
 
 // ✅ جلب كل أسئلة امتحان معين
 export const getAllQuestionsForExam = async (req: Request, res: Response) => {
-  if (!req.user || !req.user.isSuperAdmin) throw new UnauthorizedError();
   const { examId } = req.params;
   if (!examId) throw new BadRequest("examId is required");
 
@@ -141,7 +134,6 @@ export const getAllQuestionsForExam = async (req: Request, res: Response) => {
 
 // ✅ جلب سؤال واحد
 export const getQuestionById = async (req: Request, res: Response) => {
-  if (!req.user || !req.user.isSuperAdmin) throw new UnauthorizedError();
   const { examId, questionId } = req.params;
   if (!examId || !questionId) throw new BadRequest("examId and questionId are required");
 
@@ -156,7 +148,6 @@ export const getQuestionById = async (req: Request, res: Response) => {
 
 // ✅ حذف سؤال
 export const deleteQuestionById = async (req: Request, res: Response) => {
-  if (!req.user || !req.user.isSuperAdmin) throw new UnauthorizedError();
   const { examId, questionId } = req.params;
   if (!examId || !questionId) throw new BadRequest("examId and questionId are required");
 
@@ -173,7 +164,6 @@ export const deleteQuestionById = async (req: Request, res: Response) => {
 
 // ✅ تعديل سؤال
 export const updateQuestionById = async (req: Request, res: Response) => {
-  if (!req.user || !req.user.isSuperAdmin) throw new UnauthorizedError();
   const { examId, questionId } = req.params;
   if (!examId || !questionId) throw new BadRequest("examId and questionId are required");
 

@@ -1,30 +1,39 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.requireGraduated = void 0;
-exports.authenticated = authenticated;
-const auth_1 = require("../utils/auth");
+exports.authenticated = void 0;
 const unauthorizedError_1 = require("../Errors/unauthorizedError");
 const User_1 = require("../models/shema/auth/User");
-async function authenticated(req, res, next) {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        throw new unauthorizedError_1.UnauthorizedError("Invalid Token");
+const Admin_1 = require("../models/shema/auth/Admin");
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const authenticated = async (req, _res, next) => {
+    try {
+        const authHeader = req.headers["authorization"];
+        if (!authHeader || !authHeader.startsWith("Bearer ")) {
+            throw new unauthorizedError_1.UnauthorizedError("No token provided");
+        }
+        const token = authHeader.split(" ")[1];
+        const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
+        if (!decoded || !decoded.id) {
+            throw new unauthorizedError_1.UnauthorizedError("Invalid token");
+        }
+        // ✅ الأول نحاول نلاقيه أدمن
+        let user = await Admin_1.AdminModel.findById(decoded.id);
+        // ✅ لو مش أدمن، نجرب نلاقيه يوزر
+        if (!user) {
+            user = await User_1.UserModel.findById(decoded.id);
+        }
+        if (!user) {
+            throw new unauthorizedError_1.UnauthorizedError("User not found");
+        }
+        // ✅ حطينا المستخدم/الأدمن في req
+        req.user = user;
+        next();
     }
-    const token = authHeader.split(" ")[1];
-    const decoded = (0, auth_1.verifyToken)(token); // بيرجع { id, role, name, ... }
-    const user = await User_1.UserModel.findById(decoded.id);
-    if (!user)
-        throw new unauthorizedError_1.UnauthorizedError("User not found");
-    req.user = user; // هنا هيكون فيه level و department
-    next();
-}
-const requireGraduated = (req, res, next) => {
-    if (req.user?.role !== 'Graduated') {
-        return res.status(403).json({
-            success: false,
-            message: 'Graduated user access required'
-        });
+    catch (err) {
+        next(new unauthorizedError_1.UnauthorizedError("Authentication failed"));
     }
-    next();
 };
-exports.requireGraduated = requireGraduated;
+exports.authenticated = authenticated;

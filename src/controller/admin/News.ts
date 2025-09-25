@@ -8,9 +8,7 @@ import { Request, Response } from "express";
 
 
 export const createNews = async (req: Request, res: Response) => {
-   if (!req.user || !req.user.isSuperAdmin) {
-    throw new UnauthorizedError("Only Super Admin can create roles");
-  }
+ 
   const { title, content, type, event_link, event_date, images = [], optional = [], mainImageBase64, mainImage } = req.body;
 
   if (!title || !content || !type) throw new BadRequest("title, content and type are required");
@@ -37,9 +35,7 @@ export const createNews = async (req: Request, res: Response) => {
 };
 
 export const updateNews = async (req: Request, res: Response) => {
-  if (!req.user || !req.user.isSuperAdmin) {
-     throw new UnauthorizedError("Only Super Admin can create roles");
-   }
+  
   const { id } = req.params;
   const news = await NewsModel.findById(id);
   if (!news) throw new NotFound("News not found");
@@ -63,9 +59,7 @@ export const updateNews = async (req: Request, res: Response) => {
 
 
 export const deleteNews = async (req: Request, res: Response) => {
-   if (!req.user || !req.user.isSuperAdmin) {
-    throw new UnauthorizedError("Only Super Admin can create roles");
-  }
+  
   const { id } = req.params;
   const news = await NewsModel.findById(id);
   if (!news) throw new NotFound("News not found");
@@ -75,17 +69,13 @@ export const deleteNews = async (req: Request, res: Response) => {
 };
 
 export const getAllNews = async (req: Request, res: Response) => {
-   if (!req.user || !req.user.isSuperAdmin) {
-    throw new UnauthorizedError("Only Super Admin can create roles");
-  }
+
   const newsList = await NewsModel.find().sort({ createdAt: -1 });
   return SuccessResponse(res, { news: newsList }, 200);
 };
 
 export const getNewsById = async (req: Request, res: Response) => {
-   if (!req.user || !req.user.isSuperAdmin) {
-    throw new UnauthorizedError("Only Super Admin can create roles");
-  }
+ 
   const { id } = req.params;
   const news = await NewsModel.findById(id);
   if (!news) throw new NotFound("News not found");

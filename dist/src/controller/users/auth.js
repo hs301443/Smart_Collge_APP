@@ -120,7 +120,7 @@ const login = async (req, res) => {
         name: user.name,
         role: user.role,
         email: user.email,
-    });
+    }, "user");
     (0, response_1.SuccessResponse)(res, {
         message: "Login Successful",
         token,

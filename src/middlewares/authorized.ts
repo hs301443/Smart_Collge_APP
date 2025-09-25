@@ -1,113 +1,68 @@
-// import { NextFunction, Request, Response, RequestHandler } from "express";
-// import { UnauthorizedError } from "../Errors/unauthorizedError";
-// import { AppUser } from "../types/custom"; // نوع المستخدم
-
-// // خلي الـ Request user اختياري
-// export interface AuthenticatedRequest extends Request {
-//   user?: AppUser;
-// }
-
-// export const authorizeRoles = (...roles: string[]): RequestHandler => {
-//   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-//     if (!req.user) {
-//       return next(new UnauthorizedError()); // لو مش موجود user
-//     }
-
-//     if (!roles.includes(req.user.role)) {
-//       return next(new UnauthorizedError()); // لو الدور مش متوافق
-//     }
-
-//     next();
-//   };
-// };
-
 import { NextFunction, Request, Response, RequestHandler } from "express";
 import { UnauthorizedError } from "../Errors/unauthorizedError";
-import { AppUser } from "../types/custom"; // نوع المستخدم
-import { AdminModel } from "../models/shema/auth/Admin";
-import jwt from "jsonwebtoken";
+import { RoleModel } from "../models/shema/auth/Admin";
+import { AuthenticatedRequest } from "../types/custom"; // خلي النوع في ملف types
 
-export interface AuthenticatedRequest extends Request {
-  user?: AppUser;
-}
+/**
+ * @param requiredRole اسم الدور المطلوب (زي: "NewsManager", "Editor")
+ * @param requiredActions الصلاحيات المطلوبة (زي: "create", "update")
+ */
+export const authorizeRoles = (
+  requiredRole: string,
+  ...requiredActions: string[]
+): RequestHandler => {
+  return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      if (!req.user) {
+        return next(new UnauthorizedError("User not authenticated"));
+      }
 
-export const authorizeRoles = (...roles: string[]): RequestHandler => {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    if (!req.user) {
-      return next(new UnauthorizedError("User not authenticated"));
-    }
+      // ✅ 1- SuperAdmin يعدي دايمًا
+      if (req.user.role === "SuperAdmin") {
+        return next();
+      }
 
-    // ✅ Super Admin يدخل من غير شروط
-    if (req.user.isSuperAdmin) {
-      return next();
-    }
+      // ❌ 2- لو مش Admin ارفضه
+      if (req.user.role !== "Admin") {
+        return next(new UnauthorizedError("Access denied: Not an Admin"));
+      }
 
-    // ✅ لو مفيش role أو الرول مش ضمن المسموح
-    if (!req.user.role || !roles.includes(req.user.role)) {
-      return next(new UnauthorizedError("You don't have permission"));
-    }
+      // ✅ 3- Admin لازم يكون عنده roleId
+      if (!req.user.roleId) {
+        return next(new UnauthorizedError("Admin role not assigned"));
+      }
 
-    next();
-  };
-};
+      // ✅ 4- هات الدور من DB + Populate actions
+      const role = await RoleModel.findById(req.user.roleId).populate("actionIds");
+      if (!role) {
+        return next(new UnauthorizedError("Role not found"));
+      }
 
-export const authorizePermissions = (...permissions: string[]): RequestHandler => {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    if (!req.user) {
-      return next(new UnauthorizedError("User not authenticated"));
-    }
+      // ❌ 5- شيك على اسم الدور
+      if (role.name !== requiredRole) {
+        return next(new UnauthorizedError(`Only ${requiredRole} role can access this`));
+      }
 
-    // ✅ Super Admin يتخطى كل شيء
-    if (req.user.isSuperAdmin) return next();
-
-    // ✅ دمج صلاحيات الدور مع الصلاحيات المخصصة
-    const userPermissions = new Set([
-      ...(req.user.rolePermissions || []),
-      ...(req.user.customPermissions || []),
-    ]);
-
-    // ✅ تحقق أن المستخدم يمتلك كل الصلاحيات المطلوبة
-    const missingPerms = permissions.filter((perm) => !userPermissions.has(perm));
-    if (missingPerms.length > 0) {
-      return next(
-        new UnauthorizedError(`Missing permissions: ${missingPerms.join(", ")}`)
+      // ✅ 6- استخرج الـ actions من role
+      const userActions = role.actionIds.map(
+        (action: any) => action.name // هنا ممكن تعمل type للـ ActionModel
       );
+
+      // ❌ 7- شيك على الصلاحيات المطلوبة
+      const hasPermission = requiredActions.every((action) =>
+        userActions.includes(action)
+      );
+
+      if (!hasPermission) {
+        return next(
+          new UnauthorizedError("You do not have the required permissions")
+        );
+      }
+
+      // ✅ 8- لو عدى كل حاجة → كمل
+      next();
+    } catch (err) {
+      next(err);
     }
-
-    next();
   };
-};
-
-
-
-export const auth = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  try {
-    const token = (req.headers.authorization || "").replace("Bearer ", "");
-    if (!token) return next(new UnauthorizedError("No token provided"));
-
-    // ✅ التحقق من صحة الـ JWT
-    const payload = jwt.verify(token, process.env.JWT_SECRET!) as any;
-
-    // ✅ البحث عن Admin وربط الدور
-    const admin = await AdminModel.findById(payload.sub).populate({ path: "role", select: "permissions" });
-    if (!admin) return next(new UnauthorizedError("Admin not found"));
-
-    // ✅ ملء req.user مع كل الصلاحيات
-    const rolePermissions = Array.isArray((admin.role as any)?.permissions)
-      ? (admin.role as any).permissions
-      : [];
-
-    req.user = {
-      id: admin._id.toString(),
-      name: admin.name,
-      email: admin.email,
-      isSuperAdmin: admin.isSuperAdmin,
-      customPermissions: admin.customPermissions || [],
-      rolePermissions,
-    };
-
-    next();
-  } catch (err) {
-    next(new UnauthorizedError("Invalid or expired token"));
-  }
 };
