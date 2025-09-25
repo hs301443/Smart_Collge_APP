@@ -13,9 +13,10 @@ export const sendMessageByAdmin = async (req: Request, res: Response) => {
 
   const decoded: any = verifyToken(token);
 
-  if (!(decoded.userType === "Admin" || decoded.userType === "SuperAdmin")) {
-    throw new UnauthorizedError("Only admins can send messages");
-  }
+ if (!(decoded.role?.name === "Admin" || decoded.role?.name === "SuperAdmin")) {
+  throw new UnauthorizedError("Only admins can send messages");
+}
+
 
   const { chatId } = req.params;
   const { content } = req.body;
@@ -43,9 +44,10 @@ export const getAdminChats = async (req: Request, res: Response) => {
 
   const decoded: any = verifyToken(token);
 
-  if (!(decoded.userType === "Admin" || decoded.userType === "SuperAdmin")) {
-    throw new UnauthorizedError("Only admins can view chats");
-  }
+if (!(decoded.role?.name === "Admin" || decoded.role?.name === "SuperAdmin")) {
+  throw new UnauthorizedError("Only admins can send messages");
+}
+
 
   const chats = await ChatModel.find({ admin: decoded.id })
     .populate("user", "name email role")
@@ -61,9 +63,10 @@ export const getMessagesByChatId = async (req: Request, res: Response) => {
 
   const decoded: any = verifyToken(token);
 
-  if (!(decoded.userType === "Admin" || decoded.userType === "SuperAdmin")) {
-    throw new UnauthorizedError("Only admins can view messages");
-  }
+  if (!(decoded.role?.name === "Admin" || decoded.role?.name === "SuperAdmin")) {
+  throw new UnauthorizedError("Only admins can send messages");
+}
+
 
   const { chatId } = req.params;
 
