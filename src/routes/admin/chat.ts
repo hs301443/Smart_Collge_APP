@@ -6,8 +6,8 @@ import { sendMessageByAdmin,getAdminChats,getMessagesByChatId } from "../../cont
 const router = Router();
 
 
-router.post('/',authenticated, catchAsync(sendMessageByAdmin))
-router.get('/messages',authenticated, catchAsync(getMessagesByChatId))
-router.get('/',authenticated, catchAsync(getAdminChats))
+router.post('/', catchAsync(sendMessageByAdmin))
+router.get('/messages', catchAsync(getMessagesByChatId))
+router.get('/', catchAsync(getAdminChats))
 
 export default router;
