@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { AdminModel, RoleModel, ActionModel } from "../../models/shema/auth/Admin";
+import { AdminModel, ActionModel } from "../../models/shema/auth/Admin";
 import { BadRequest } from "../../Errors/BadRequest";
 import { NotFound } from "../../Errors";
 import { SuccessResponse } from "../../utils/response";
@@ -30,15 +30,15 @@ export const login = async (req: Request, res: Response) => {
   }
 
   // ✅ جهز بيانات الدور
-  let role = null;
+  let roleData: any = null;
   if (admin.role === "SuperAdmin") {
-    role = {
+    roleData = {
       id: null,
       name: "SuperAdmin",
       actions: [{ id: "*", name: "all" }],
     };
   } else if (admin.roleId) {
-    role = {
+    roleData = {
       id: (admin.roleId as any)._id,
       name: (admin.roleId as any).name,
       actions: (admin.roleId as any).actionIds.map((a: any) => ({
@@ -48,11 +48,14 @@ export const login = async (req: Request, res: Response) => {
     };
   }
 
-  // ✅ التوكن
+  // ✅ التوكن: يشمل id, name, email, role (بدون تعقيد)
   const token = jwt.sign(
     {
       id: admin._id,
-      role,
+      name: admin.name,
+      email: admin.email,
+      role: admin.role,        // SuperAdmin / Admin
+      roleId: admin.roleId?._id || null, // ObjectId أو null
     },
     process.env.JWT_SECRET as string,
     { expiresIn: "7d" }
@@ -66,7 +69,9 @@ export const login = async (req: Request, res: Response) => {
       id: admin._id,
       name: admin.name,
       email: admin.email,
-      role,
+      role: admin.role,
+      roleId: admin.roleId?._id || null,
+      actions: roleData?.actions || [],
     },
   });
 };

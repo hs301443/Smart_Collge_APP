@@ -29,16 +29,16 @@ const login = async (req, res) => {
         throw new BadRequest_1.BadRequest("Invalid credentials");
     }
     // ✅ جهز بيانات الدور
-    let role = null;
+    let roleData = null;
     if (admin.role === "SuperAdmin") {
-        role = {
+        roleData = {
             id: null,
             name: "SuperAdmin",
             actions: [{ id: "*", name: "all" }],
         };
     }
     else if (admin.roleId) {
-        role = {
+        roleData = {
             id: admin.roleId._id,
             name: admin.roleId.name,
             actions: admin.roleId.actionIds.map((a) => ({
@@ -47,10 +47,13 @@ const login = async (req, res) => {
             })),
         };
     }
-    // ✅ التوكن
+    // ✅ التوكن: يشمل id, name, email, role (بدون تعقيد)
     const token = jsonwebtoken_1.default.sign({
         id: admin._id,
-        role,
+        name: admin.name,
+        email: admin.email,
+        role: admin.role, // SuperAdmin / Admin
+        roleId: admin.roleId?._id || null, // ObjectId أو null
     }, process.env.JWT_SECRET, { expiresIn: "7d" });
     // ✅ الريسبونس
     return (0, response_1.SuccessResponse)(res, {
@@ -60,7 +63,9 @@ const login = async (req, res) => {
             id: admin._id,
             name: admin.name,
             email: admin.email,
-            role,
+            role: admin.role,
+            roleId: admin.roleId?._id || null,
+            actions: roleData?.actions || [],
         },
     });
 };
