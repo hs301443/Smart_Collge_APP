@@ -62,26 +62,30 @@ export function initChatSocket(io: Server) {
     console.log(`✅ ${userType} connected: ${user._id}`);
 
     // 🎯 join_chat
-    socket.on("join_chat", async ({ chatId }) => {
+    socket.on("join_chat", async () => {
       try {
-        const chat = await ChatModel.findById(chatId);
-        if (!chat) return socket.emit("error", "Chat not found");
+        let chat;
 
-        // ✅ تحقق إن المستخدم عضو في الشات
-        if (
-          chat.user.toString() !== user._id.toString() &&
-          chat.admin.toString() !== user._id.toString()
-        ) {
-          return socket.emit("error", "You are not a member of this chat");
+        if (userType === "user") {
+          // 🟢 اليوزر يدخل شاته مع الأدمن الوحيد
+          const admin = await AdminModel.findOne(); // عندك أدمن واحد
+          if (!admin) return socket.emit("error", "No admin found");
+
+          chat =
+            (await ChatModel.findOne({ user: user._id, admin: admin._id })) ||
+            (await ChatModel.create({ user: user._id, admin: admin._id }));
+        } else {
+          // 🟠 الأدمن محتاج يحدد أي شات يدخل (مثلاً من Dashboard)
+          return socket.emit("error", "Admin must specify chatId explicitly");
         }
 
-        socket.join(`chat_${chatId}`);
+        socket.join(`chat_${chat._id}`);
 
-        const messages = await MessageModel.find({ chat: chatId })
+        const messages = await MessageModel.find({ chat: chat._id })
           .sort({ createdAt: 1 })
           .populate("sender");
 
-        socket.emit("chat_history", messages);
+        socket.emit("chat_history", { chatId: chat._id, messages });
       } catch (err) {
         console.error(err);
         socket.emit("error", "Join chat failed");
@@ -89,24 +93,31 @@ export function initChatSocket(io: Server) {
     });
 
     // 🎯 send_message
-    socket.on("send_message", async ({ chatId, content }) => {
+    socket.on("send_message", async ({ content, chatId }) => {
       try {
         if (!content) return;
 
-        const chat = await ChatModel.findById(chatId);
-        if (!chat) return socket.emit("error", "Chat not found");
+        let chat;
 
-        // ✅ تحقق إن المرسل عضو في الشات
-        if (
-          chat.user.toString() !== user._id.toString() &&
-          chat.admin.toString() !== user._id.toString()
-        ) {
-          return socket.emit("error", "You are not a member of this chat");
+        if (userType === "user") {
+          // 🟢 اليوزر مايبعتش chatId
+          const admin = await AdminModel.findOne();
+          if (!admin) return socket.emit("error", "No admin found");
+
+          chat =
+            (await ChatModel.findOne({ user: user._id, admin: admin._id })) ||
+            (await ChatModel.create({ user: user._id, admin: admin._id }));
+        } else {
+          // 🟠 الأدمن لازم يحدد chatId
+          if (!chatId) return socket.emit("error", "chatId is required for admin");
+          chat = await ChatModel.findById(chatId);
         }
 
+        if (!chat) return socket.emit("error", "Chat not found");
+
         const msg = await MessageModel.create({
-          chat: chatId,
-          senderModel: userType === "user" ? "User" : "Admin", // Admin / SuperAdmin كـ Admin
+          chat: chat._id,
+          senderModel: userType === "user" ? "User" : "Admin",
           sender: user._id,
           content,
           readBy: [user._id],
@@ -114,7 +125,7 @@ export function initChatSocket(io: Server) {
 
         const populatedMsg = await msg.populate("sender");
 
-        io.to(`chat_${chatId}`).emit("message", populatedMsg);
+        io.to(`chat_${chat._id}`).emit("message", populatedMsg);
       } catch (err) {
         console.error(err);
         socket.emit("error", "Send message failed");
@@ -122,7 +133,9 @@ export function initChatSocket(io: Server) {
     });
 
     // 🎯 typing indicator
-    socket.on("typing", ({ chatId, isTyping }) => {
+    socket.on("typing", async ({ chatId, isTyping }) => {
+      if (!chatId) return;
+
       socket
         .to(`chat_${chatId}`)
         .emit("typing", { chatId, userId: user._id, isTyping });

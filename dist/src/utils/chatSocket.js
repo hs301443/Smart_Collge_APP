@@ -55,21 +55,27 @@ function initChatSocket(io) {
         }
         console.log(`✅ ${userType} connected: ${user._id}`);
         // 🎯 join_chat
-        socket.on("join_chat", async ({ chatId }) => {
+        socket.on("join_chat", async () => {
             try {
-                const chat = await chat_1.ChatModel.findById(chatId);
-                if (!chat)
-                    return socket.emit("error", "Chat not found");
-                // ✅ تحقق إن المستخدم عضو في الشات
-                if (chat.user.toString() !== user._id.toString() &&
-                    chat.admin.toString() !== user._id.toString()) {
-                    return socket.emit("error", "You are not a member of this chat");
+                let chat;
+                if (userType === "user") {
+                    // 🟢 اليوزر يدخل شاته مع الأدمن الوحيد
+                    const admin = await Admin_1.AdminModel.findOne(); // عندك أدمن واحد
+                    if (!admin)
+                        return socket.emit("error", "No admin found");
+                    chat =
+                        (await chat_1.ChatModel.findOne({ user: user._id, admin: admin._id })) ||
+                            (await chat_1.ChatModel.create({ user: user._id, admin: admin._id }));
                 }
-                socket.join(`chat_${chatId}`);
-                const messages = await Message_1.MessageModel.find({ chat: chatId })
+                else {
+                    // 🟠 الأدمن محتاج يحدد أي شات يدخل (مثلاً من Dashboard)
+                    return socket.emit("error", "Admin must specify chatId explicitly");
+                }
+                socket.join(`chat_${chat._id}`);
+                const messages = await Message_1.MessageModel.find({ chat: chat._id })
                     .sort({ createdAt: 1 })
                     .populate("sender");
-                socket.emit("chat_history", messages);
+                socket.emit("chat_history", { chatId: chat._id, messages });
             }
             catch (err) {
                 console.error(err);
@@ -77,27 +83,37 @@ function initChatSocket(io) {
             }
         });
         // 🎯 send_message
-        socket.on("send_message", async ({ chatId, content }) => {
+        socket.on("send_message", async ({ content, chatId }) => {
             try {
                 if (!content)
                     return;
-                const chat = await chat_1.ChatModel.findById(chatId);
+                let chat;
+                if (userType === "user") {
+                    // 🟢 اليوزر مايبعتش chatId
+                    const admin = await Admin_1.AdminModel.findOne();
+                    if (!admin)
+                        return socket.emit("error", "No admin found");
+                    chat =
+                        (await chat_1.ChatModel.findOne({ user: user._id, admin: admin._id })) ||
+                            (await chat_1.ChatModel.create({ user: user._id, admin: admin._id }));
+                }
+                else {
+                    // 🟠 الأدمن لازم يحدد chatId
+                    if (!chatId)
+                        return socket.emit("error", "chatId is required for admin");
+                    chat = await chat_1.ChatModel.findById(chatId);
+                }
                 if (!chat)
                     return socket.emit("error", "Chat not found");
-                // ✅ تحقق إن المرسل عضو في الشات
-                if (chat.user.toString() !== user._id.toString() &&
-                    chat.admin.toString() !== user._id.toString()) {
-                    return socket.emit("error", "You are not a member of this chat");
-                }
                 const msg = await Message_1.MessageModel.create({
-                    chat: chatId,
-                    senderModel: userType === "user" ? "User" : "Admin", // Admin / SuperAdmin كـ Admin
+                    chat: chat._id,
+                    senderModel: userType === "user" ? "User" : "Admin",
                     sender: user._id,
                     content,
                     readBy: [user._id],
                 });
                 const populatedMsg = await msg.populate("sender");
-                io.to(`chat_${chatId}`).emit("message", populatedMsg);
+                io.to(`chat_${chat._id}`).emit("message", populatedMsg);
             }
             catch (err) {
                 console.error(err);
@@ -105,7 +121,9 @@ function initChatSocket(io) {
             }
         });
         // 🎯 typing indicator
-        socket.on("typing", ({ chatId, isTyping }) => {
+        socket.on("typing", async ({ chatId, isTyping }) => {
+            if (!chatId)
+                return;
             socket
                 .to(`chat_${chatId}`)
                 .emit("typing", { chatId, userId: user._id, isTyping });
