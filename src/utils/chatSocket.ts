@@ -28,7 +28,7 @@ export function initChatSocket(io: Server) {
         userType = "user";
       } else if (payload.userType === "Admin" || payload.userType === "SuperAdmin") {
         user = await AdminModel.findById(payload.id);
-        userType = "admin";
+        userType = "admin"; // ✅ أي Admin أو SuperAdmin يتعامل كـ Admin
       }
 
       if (!user) return next(new Error("Invalid user"));
@@ -62,17 +62,17 @@ export function initChatSocket(io: Server) {
     console.log(`✅ ${userType} connected: ${user._id}`);
 
     // 🎯 join_chat
-    socket.on("join_chat", async ({ chatId, adminId }) => {
+    socket.on("join_chat", async ({ chatId }) => {
       try {
-        let chat;
-        if (chatId) {
-          chat = await ChatModel.findById(chatId);
-          if (!chat) return socket.emit("error", "Chat not found");
-        } else {
-          if (!adminId) return socket.emit("error", "Admin ID required");
-          chat = await ChatModel.findOne({ user: user._id, admin: adminId });
-          if (!chat) chat = await ChatModel.create({ user: user._id, admin: adminId });
-          chatId = chat._id;
+        const chat = await ChatModel.findById(chatId);
+        if (!chat) return socket.emit("error", "Chat not found");
+
+        // ✅ تحقق إن المستخدم عضو في الشات
+        if (
+          chat.user.toString() !== user._id.toString() &&
+          chat.admin.toString() !== user._id.toString()
+        ) {
+          return socket.emit("error", "You are not a member of this chat");
         }
 
         socket.join(`chat_${chatId}`);
@@ -89,41 +89,32 @@ export function initChatSocket(io: Server) {
     });
 
     // 🎯 send_message
-    socket.on("send_message", async ({ chatId, adminId, content }) => {
+    socket.on("send_message", async ({ chatId, content }) => {
       try {
         if (!content) return;
 
-        let chat;
-        if (chatId) {
-          chat = await ChatModel.findById(chatId);
-          if (!chat) return socket.emit("error", "Chat not found");
-        } else {
-          if (!adminId) return socket.emit("error", "Admin ID required for new chat");
-          chat = await ChatModel.findOne({ user: user._id, admin: adminId });
-          if (!chat) chat = await ChatModel.create({ user: user._id, admin: adminId });
-          chatId = chat._id;
+        const chat = await ChatModel.findById(chatId);
+        if (!chat) return socket.emit("error", "Chat not found");
+
+        // ✅ تحقق إن المرسل عضو في الشات
+        if (
+          chat.user.toString() !== user._id.toString() &&
+          chat.admin.toString() !== user._id.toString()
+        ) {
+          return socket.emit("error", "You are not a member of this chat");
         }
 
         const msg = await MessageModel.create({
           chat: chatId,
-          senderModel: userType === "user" ? "User" : "Admin",
+          senderModel: userType === "user" ? "User" : "Admin", // Admin / SuperAdmin كـ Admin
           sender: user._id,
           content,
           readBy: [user._id],
         });
 
-        // رجع الرسالة مع بيانات المرسل
         const populatedMsg = await msg.populate("sender");
 
-        // إرسال الرسالة لكل المتصلين بالشات
         io.to(`chat_${chatId}`).emit("message", populatedMsg);
-
-        // إشعار للطرف الآخر
-        socket.to(`chat_${chatId}`).emit("notification", {
-          chatId,
-          sender: user._id,
-          content,
-        });
       } catch (err) {
         console.error(err);
         socket.emit("error", "Send message failed");
