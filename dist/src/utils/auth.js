@@ -4,13 +4,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.verifyToken = exports.generateToken = void 0;
+// token.ts
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const Errors_1 = require("../Errors");
 dotenv_1.default.config();
 const generateToken = (user, type) => {
     if (type === "admin") {
-        // للأدمن
         return jsonwebtoken_1.default.sign({
             id: user._id.toString(),
             name: user.name,
@@ -20,7 +20,6 @@ const generateToken = (user, type) => {
         }, process.env.JWT_SECRET, { expiresIn: "7d" });
     }
     else {
-        // لليوزر
         return jsonwebtoken_1.default.sign({
             id: user._id.toString(),
             name: user.name,

@@ -134,6 +134,7 @@ export const verifyEmail = async (req: Request, res: Response) => {
 
 
 
+// login.ts
 export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
@@ -155,25 +156,25 @@ export const login = async (req: Request, res: Response) => {
     throw new ForbiddenError("Verify your email first");
   }
 
-  const token = generateToken({
-    id: user._id.toString(),
-    name: user.name,
-    role: user.role,
-    email: user.email,
-  },"user");
+  // ابعت user كامل مش object معمول له تعديل
+  const token = generateToken(user, "user");
 
-  SuccessResponse(res, {
-    message: "Login Successful",
-    token,
-    user: {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      level: user.level,
-      department: user.department
+  SuccessResponse(
+    res,
+    {
+      message: "Login Successful",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        level: user.level,
+        department: user.department,
+      },
     },
-  }, 200);
+    200
+  );
 };
 
 
