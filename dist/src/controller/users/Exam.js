@@ -21,9 +21,9 @@ exports.getExamsForStudent = getExamsForStudent;
 const getExamByIdForStudent = async (req, res) => {
     if (!req.user)
         throw new Errors_1.UnauthorizedError("Unauthorized");
-    const exam = await Exam_1.ExamModel.findById(req.params.id);
+    const exam = await Exam_1.ExamModel.findById(req.params.id).select("-questions");
     if (!exam || !exam.isPublished)
-        throw new Errors_1.NotFound("Exam not found");
+        throw new Errors_1.NotFound("Exam not published");
     (0, response_1.SuccessResponse)(res, { exam }, 200);
 };
 exports.getExamByIdForStudent = getExamByIdForStudent;
