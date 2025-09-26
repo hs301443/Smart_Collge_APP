@@ -257,24 +257,38 @@ export const verifyResetCode = async (req: Request, res: Response) => {
 
 // 3️⃣ إعادة تعيين كلمة المرور
 export const resetPassword = async (req: Request, res: Response) => {
-  const { email, code, newPassword } = req.body;
+  const { email, newPassword } = req.body;
 
   const user = await UserModel.findOne({ email });
   if (!user) throw new NotFound("User not found");
 
   const record = await EmailVerificationModel.findOne({ userId: user._id });
   if (!record) throw new BadRequest("No reset code found");
-  if (record.verificationCode !== code) throw new BadRequest("Invalid code");
-  if (record.expiresAt < new Date()) throw new BadRequest("Code expired");
 
+  // تحديث الباسورد
   user.password = await bcrypt.hash(newPassword, 10);
   await user.save();
 
+  // حذف سجل التحقق
   await EmailVerificationModel.deleteOne({ userId: user._id });
+const token = generateToken(user, "user");
 
-  SuccessResponse(res, { message: "Password reset successful" }, 200);
-};
-
+  SuccessResponse(
+    res,
+    {
+      message: "Login Successful",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        level: user.level,
+        department: user.department,
+      },
+    },
+    200
+  );};
 
 export const completeProfile = async (req: Request, res: Response) => {
 

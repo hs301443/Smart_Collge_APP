@@ -197,21 +197,31 @@ const verifyResetCode = async (req, res) => {
 exports.verifyResetCode = verifyResetCode;
 // 3️⃣ إعادة تعيين كلمة المرور
 const resetPassword = async (req, res) => {
-    const { email, code, newPassword } = req.body;
+    const { email, newPassword } = req.body;
     const user = await User_1.UserModel.findOne({ email });
     if (!user)
         throw new Errors_1.NotFound("User not found");
     const record = await emailVerifications_1.EmailVerificationModel.findOne({ userId: user._id });
     if (!record)
         throw new BadRequest_1.BadRequest("No reset code found");
-    if (record.verificationCode !== code)
-        throw new BadRequest_1.BadRequest("Invalid code");
-    if (record.expiresAt < new Date())
-        throw new BadRequest_1.BadRequest("Code expired");
+    // تحديث الباسورد
     user.password = await bcrypt_1.default.hash(newPassword, 10);
     await user.save();
+    // حذف سجل التحقق
     await emailVerifications_1.EmailVerificationModel.deleteOne({ userId: user._id });
-    (0, response_1.SuccessResponse)(res, { message: "Password reset successful" }, 200);
+    const token = (0, auth_1.generateToken)(user, "user");
+    (0, response_1.SuccessResponse)(res, {
+        message: "Login Successful",
+        token,
+        user: {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            level: user.level,
+            department: user.department,
+        },
+    }, 200);
 };
 exports.resetPassword = resetPassword;
 const completeProfile = async (req, res) => {
