@@ -13,7 +13,6 @@ const getExamsForStudent = async (req, res) => {
     const exams = await Exam_1.ExamModel.find({
         level: req.user.level,
         department: req.user.department,
-        isPublished: true
     }).select("-questions");
     (0, response_1.SuccessResponse)(res, { exams }, 200);
 };
