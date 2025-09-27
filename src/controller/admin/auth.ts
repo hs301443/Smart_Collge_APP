@@ -56,6 +56,8 @@ export const login = async (req: Request, res: Response) => {
       email: admin.email,
       role: admin.role,        // SuperAdmin / Admin
       roleId: admin.roleId?._id || null, // ObjectId أو null
+      userType: admin.role === "SuperAdmin" || admin.role === "Admin" ? "Admin" : undefined
+
     },
     process.env.JWT_SECRET as string,
     { expiresIn: "7d" }

@@ -54,6 +54,7 @@ const login = async (req, res) => {
         email: admin.email,
         role: admin.role, // SuperAdmin / Admin
         roleId: admin.roleId?._id || null, // ObjectId أو null
+        userType: admin.role === "SuperAdmin" || admin.role === "Admin" ? "Admin" : undefined
     }, process.env.JWT_SECRET, { expiresIn: "7d" });
     // ✅ الريسبونس
     return (0, response_1.SuccessResponse)(res, {
