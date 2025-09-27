@@ -72,7 +72,6 @@ function initChatSocket(io) {
                     socket.emit("chat_history", { chatId: chat._id, messages });
                 }
                 else {
-                    // الأدمن لازم يحدد chatId
                     socket.emit("error", "Admin must specify chatId explicitly");
                 }
             }
@@ -112,7 +111,7 @@ function initChatSocket(io) {
                 const populatedMsg = await msg.populate("sender");
                 // ابعت الرسالة لكل الـ sockets في الغرفة
                 io.to(`chat_${chat._id}`).emit("message", populatedMsg);
-                // 🔔 FCM Notification
+                // 🔔 FCM Notification باسم المرسل
                 let targetToken = null;
                 if (userType === "user") {
                     const admin = await Admin_1.AdminModel.findOne();
@@ -123,11 +122,13 @@ function initChatSocket(io) {
                     targetToken = userModel?.fcmtoken || null;
                 }
                 if (targetToken) {
+                    const sender = populatedMsg.sender;
+                    const senderName = sender?.name || (userType === "user" ? "User" : "Admin");
                     await firebase_1.messaging.send({
                         token: targetToken,
                         notification: {
-                            title: userType === "user" ? "New message from user" : "New message from admin",
-                            body: content,
+                            title: senderName, // الاسم بدل النص الثابت
+                            body: populatedMsg.content,
                         },
                         data: {
                             chatId: chat._id.toString(),

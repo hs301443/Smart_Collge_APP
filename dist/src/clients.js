@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const socket_io_client_1 = require("socket.io-client");
 const URL = "https://smartcollgeapp-production.up.railway.app"; // سيرفرك على Railway
 // 🔑 توكن الأدمن الصالح
-const TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4ZDUwNWI2Y2I1NzY4NDM5NDYzNjE5YiIsIm5hbWUiOiJNYWluIFN1cGVyIEFkbWluIiwiZW1haWwiOiJzbWFydGNvbGxnZTgyQGdtYWlsLmNvbSIsInJvbGUiOiJTdXBlckFkbWluIiwicm9sZUlkIjpudWxsLCJ1c2VyVHlwZSI6IkFkbWluIiwiaWF0IjoxNzU4OTY1MTgyLCJleHAiOjE3NTk1Njk5ODJ9.MIy8VlO7ZfCUnLnrh73YjhYmIFu0QY3OwF4jKFF4fn8";
+const TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4ZDUwNWI2Y2I1NzY4NDM5NDYzNjE5YiIsIm5hbWUiOiJNYWluIFN1cGVyIEFkbWluIiwiZW1haWwiOiJzbWFydGNvbGxnZTgyQGdtYWlsLmNvbSIsInJvbGUiOiJTdXBlckFkbWluIiwicm9sZUlkIjpudWxsLCJ1c2VyVHlwZSI6IkFkbWluIiwiaWF0IjoxNzU4OTY1NzM4LCJleHAiOjE3NTk1NzA1Mzh9.hzcllGBvD8ML8kEcF2CkMDnPc4dwWaf3XdVKIWqlEqA";
 // 🟢 chatId الصحيح من قاعدة البيانات
 const CHAT_ID = "68d79c76dbfa08817c321c45";
 const adminSocket = (0, socket_io_client_1.io)(URL, {

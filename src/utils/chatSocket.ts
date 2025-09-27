@@ -79,7 +79,6 @@ export function initChatSocket(io: Server) {
 
           socket.emit("chat_history", { chatId: chat._id, messages });
         } else {
-          // الأدمن لازم يحدد chatId
           socket.emit("error", "Admin must specify chatId explicitly");
         }
       } catch (err) {
@@ -122,7 +121,7 @@ export function initChatSocket(io: Server) {
         // ابعت الرسالة لكل الـ sockets في الغرفة
         io.to(`chat_${chat._id}`).emit("message", populatedMsg);
 
-        // 🔔 FCM Notification
+        // 🔔 FCM Notification باسم المرسل
         let targetToken: string | null = null;
         if (userType === "user") {
           const admin = await AdminModel.findOne();
@@ -133,11 +132,14 @@ export function initChatSocket(io: Server) {
         }
 
         if (targetToken) {
+          const sender = populatedMsg.sender as any;
+          const senderName = sender?.name || (userType === "user" ? "User" : "Admin");
+
           await messaging.send({
             token: targetToken,
             notification: {
-              title: userType === "user" ? "New message from user" : "New message from admin",
-              body: content,
+              title: senderName, // الاسم بدل النص الثابت
+              body: populatedMsg.content,
             },
             data: {
               chatId: chat._id.toString(),
@@ -154,7 +156,6 @@ export function initChatSocket(io: Server) {
     // 🎯 typing
     socket.on("typing", async ({ chatId, isTyping }) => {
       if (!chatId) return;
-
       socket.to(`chat_${chatId}`).emit("typing", { chatId, userId: user._id, isTyping });
     });
 
