@@ -2,62 +2,44 @@ import { io } from "socket.io-client";
 
 const URL = "https://smartcollgeapp-production.up.railway.app";
 
-const USER_ID = "123";
-const ADMIN_ID = "admin1";
+// 🔑 التوكن الجديد للأدمن
+const TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4ZDUwNWI2Y2I1NzY4NDM5NDYzNjE5YiIsIm5hbWUiOiJNYWluIFN1cGVyIEFkbWluIiwiZW1haWwiOiJzbWFydGNvbGxnZTgyQGdtYWlsLmNvbSIsInJvbGUiOiJTdXBlckFkbWluIiwicm9sZUlkIjpudWxsLCJpYXQiOjE3NTg5NjM4NzgsImV4cCI6MTc1OTU2ODY3OH0.46P6_ijd_8sMr7qpHL8CMPvRsheNS9229YimSpyKNBs";
 
-const userSocket = io(URL, { transports: ["polling"], timeout: 20000, path: "/socket.io" });
-const adminSocket = io(URL, { transports: ["polling"], timeout: 20000, path: "/socket.io" });
+// 📌 الـ chatId اللي هتبعت فيه الرسالة
+const CHAT_ID = "68d79c76dbfa08817c321c45";
 
-userSocket.on("connect", () => {
-  console.log(`✅ User connected: ${userSocket.id}`);
-  userSocket.emit("register", { userId: USER_ID, role: "User" });
-
-  let count = 1;
-  setInterval(() => {
-    const text = `Hello from User! Message ${count}`;
-    userSocket.emit("sendMessage", {
-      from: USER_ID,
-      fromModel: "User",
-      to: ADMIN_ID,
-      toModel: "Admin",
-      text,
-    }, (ack: any) => {  // هنا استلام ACK
-      console.log(`✅ User confirmed message ${count} delivered:`, ack);
-    });
-    console.log(`📤 User message ${count} sent`);
-    count++;
-  }, 10000);
+const adminSocket = io(URL, {
+  transports: ["polling"], // لو websocket يعطيك مشكلة على Railway
+  path: "/socket.io",
+  auth: { token: TOKEN },
 });
 
 adminSocket.on("connect", () => {
   console.log(`✅ Admin connected: ${adminSocket.id}`);
-  adminSocket.emit("register", { userId: ADMIN_ID, role: "Admin" });
 
-  let count = 1;
-  setInterval(() => {
-    const text = `Hello from Admin! Message ${count}`;
-    adminSocket.emit("sendMessage", {
-      from: ADMIN_ID,
-      fromModel: "Admin",
-      to: USER_ID,
-      toModel: "User",
-      text,
-    }, (ack: any) => {  // ACK من الباك
-      console.log(`✅ Admin confirmed message ${count} delivered:`, ack);
-    });
-    console.log(`📤 Admin message ${count} sent`);
-    count++;
-  }, 10000);
+  // ابعت رسالة واحدة للتست
+  adminSocket.emit(
+    "send_message",
+    {
+      content: "رسالة تجريبية من الأدمن 🎯",
+      chatId: CHAT_ID,
+    },
+    (ack: any) => {
+      console.log("✅ Admin confirmed message delivered:", ack);
+    }
+  );
 });
 
-// استقبال الرسائل
-const setupListeners = (socket: any, role: "User" | "Admin") => {
-  socket.on("receiveMessage", (msg: any) => {
-    console.log(`📩 ${role} received:`, msg.text);
-  });
-  socket.on("disconnect", (reason: any) => console.log(`❌ ${role} disconnected. Reason:`, reason));
-  socket.on("connect_error", (err: any) => console.error(`⚠️ ${role} connect error:`, err.message));
-};
+// استقبال أي رسالة جديدة
+adminSocket.on("message", (msg: any) => {
+  console.log("📩 Admin received:", msg.content);
+});
 
-setupListeners(userSocket, "User");
-setupListeners(adminSocket, "Admin");
+// أخطاء الاتصال
+adminSocket.on("connect_error", (err: any) => {
+  console.error("⚠️ Admin connect error:", err.message);
+});
+
+adminSocket.on("disconnect", (reason: any) => {
+  console.log("❌ Admin disconnected. Reason:", reason);
+});
