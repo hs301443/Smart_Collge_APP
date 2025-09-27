@@ -5,6 +5,7 @@ import { UserModel } from "../models/shema/auth/User";
 import { AdminModel } from "../models/shema/auth/Admin";
 import { ChatModel } from "../models/shema/chat";
 import { MessageModel } from "../models/shema/Message";
+import { messaging } from "./firebase";
 
 const onlineMap = new Map<string, Set<string>>(); // userType:userId -> sockets
 
@@ -15,10 +16,7 @@ export function initChatSocket(io: Server) {
       const token = socket.handshake.auth?.token;
       if (!token) return next(new Error("No token"));
 
-      const payload: any = jwt.verify(
-        token,
-        process.env.JWT_SECRET || "changeme"
-      );
+      const payload: any = jwt.verify(token, process.env.JWT_SECRET || "changeme");
 
       let user: any = null;
       let userType: "user" | "admin" | null = null;
@@ -28,7 +26,7 @@ export function initChatSocket(io: Server) {
         userType = "user";
       } else if (payload.userType === "Admin" || payload.userType === "SuperAdmin") {
         user = await AdminModel.findById(payload.id);
-        userType = "admin"; // ✅ أي Admin أو SuperAdmin يتعامل كـ Admin
+        userType = "admin";
       }
 
       if (!user) return next(new Error("Invalid user"));
@@ -42,7 +40,6 @@ export function initChatSocket(io: Server) {
     }
   });
 
-  // ✅ عند الاتصال
   io.on("connection", (socket: Socket) => {
     const user = (socket as any).user;
     const userType = (socket as any).userType;
@@ -61,31 +58,30 @@ export function initChatSocket(io: Server) {
 
     console.log(`✅ ${userType} connected: ${user._id}`);
 
-    // 🎯 join_chat
+    // 🎯 join chat
     socket.on("join_chat", async () => {
       try {
         let chat;
 
         if (userType === "user") {
-          // 🟢 اليوزر يدخل شاته مع الأدمن الوحيد
-          const admin = await AdminModel.findOne(); // عندك أدمن واحد
+          const admin = await AdminModel.findOne();
           if (!admin) return socket.emit("error", "No admin found");
 
           chat =
             (await ChatModel.findOne({ user: user._id, admin: admin._id })) ||
             (await ChatModel.create({ user: user._id, admin: admin._id }));
+
+          socket.join(`chat_${chat._id}`);
+
+          const messages = await MessageModel.find({ chat: chat._id })
+            .sort({ createdAt: 1 })
+            .populate("sender");
+
+          socket.emit("chat_history", { chatId: chat._id, messages });
         } else {
-          // 🟠 الأدمن محتاج يحدد أي شات يدخل (مثلاً من Dashboard)
-          return socket.emit("error", "Admin must specify chatId explicitly");
+          // الأدمن لازم يحدد chatId
+          socket.emit("error", "Admin must specify chatId explicitly");
         }
-
-        socket.join(`chat_${chat._id}`);
-
-        const messages = await MessageModel.find({ chat: chat._id })
-          .sort({ createdAt: 1 })
-          .populate("sender");
-
-        socket.emit("chat_history", { chatId: chat._id, messages });
       } catch (err) {
         console.error(err);
         socket.emit("error", "Join chat failed");
@@ -100,7 +96,6 @@ export function initChatSocket(io: Server) {
         let chat;
 
         if (userType === "user") {
-          // 🟢 اليوزر مايبعتش chatId
           const admin = await AdminModel.findOne();
           if (!admin) return socket.emit("error", "No admin found");
 
@@ -108,7 +103,6 @@ export function initChatSocket(io: Server) {
             (await ChatModel.findOne({ user: user._id, admin: admin._id })) ||
             (await ChatModel.create({ user: user._id, admin: admin._id }));
         } else {
-          // 🟠 الأدمن لازم يحدد chatId
           if (!chatId) return socket.emit("error", "chatId is required for admin");
           chat = await ChatModel.findById(chatId);
         }
@@ -125,20 +119,43 @@ export function initChatSocket(io: Server) {
 
         const populatedMsg = await msg.populate("sender");
 
+        // ابعت الرسالة لكل الـ sockets في الغرفة
         io.to(`chat_${chat._id}`).emit("message", populatedMsg);
+
+        // 🔔 FCM Notification
+        let targetToken: string | null = null;
+        if (userType === "user") {
+          const admin = await AdminModel.findOne();
+          targetToken = admin?.fcmtoken || null;
+        } else {
+          const userModel = await UserModel.findById(chat.user);
+          targetToken = userModel?.fcmtoken || null;
+        }
+
+        if (targetToken) {
+          await messaging.send({
+            token: targetToken,
+            notification: {
+              title: userType === "user" ? "New message from user" : "New message from admin",
+              body: content,
+            },
+            data: {
+              chatId: chat._id.toString(),
+              sender: userType,
+            },
+          });
+        }
       } catch (err) {
         console.error(err);
         socket.emit("error", "Send message failed");
       }
     });
 
-    // 🎯 typing indicator
+    // 🎯 typing
     socket.on("typing", async ({ chatId, isTyping }) => {
       if (!chatId) return;
 
-      socket
-        .to(`chat_${chatId}`)
-        .emit("typing", { chatId, userId: user._id, isTyping });
+      socket.to(`chat_${chatId}`).emit("typing", { chatId, userId: user._id, isTyping });
     });
 
     // 🎯 disconnect
@@ -148,17 +165,10 @@ export function initChatSocket(io: Server) {
         set.delete(socket.id);
         if (set.size === 0) {
           onlineMap.delete(key);
-
           if (userType === "user") {
-            UserModel.findByIdAndUpdate(user._id, {
-              isOnline: false,
-              lastSeen: new Date(),
-            }).exec();
+            UserModel.findByIdAndUpdate(user._id, { isOnline: false, lastSeen: new Date() }).exec();
           } else {
-            AdminModel.findByIdAndUpdate(user._id, {
-              isOnline: false,
-              lastSeen: new Date(),
-            }).exec();
+            AdminModel.findByIdAndUpdate(user._id, { isOnline: false, lastSeen: new Date() }).exec();
           }
         }
       }

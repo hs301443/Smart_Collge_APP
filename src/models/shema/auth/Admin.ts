@@ -10,6 +10,7 @@ const adminSchema = new Schema(
     roleId: { type: mongoose.SchemaTypes.ObjectId, ref: "Role", default: null },
      isOnline: { type: Boolean, default: false },
     lastSeen: { type: Date, default: Date.now },
+    fcmtoken: { type: String, default: null },
 
   },
   { timestamps: true }

@@ -44,6 +44,7 @@ const adminSchema = new mongoose_1.Schema({
     roleId: { type: mongoose_1.default.SchemaTypes.ObjectId, ref: "Role", default: null },
     isOnline: { type: Boolean, default: false },
     lastSeen: { type: Date, default: Date.now },
+    fcmtoken: { type: String, default: null },
 }, { timestamps: true });
 exports.AdminModel = mongoose_1.default.model("Admin", adminSchema);
 const actionSchema = new mongoose_1.Schema({

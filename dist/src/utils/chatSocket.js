@@ -9,6 +9,7 @@ const User_1 = require("../models/shema/auth/User");
 const Admin_1 = require("../models/shema/auth/Admin");
 const chat_1 = require("../models/shema/chat");
 const Message_1 = require("../models/shema/Message");
+const firebase_1 = require("./firebase");
 const onlineMap = new Map(); // userType:userId -> sockets
 function initChatSocket(io) {
     // ✅ مصادقة قبل الاتصال
@@ -26,7 +27,7 @@ function initChatSocket(io) {
             }
             else if (payload.userType === "Admin" || payload.userType === "SuperAdmin") {
                 user = await Admin_1.AdminModel.findById(payload.id);
-                userType = "admin"; // ✅ أي Admin أو SuperAdmin يتعامل كـ Admin
+                userType = "admin";
             }
             if (!user)
                 return next(new Error("Invalid user"));
@@ -38,7 +39,6 @@ function initChatSocket(io) {
             next(err);
         }
     });
-    // ✅ عند الاتصال
     io.on("connection", (socket) => {
         const user = socket.user;
         const userType = socket.userType;
@@ -54,28 +54,27 @@ function initChatSocket(io) {
             Admin_1.AdminModel.findByIdAndUpdate(user._id, { isOnline: true }).exec();
         }
         console.log(`✅ ${userType} connected: ${user._id}`);
-        // 🎯 join_chat
+        // 🎯 join chat
         socket.on("join_chat", async () => {
             try {
                 let chat;
                 if (userType === "user") {
-                    // 🟢 اليوزر يدخل شاته مع الأدمن الوحيد
-                    const admin = await Admin_1.AdminModel.findOne(); // عندك أدمن واحد
+                    const admin = await Admin_1.AdminModel.findOne();
                     if (!admin)
                         return socket.emit("error", "No admin found");
                     chat =
                         (await chat_1.ChatModel.findOne({ user: user._id, admin: admin._id })) ||
                             (await chat_1.ChatModel.create({ user: user._id, admin: admin._id }));
+                    socket.join(`chat_${chat._id}`);
+                    const messages = await Message_1.MessageModel.find({ chat: chat._id })
+                        .sort({ createdAt: 1 })
+                        .populate("sender");
+                    socket.emit("chat_history", { chatId: chat._id, messages });
                 }
                 else {
-                    // 🟠 الأدمن محتاج يحدد أي شات يدخل (مثلاً من Dashboard)
-                    return socket.emit("error", "Admin must specify chatId explicitly");
+                    // الأدمن لازم يحدد chatId
+                    socket.emit("error", "Admin must specify chatId explicitly");
                 }
-                socket.join(`chat_${chat._id}`);
-                const messages = await Message_1.MessageModel.find({ chat: chat._id })
-                    .sort({ createdAt: 1 })
-                    .populate("sender");
-                socket.emit("chat_history", { chatId: chat._id, messages });
             }
             catch (err) {
                 console.error(err);
@@ -89,7 +88,6 @@ function initChatSocket(io) {
                     return;
                 let chat;
                 if (userType === "user") {
-                    // 🟢 اليوزر مايبعتش chatId
                     const admin = await Admin_1.AdminModel.findOne();
                     if (!admin)
                         return socket.emit("error", "No admin found");
@@ -98,7 +96,6 @@ function initChatSocket(io) {
                             (await chat_1.ChatModel.create({ user: user._id, admin: admin._id }));
                 }
                 else {
-                    // 🟠 الأدمن لازم يحدد chatId
                     if (!chatId)
                         return socket.emit("error", "chatId is required for admin");
                     chat = await chat_1.ChatModel.findById(chatId);
@@ -113,20 +110,42 @@ function initChatSocket(io) {
                     readBy: [user._id],
                 });
                 const populatedMsg = await msg.populate("sender");
+                // ابعت الرسالة لكل الـ sockets في الغرفة
                 io.to(`chat_${chat._id}`).emit("message", populatedMsg);
+                // 🔔 FCM Notification
+                let targetToken = null;
+                if (userType === "user") {
+                    const admin = await Admin_1.AdminModel.findOne();
+                    targetToken = admin?.fcmtoken || null;
+                }
+                else {
+                    const userModel = await User_1.UserModel.findById(chat.user);
+                    targetToken = userModel?.fcmtoken || null;
+                }
+                if (targetToken) {
+                    await firebase_1.messaging.send({
+                        token: targetToken,
+                        notification: {
+                            title: userType === "user" ? "New message from user" : "New message from admin",
+                            body: content,
+                        },
+                        data: {
+                            chatId: chat._id.toString(),
+                            sender: userType,
+                        },
+                    });
+                }
             }
             catch (err) {
                 console.error(err);
                 socket.emit("error", "Send message failed");
             }
         });
-        // 🎯 typing indicator
+        // 🎯 typing
         socket.on("typing", async ({ chatId, isTyping }) => {
             if (!chatId)
                 return;
-            socket
-                .to(`chat_${chatId}`)
-                .emit("typing", { chatId, userId: user._id, isTyping });
+            socket.to(`chat_${chatId}`).emit("typing", { chatId, userId: user._id, isTyping });
         });
         // 🎯 disconnect
         socket.on("disconnect", () => {
@@ -136,16 +155,10 @@ function initChatSocket(io) {
                 if (set.size === 0) {
                     onlineMap.delete(key);
                     if (userType === "user") {
-                        User_1.UserModel.findByIdAndUpdate(user._id, {
-                            isOnline: false,
-                            lastSeen: new Date(),
-                        }).exec();
+                        User_1.UserModel.findByIdAndUpdate(user._id, { isOnline: false, lastSeen: new Date() }).exec();
                     }
                     else {
-                        Admin_1.AdminModel.findByIdAndUpdate(user._id, {
-                            isOnline: false,
-                            lastSeen: new Date(),
-                        }).exec();
+                        Admin_1.AdminModel.findByIdAndUpdate(user._id, { isOnline: false, lastSeen: new Date() }).exec();
                     }
                 }
             }
