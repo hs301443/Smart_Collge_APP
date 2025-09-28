@@ -37,21 +37,26 @@ export const createLecture = async (req: Request, res: Response) => {
  
 };
 
+// رفع أكثر من PDF
 export const uploadLecturePDF = async (req: Request, res: Response) => {
     const lecture = await LectureModel.findById(req.params.id);
     if (!lecture) throw new NotFound("Lecture not found");
 
-    if (!req.file) throw new BadRequest("No PDF file uploaded");
+    const files = req.files as Express.Multer.File[];
+    if (!files || files.length === 0) throw new BadRequest("No PDFs uploaded");
 
-    lecture.pdfs.push({
-      name: req.file.originalname,
-      url: `${req.protocol}://${req.get("host")}/uploads/pdfs/${req.file.filename}`,
+    files.forEach(file => {
+      lecture.pdfs.push({
+        name: file.originalname,
+        url: `${req.protocol}://${req.get("host")}/uploads/pdfs/${file.filename}`
+      });
     });
 
     await lecture.save();
     return SuccessResponse(res, lecture);
  
 };
+
 
 export const uploadLectureVideo = async (req: Request, res: Response) => {
   try {

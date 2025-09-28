@@ -27,15 +27,19 @@ const createLecture = async (req, res) => {
     return (0, response_1.SuccessResponse)(res, lecture, 201);
 };
 exports.createLecture = createLecture;
+// رفع أكثر من PDF
 const uploadLecturePDF = async (req, res) => {
     const lecture = await lecture_1.LectureModel.findById(req.params.id);
     if (!lecture)
         throw new Errors_1.NotFound("Lecture not found");
-    if (!req.file)
-        throw new BadRequest_1.BadRequest("No PDF file uploaded");
-    lecture.pdfs.push({
-        name: req.file.originalname,
-        url: `${req.protocol}://${req.get("host")}/uploads/pdfs/${req.file.filename}`,
+    const files = req.files;
+    if (!files || files.length === 0)
+        throw new BadRequest_1.BadRequest("No PDFs uploaded");
+    files.forEach(file => {
+        lecture.pdfs.push({
+            name: file.originalname,
+            url: `${req.protocol}://${req.get("host")}/uploads/pdfs/${file.filename}`
+        });
     });
     await lecture.save();
     return (0, response_1.SuccessResponse)(res, lecture);
