@@ -49,3 +49,44 @@ const documentFileFilter = (req: any, file: Express.Multer.File, cb: any) => {
 
 export const uploadQuestionImage = multer({ storage: questionStorage, fileFilter: imageFileFilter });
 export const uploadAnswerFile = multer({ storage: answerStorage, fileFilter: documentFileFilter });
+
+// storage للفيديو
+const videoStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = "uploads/videos";
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+// storage للـ pdf
+const pdfStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = "uploads/pdfs";
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+// فلترة الفيديوهات
+const videoFileFilter = (req: any, file: Express.Multer.File, cb: any) => {
+  if (file.mimetype.startsWith("video/")) cb(null, true);
+  else cb(new Error("Only video files are allowed"));
+};
+
+// فلترة PDF فقط
+const pdfFileFilter = (req: any, file: Express.Multer.File, cb: any) => {
+  if (file.mimetype === "application/pdf") cb(null, true);
+  else cb(new Error("Only PDF files are allowed"));
+};
+
+export const uploadVideo = multer({ storage: videoStorage, fileFilter: videoFileFilter });
+export const uploadPDF = multer({ storage: pdfStorage, fileFilter: pdfFileFilter });

@@ -127,7 +127,7 @@ function initChatSocket(io) {
                     await firebase_1.messaging.send({
                         token: targetToken,
                         notification: {
-                            title: senderName, // الاسم بدل النص الثابت
+                            title: senderName,
                             body: populatedMsg.content,
                         },
                         data: {

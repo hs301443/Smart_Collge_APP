@@ -10,7 +10,7 @@ import TempletsRouter from "./templates"
 import ExamRouter from './Exam'
 import AttemptRouter from './Attempt'
 import chatRouter from './chat'
-
+import lectureRouter from './lecture'
 export const route = Router();
 
 route.use("/auth", authRouter);
@@ -23,4 +23,5 @@ route.use("/templates", TempletsRouter);
 route.use("/exam",ExamRouter);
 route.use("/attempt",AttemptRouter)
 route.use("/chat",chatRouter)
+route.use("/lecture",lectureRouter)
 export default route;

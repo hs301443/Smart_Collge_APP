@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.uploadAnswerFile = exports.uploadQuestionImage = void 0;
+exports.uploadPDF = exports.uploadVideo = exports.uploadAnswerFile = exports.uploadQuestionImage = void 0;
 const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
@@ -53,3 +53,45 @@ const documentFileFilter = (req, file, cb) => {
 };
 exports.uploadQuestionImage = (0, multer_1.default)({ storage: questionStorage, fileFilter: imageFileFilter });
 exports.uploadAnswerFile = (0, multer_1.default)({ storage: answerStorage, fileFilter: documentFileFilter });
+// storage للفيديو
+const videoStorage = multer_1.default.diskStorage({
+    destination: (req, file, cb) => {
+        const dir = "uploads/videos";
+        if (!fs_1.default.existsSync(dir))
+            fs_1.default.mkdirSync(dir, { recursive: true });
+        cb(null, dir);
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+        cb(null, uniqueSuffix + path_1.default.extname(file.originalname));
+    }
+});
+// storage للـ pdf
+const pdfStorage = multer_1.default.diskStorage({
+    destination: (req, file, cb) => {
+        const dir = "uploads/pdfs";
+        if (!fs_1.default.existsSync(dir))
+            fs_1.default.mkdirSync(dir, { recursive: true });
+        cb(null, dir);
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+        cb(null, uniqueSuffix + path_1.default.extname(file.originalname));
+    }
+});
+// فلترة الفيديوهات
+const videoFileFilter = (req, file, cb) => {
+    if (file.mimetype.startsWith("video/"))
+        cb(null, true);
+    else
+        cb(new Error("Only video files are allowed"));
+};
+// فلترة PDF فقط
+const pdfFileFilter = (req, file, cb) => {
+    if (file.mimetype === "application/pdf")
+        cb(null, true);
+    else
+        cb(new Error("Only PDF files are allowed"));
+};
+exports.uploadVideo = (0, multer_1.default)({ storage: videoStorage, fileFilter: videoFileFilter });
+exports.uploadPDF = (0, multer_1.default)({ storage: pdfStorage, fileFilter: pdfFileFilter });

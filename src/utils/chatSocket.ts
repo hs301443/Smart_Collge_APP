@@ -138,7 +138,7 @@ export function initChatSocket(io: Server) {
           await messaging.send({
             token: targetToken,
             notification: {
-              title: senderName, // الاسم بدل النص الثابت
+              title: senderName,  
               body: populatedMsg.content,
             },
             data: {
