@@ -17,4 +17,6 @@ route.post("/fcm-token", authenticated_1.authenticated, (0, catchAsync_1.catchAs
 route.post("/complete", (0, catchAsync_1.catchAsync)(auth_1.completeProfile));
 route.patch("/update-image", authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(auth_1.updateProfileImage));
 route.post("/complete-student", authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(auth_1.completeProfileStudent));
+route.get("/profile", authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(auth_1.getProfile));
+route.delete("/delete", authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(auth_1.deleteAccount));
 exports.default = route;

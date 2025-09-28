@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.completeProfileStudent = exports.updateProfileImage = exports.completeProfile = exports.resetPassword = exports.verifyResetCode = exports.sendResetCode = exports.getFcmToken = exports.login = exports.verifyEmail = exports.signup = void 0;
+exports.deleteAccount = exports.getProfile = exports.completeProfileStudent = exports.updateProfileImage = exports.completeProfile = exports.resetPassword = exports.verifyResetCode = exports.sendResetCode = exports.getFcmToken = exports.login = exports.verifyEmail = exports.signup = void 0;
 const handleImages_1 = require("../../utils/handleImages");
 const emailVerifications_1 = require("../../models/shema/auth/emailVerifications");
 const User_1 = require("../../models/shema/auth/User");
@@ -302,3 +302,22 @@ const completeProfileStudent = async (req, res) => {
     });
 };
 exports.completeProfileStudent = completeProfileStudent;
+const getProfile = async (req, res) => {
+    if (!req.user)
+        throw new Errors_1.UnauthorizedError("User not found");
+    const user = await User_1.UserModel.findById(req.user.id).select("-password");
+    if (!user)
+        throw new Errors_1.NotFound("User not found");
+    (0, response_1.SuccessResponse)(res, user);
+};
+exports.getProfile = getProfile;
+const deleteAccount = async (req, res) => {
+    if (!req.user)
+        throw new Errors_1.UnauthorizedError("User not found");
+    const user = await User_1.UserModel.findById(req.user.id);
+    if (!user)
+        throw new Errors_1.NotFound("User not found");
+    await user.deleteOne();
+    (0, response_1.SuccessResponse)(res, { message: "Account deleted successfully" });
+};
+exports.deleteAccount = deleteAccount;

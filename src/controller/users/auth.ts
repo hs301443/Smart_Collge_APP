@@ -380,3 +380,21 @@ export const completeProfileStudent = async (req: Request, res: Response) => {
     }
   });
 };
+
+
+export const getProfile = async (req: AuthenticatedRequest, res: Response) => {
+  if (!req.user) throw new UnauthorizedError("User not found");
+  const user = await UserModel.findById(req.user.id).select("-password");
+  if (!user) throw new NotFound("User not found");
+  SuccessResponse(res, user);
+};
+
+
+export const deleteAccount = async (req: AuthenticatedRequest, res: Response) => {
+  if (!req.user) throw new UnauthorizedError("User not found");
+  const user = await UserModel.findById(req.user.id);
+  if (!user) throw new NotFound("User not found");
+  await user.deleteOne();
+  SuccessResponse(res, { message: "Account deleted successfully" });
+};
+
