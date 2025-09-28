@@ -11,7 +11,8 @@ const router = express_1.default.Router();
 // Create lecture (with icon Base64)
 router.post("/", (0, catchAsync_1.catchAsync)(lecture_1.createLecture));
 // Upload PDF
-router.post("/:id/pdf", multer_1.uploadPDF.single("pdf"), (0, catchAsync_1.catchAsync)(lecture_1.uploadLecturePDF));
+router.post("/:id/pdf", multer_1.uploadPDF.array("pdfs", 10) // تقدر تحدد الحد الأقصى للملفات
+, (0, catchAsync_1.catchAsync)(lecture_1.uploadLecturePDF));
 // Upload Video
 router.post("/:id/video", multer_1.uploadVideo.single("video"), (0, catchAsync_1.catchAsync)(lecture_1.uploadLectureVideo));
 // Get all

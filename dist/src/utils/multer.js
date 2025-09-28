@@ -7,10 +7,10 @@ exports.uploadPDF = exports.uploadVideo = exports.uploadAnswerFile = exports.upl
 const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
-// مكان تخزين الصور والأسئلة
-const questionStorage = multer_1.default.diskStorage({
+// دالة عامة لإنشاء storage
+const createStorage = (folder) => multer_1.default.diskStorage({
     destination: (req, file, cb) => {
-        const dir = "uploads/questions";
+        const dir = path_1.default.join("uploads", folder);
         if (!fs_1.default.existsSync(dir))
             fs_1.default.mkdirSync(dir, { recursive: true });
         cb(null, dir);
@@ -18,20 +18,7 @@ const questionStorage = multer_1.default.diskStorage({
     filename: (req, file, cb) => {
         const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
         cb(null, uniqueSuffix + path_1.default.extname(file.originalname));
-    }
-});
-// مكان تخزين ملفات الطلاب
-const answerStorage = multer_1.default.diskStorage({
-    destination: (req, file, cb) => {
-        const dir = "uploads/answers";
-        if (!fs_1.default.existsSync(dir))
-            fs_1.default.mkdirSync(dir, { recursive: true });
-        cb(null, dir);
     },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-        cb(null, uniqueSuffix + path_1.default.extname(file.originalname));
-    }
 });
 // فلترة الصور
 const imageFileFilter = (req, file, cb) => {
@@ -51,34 +38,6 @@ const documentFileFilter = (req, file, cb) => {
         cb(new Error("Only PDF or Word files are allowed"));
     }
 };
-exports.uploadQuestionImage = (0, multer_1.default)({ storage: questionStorage, fileFilter: imageFileFilter });
-exports.uploadAnswerFile = (0, multer_1.default)({ storage: answerStorage, fileFilter: documentFileFilter });
-// storage للفيديو
-const videoStorage = multer_1.default.diskStorage({
-    destination: (req, file, cb) => {
-        const dir = "uploads/videos";
-        if (!fs_1.default.existsSync(dir))
-            fs_1.default.mkdirSync(dir, { recursive: true });
-        cb(null, dir);
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-        cb(null, uniqueSuffix + path_1.default.extname(file.originalname));
-    }
-});
-// storage للـ pdf
-const pdfStorage = multer_1.default.diskStorage({
-    destination: (req, file, cb) => {
-        const dir = "uploads/pdfs";
-        if (!fs_1.default.existsSync(dir))
-            fs_1.default.mkdirSync(dir, { recursive: true });
-        cb(null, dir);
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-        cb(null, uniqueSuffix + path_1.default.extname(file.originalname));
-    }
-});
 // فلترة الفيديوهات
 const videoFileFilter = (req, file, cb) => {
     if (file.mimetype.startsWith("video/"))
@@ -93,5 +52,20 @@ const pdfFileFilter = (req, file, cb) => {
     else
         cb(new Error("Only PDF files are allowed"));
 };
-exports.uploadVideo = (0, multer_1.default)({ storage: videoStorage, fileFilter: videoFileFilter });
-exports.uploadPDF = (0, multer_1.default)({ storage: pdfStorage, fileFilter: pdfFileFilter });
+// ✅ Exports جاهزة للاستخدام
+exports.uploadQuestionImage = (0, multer_1.default)({
+    storage: createStorage("questions"),
+    fileFilter: imageFileFilter,
+});
+exports.uploadAnswerFile = (0, multer_1.default)({
+    storage: createStorage("answers"),
+    fileFilter: documentFileFilter,
+});
+exports.uploadVideo = (0, multer_1.default)({
+    storage: createStorage("videos"),
+    fileFilter: videoFileFilter,
+});
+exports.uploadPDF = (0, multer_1.default)({
+    storage: createStorage("pdfs"),
+    fileFilter: pdfFileFilter,
+});
