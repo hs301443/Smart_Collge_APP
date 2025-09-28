@@ -305,7 +305,7 @@ exports.completeProfileStudent = completeProfileStudent;
 const getProfile = async (req, res) => {
     if (!req.user)
         throw new Errors_1.UnauthorizedError("User not found");
-    const user = await User_1.UserModel.findById(req.user.id).select("-password");
+    const user = await User_1.UserModel.findById(req.user.id).select("-password -fcmtoken -__v isNew isVerified isOnline lastSeen updatedAt");
     if (!user)
         throw new Errors_1.NotFound("User not found");
     (0, response_1.SuccessResponse)(res, user);
