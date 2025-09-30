@@ -1,12 +1,17 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getMyAttempts = exports.submitAttempt = exports.saveAnswer = exports.startAttempt = exports.getQuestionsForExam = exports.getExamByIdForStudent = exports.getExamsForStudent = void 0;
+const mongoose_1 = __importDefault(require("mongoose"));
 const Exam_1 = require("../../models/shema/Exam");
 const Attempt_1 = require("../../models/shema/Attempt");
 const Errors_1 = require("../../Errors");
 const response_1 = require("../../utils/response");
 const BadRequest_1 = require("../../Errors/BadRequest");
 const multer_1 = require("../../utils/multer");
+// ✅ جلب امتحانات الطالب
 const getExamsForStudent = async (req, res) => {
     if (!req.user)
         throw new Errors_1.UnauthorizedError("Unauthorized");
@@ -74,7 +79,6 @@ const startAttempt = async (req, res) => {
 };
 exports.startAttempt = startAttempt;
 // ✅ حفظ إجابة
-// ✅ Save Answer (while in-progress)
 const saveAnswer = async (req, res) => {
     if (!req.user || !req.user.id)
         throw new Errors_1.UnauthorizedError("Unauthorized");
@@ -83,8 +87,14 @@ const saveAnswer = async (req, res) => {
         if (err)
             return res.status(400).json({ message: err.message });
         const { attemptId, questionId, answer } = req.body;
-        if (!attemptId || !questionId)
+        if (!attemptId || !questionId) {
             throw new BadRequest_1.BadRequest("attemptId and questionId are required");
+        }
+        // ✅ تحقق من صحة attemptId
+        if (!mongoose_1.default.Types.ObjectId.isValid(attemptId)) {
+            throw new BadRequest_1.BadRequest("Invalid attemptId format");
+        }
+        console.log("saveAnswer body:", req.body);
         // جلب Attempt
         const attempt = await Attempt_1.AttemptModel.findById(attemptId);
         if (!attempt)
@@ -103,7 +113,7 @@ const saveAnswer = async (req, res) => {
             throw new Errors_1.NotFound("Question not found");
         // ملف الطالب مع رابط كامل
         const filePath = req.file
-            ? `${req.protocol}://${req.get('host')}/uploads/answers/${req.file.filename}`
+            ? `${req.protocol}://${req.get("host")}/uploads/answers/${req.file.filename}`
             : null;
         // تحديث أو إضافة الإجابة
         const existingAnswer = attempt.answers.find((a) => a.question && a.question.toString() === questionId);
@@ -127,6 +137,9 @@ const submitAttempt = async (req, res) => {
     const { attemptId } = req.body;
     if (!attemptId)
         throw new BadRequest_1.BadRequest("attemptId is required");
+    if (!mongoose_1.default.Types.ObjectId.isValid(attemptId)) {
+        throw new BadRequest_1.BadRequest("Invalid attemptId format");
+    }
     const attempt = await Attempt_1.AttemptModel.findById(attemptId).populate("answers.question");
     if (!attempt)
         throw new Errors_1.NotFound("Attempt not found");
@@ -143,7 +156,7 @@ const submitAttempt = async (req, res) => {
     for (const ans of attempt.answers) {
         const q = ans.question;
         if (!q)
-            continue; // لو السؤال غير موجود نتخطاه
+            continue;
         let awarded = 0;
         if (["single-choice", "multiple-choice", "true-false", "short-answer"].includes(q.type)) {
             if (JSON.stringify(ans.answer) === JSON.stringify(q.correctAnswer)) {

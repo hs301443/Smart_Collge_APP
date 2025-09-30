@@ -1,17 +1,19 @@
 import { Request, Response } from "express";
+import mongoose from "mongoose";
 import { ExamModel } from "../../models/shema/Exam";
 import { AttemptModel } from "../../models/shema/Attempt";
-import {  NotFound, UnauthorizedError } from "../../Errors";
+import { NotFound, UnauthorizedError } from "../../Errors";
 import { SuccessResponse } from "../../utils/response";
 import { BadRequest } from "../../Errors/BadRequest";
 import { uploadAnswerFile } from "../../utils/multer";
+
+// ✅ جلب امتحانات الطالب
 export const getExamsForStudent = async (req: Request, res: Response) => {
   if (!req.user) throw new UnauthorizedError("Unauthorized");
 
-  const exams = await ExamModel.find({ 
-    level: req.user.level, 
+  const exams = await ExamModel.find({
+    level: req.user.level,
     department: req.user.department,
-    
   }).select("-questions");
 
   SuccessResponse(res, { exams }, 200);
@@ -77,7 +79,6 @@ export const startAttempt = async (req: Request, res: Response) => {
 };
 
 // ✅ حفظ إجابة
-// ✅ Save Answer (while in-progress)
 export const saveAnswer = async (req: Request, res: Response) => {
   if (!req.user || !req.user.id) throw new UnauthorizedError("Unauthorized");
   const userId = req.user.id;
@@ -86,7 +87,17 @@ export const saveAnswer = async (req: Request, res: Response) => {
     if (err) return res.status(400).json({ message: err.message });
 
     const { attemptId, questionId, answer } = req.body;
-    if (!attemptId || !questionId) throw new BadRequest("attemptId and questionId are required");
+
+    if (!attemptId || !questionId) {
+      throw new BadRequest("attemptId and questionId are required");
+    }
+
+    // ✅ تحقق من صحة attemptId
+    if (!mongoose.Types.ObjectId.isValid(attemptId)) {
+      throw new BadRequest("Invalid attemptId format");
+    }
+
+    console.log("saveAnswer body:", req.body);
 
     // جلب Attempt
     const attempt = await AttemptModel.findById(attemptId);
@@ -107,8 +118,8 @@ export const saveAnswer = async (req: Request, res: Response) => {
     if (!question) throw new NotFound("Question not found");
 
     // ملف الطالب مع رابط كامل
-    const filePath = req.file 
-      ? `${req.protocol}://${req.get('host')}/uploads/answers/${req.file.filename}`
+    const filePath = req.file
+      ? `${req.protocol}://${req.get("host")}/uploads/answers/${req.file.filename}`
       : null;
 
     // تحديث أو إضافة الإجابة
@@ -127,12 +138,17 @@ export const saveAnswer = async (req: Request, res: Response) => {
     SuccessResponse(res, { attempt }, 200);
   });
 };
+
 // ✅ Submit Attempt
 export const submitAttempt = async (req: Request, res: Response) => {
   if (!req.user || !req.user.id) throw new UnauthorizedError("Unauthorized");
 
   const { attemptId } = req.body;
   if (!attemptId) throw new BadRequest("attemptId is required");
+
+  if (!mongoose.Types.ObjectId.isValid(attemptId)) {
+    throw new BadRequest("Invalid attemptId format");
+  }
 
   const attempt = await AttemptModel.findById(attemptId).populate("answers.question");
   if (!attempt) throw new NotFound("Attempt not found");
@@ -152,7 +168,7 @@ export const submitAttempt = async (req: Request, res: Response) => {
 
   for (const ans of attempt.answers) {
     const q: any = ans.question;
-    if (!q) continue; // لو السؤال غير موجود نتخطاه
+    if (!q) continue;
 
     let awarded = 0;
     if (["single-choice", "multiple-choice", "true-false", "short-answer"].includes(q.type)) {
@@ -177,7 +193,6 @@ export const submitAttempt = async (req: Request, res: Response) => {
   await attempt.save();
   SuccessResponse(res, { attempt }, 200);
 };
-
 
 // ✅ جلب كل محاولات الطالب
 export const getMyAttempts = async (req: Request, res: Response) => {
