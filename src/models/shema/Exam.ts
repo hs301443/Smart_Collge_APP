@@ -5,6 +5,7 @@ const ChoiceSchema = new Schema({
 }, { _id: true });
 
 const QuestionSchema = new Schema({
+  exam: { type: Schema.Types.ObjectId, ref: "Exam" }, // نربط السؤال بالامتحان
   text: { type: String, required: true },
   type: { type: String, enum: ["MCQ", "short-answer", "file-upload"], required: true },
   choices: [ChoiceSchema],
@@ -12,6 +13,8 @@ const QuestionSchema = new Schema({
   points: { type: Number, default: 1 },
   image: String
 }, { timestamps: true });
+
+export const QuestionModel = mongoose.model("Question", QuestionSchema);
 
 const ExamSchema = new Schema({
   title: { type: String, required: true },

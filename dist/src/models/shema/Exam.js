@@ -33,12 +33,13 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ExamModel = void 0;
+exports.ExamModel = exports.QuestionModel = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 const ChoiceSchema = new mongoose_1.Schema({
     text: String
 }, { _id: true });
 const QuestionSchema = new mongoose_1.Schema({
+    exam: { type: mongoose_1.Schema.Types.ObjectId, ref: "Exam" }, // نربط السؤال بالامتحان
     text: { type: String, required: true },
     type: { type: String, enum: ["MCQ", "short-answer", "file-upload"], required: true },
     choices: [ChoiceSchema],
@@ -46,6 +47,7 @@ const QuestionSchema = new mongoose_1.Schema({
     points: { type: Number, default: 1 },
     image: String
 }, { timestamps: true });
+exports.QuestionModel = mongoose_1.default.model("Question", QuestionSchema);
 const ExamSchema = new mongoose_1.Schema({
     title: { type: String, required: true },
     subject_name: { type: String, required: true },

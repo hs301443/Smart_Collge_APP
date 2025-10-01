@@ -141,6 +141,7 @@ export const saveAnswer = async (req: Request, res: Response) => {
 };
 
 // ✅ Submit Attempt
+// ✅ Submit Attempt
 export const submitAttempt = async (req: Request, res: Response) => {
   if (!req.user || !req.user.id) throw new UnauthorizedError("Unauthorized");
 
@@ -151,7 +152,8 @@ export const submitAttempt = async (req: Request, res: Response) => {
     throw new BadRequest("Invalid attemptId format");
   }
 
-  const attempt = await AttemptModel.findById(attemptId);
+  // ✨ populate answers.question عشان نقدر نجيب type و correctAnswer
+  const attempt = await AttemptModel.findById(attemptId).populate("answers.question");
   if (!attempt) throw new NotFound("Attempt not found");
 
   if (attempt.student?.toString() !== req.user.id.toString()) {
@@ -162,7 +164,7 @@ export const submitAttempt = async (req: Request, res: Response) => {
     throw new BadRequest("Attempt already submitted or graded");
   }
 
-  // Auto-grading
+  // ✅ Auto-grading
   let totalPoints = 0;
   let correctCount = 0;
   let wrongCount = 0;
@@ -172,6 +174,8 @@ export const submitAttempt = async (req: Request, res: Response) => {
     if (!q) continue;
 
     let awarded = 0;
+
+    // لو السؤال MCQ أو Short-answer
     if (["MCQ", "short-answer"].includes(q.type)) {
       if (JSON.stringify(ans.answer) === JSON.stringify(q.correctAnswer)) {
         awarded = q.points ?? 0;
@@ -192,6 +196,7 @@ export const submitAttempt = async (req: Request, res: Response) => {
   attempt.submittedAt = new Date();
 
   await attempt.save();
+
   SuccessResponse(res, { attempt }, 200);
 };
 
@@ -200,7 +205,8 @@ export const getMyAttempts = async (req: Request, res: Response) => {
   if (!req.user) throw new UnauthorizedError("Unauthorized");
 
   const attempts = await AttemptModel.find({ student: req.user.id })
-    .populate("exam", "title subject_name level department startAt endAt durationMinutes"); // بس exam
+    .populate("exam", "title subject_name level department startAt endAt durationMinutes")
+    .populate("answers.question", "text type points"); // ✨ جبت نص السؤال ونوعه والنقط
 
   SuccessResponse(res, { attempts }, 200);
 };

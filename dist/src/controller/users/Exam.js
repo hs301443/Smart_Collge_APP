@@ -133,6 +133,7 @@ const saveAnswer = async (req, res) => {
 };
 exports.saveAnswer = saveAnswer;
 // ✅ Submit Attempt
+// ✅ Submit Attempt
 const submitAttempt = async (req, res) => {
     if (!req.user || !req.user.id)
         throw new Errors_1.UnauthorizedError("Unauthorized");
@@ -142,7 +143,8 @@ const submitAttempt = async (req, res) => {
     if (!mongoose_1.default.Types.ObjectId.isValid(attemptId)) {
         throw new BadRequest_1.BadRequest("Invalid attemptId format");
     }
-    const attempt = await Attempt_1.AttemptModel.findById(attemptId);
+    // ✨ populate answers.question عشان نقدر نجيب type و correctAnswer
+    const attempt = await Attempt_1.AttemptModel.findById(attemptId).populate("answers.question");
     if (!attempt)
         throw new Errors_1.NotFound("Attempt not found");
     if (attempt.student?.toString() !== req.user.id.toString()) {
@@ -151,7 +153,7 @@ const submitAttempt = async (req, res) => {
     if (attempt.status !== "in-progress") {
         throw new BadRequest_1.BadRequest("Attempt already submitted or graded");
     }
-    // Auto-grading
+    // ✅ Auto-grading
     let totalPoints = 0;
     let correctCount = 0;
     let wrongCount = 0;
@@ -160,6 +162,7 @@ const submitAttempt = async (req, res) => {
         if (!q)
             continue;
         let awarded = 0;
+        // لو السؤال MCQ أو Short-answer
         if (["MCQ", "short-answer"].includes(q.type)) {
             if (JSON.stringify(ans.answer) === JSON.stringify(q.correctAnswer)) {
                 awarded = q.points ?? 0;
@@ -186,7 +189,8 @@ const getMyAttempts = async (req, res) => {
     if (!req.user)
         throw new Errors_1.UnauthorizedError("Unauthorized");
     const attempts = await Attempt_1.AttemptModel.find({ student: req.user.id })
-        .populate("exam", "title subject_name level department startAt endAt durationMinutes"); // بس exam
+        .populate("exam", "title subject_name level department startAt endAt durationMinutes")
+        .populate("answers.question", "text type points"); // ✨ جبت نص السؤال ونوعه والنقط
     (0, response_1.SuccessResponse)(res, { attempts }, 200);
 };
 exports.getMyAttempts = getMyAttempts;
