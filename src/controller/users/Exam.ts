@@ -92,12 +92,9 @@ export const saveAnswer = async (req: Request, res: Response) => {
       throw new BadRequest("attemptId and questionId are required");
     }
 
-    // ✅ تحقق من صحة attemptId
     if (!mongoose.Types.ObjectId.isValid(attemptId)) {
       throw new BadRequest("Invalid attemptId format");
     }
-
-    console.log("saveAnswer body:", req.body);
 
     // جلب Attempt
     const attempt = await AttemptModel.findById(attemptId);
@@ -117,21 +114,25 @@ export const saveAnswer = async (req: Request, res: Response) => {
     const question = exam.questions.id(questionId);
     if (!question) throw new NotFound("Question not found");
 
-    // ملف الطالب مع رابط كامل
+    // ملف الطالب
     const filePath = req.file
       ? `${req.protocol}://${req.get("host")}/uploads/answers/${req.file.filename}`
       : null;
 
     // تحديث أو إضافة الإجابة
     const existingAnswer = attempt.answers.find(
-      (a: any) => a.question && a.question.toString() === questionId
+      (a: any) => a.question && a.question._id.toString() === questionId
     );
 
     if (existingAnswer) {
       existingAnswer.answer = answer;
       if (filePath) existingAnswer.file = filePath;
     } else {
-      attempt.answers.push({ question: questionId, answer, file: filePath });
+      attempt.answers.push({
+        question: question.toObject(), // 👈 snapshot من السؤال
+        answer,
+        file: filePath
+      });
     }
 
     await attempt.save();
@@ -150,7 +151,7 @@ export const submitAttempt = async (req: Request, res: Response) => {
     throw new BadRequest("Invalid attemptId format");
   }
 
-  const attempt = await AttemptModel.findById(attemptId).populate("answers.question");
+  const attempt = await AttemptModel.findById(attemptId);
   if (!attempt) throw new NotFound("Attempt not found");
 
   if (attempt.student?.toString() !== req.user.id.toString()) {
@@ -161,7 +162,7 @@ export const submitAttempt = async (req: Request, res: Response) => {
     throw new BadRequest("Attempt already submitted or graded");
   }
 
-  // Auto-grading simple questions
+  // Auto-grading
   let totalPoints = 0;
   let correctCount = 0;
   let wrongCount = 0;
@@ -171,7 +172,7 @@ export const submitAttempt = async (req: Request, res: Response) => {
     if (!q) continue;
 
     let awarded = 0;
-    if (["single-choice", "multiple-choice", "true-false", "short-answer"].includes(q.type)) {
+    if (["MCQ", "short-answer"].includes(q.type)) {
       if (JSON.stringify(ans.answer) === JSON.stringify(q.correctAnswer)) {
         awarded = q.points ?? 0;
         correctCount++;
@@ -199,8 +200,7 @@ export const getMyAttempts = async (req: Request, res: Response) => {
   if (!req.user) throw new UnauthorizedError("Unauthorized");
 
   const attempts = await AttemptModel.find({ student: req.user.id })
-    .populate("exam", "title subject_name level department startAt endAt durationMinutes")
-    .populate("answers.question", "text type points");
+    .populate("exam", "title subject_name level department startAt endAt durationMinutes"); // بس exam
 
   SuccessResponse(res, { attempts }, 200);
 };

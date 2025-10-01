@@ -90,11 +90,9 @@ const saveAnswer = async (req, res) => {
         if (!attemptId || !questionId) {
             throw new BadRequest_1.BadRequest("attemptId and questionId are required");
         }
-        // ✅ تحقق من صحة attemptId
         if (!mongoose_1.default.Types.ObjectId.isValid(attemptId)) {
             throw new BadRequest_1.BadRequest("Invalid attemptId format");
         }
-        console.log("saveAnswer body:", req.body);
         // جلب Attempt
         const attempt = await Attempt_1.AttemptModel.findById(attemptId);
         if (!attempt)
@@ -111,19 +109,23 @@ const saveAnswer = async (req, res) => {
         const question = exam.questions.id(questionId);
         if (!question)
             throw new Errors_1.NotFound("Question not found");
-        // ملف الطالب مع رابط كامل
+        // ملف الطالب
         const filePath = req.file
             ? `${req.protocol}://${req.get("host")}/uploads/answers/${req.file.filename}`
             : null;
         // تحديث أو إضافة الإجابة
-        const existingAnswer = attempt.answers.find((a) => a.question && a.question.toString() === questionId);
+        const existingAnswer = attempt.answers.find((a) => a.question && a.question._id.toString() === questionId);
         if (existingAnswer) {
             existingAnswer.answer = answer;
             if (filePath)
                 existingAnswer.file = filePath;
         }
         else {
-            attempt.answers.push({ question: questionId, answer, file: filePath });
+            attempt.answers.push({
+                question: question.toObject(), // 👈 snapshot من السؤال
+                answer,
+                file: filePath
+            });
         }
         await attempt.save();
         (0, response_1.SuccessResponse)(res, { attempt }, 200);
@@ -140,7 +142,7 @@ const submitAttempt = async (req, res) => {
     if (!mongoose_1.default.Types.ObjectId.isValid(attemptId)) {
         throw new BadRequest_1.BadRequest("Invalid attemptId format");
     }
-    const attempt = await Attempt_1.AttemptModel.findById(attemptId).populate("answers.question");
+    const attempt = await Attempt_1.AttemptModel.findById(attemptId);
     if (!attempt)
         throw new Errors_1.NotFound("Attempt not found");
     if (attempt.student?.toString() !== req.user.id.toString()) {
@@ -149,7 +151,7 @@ const submitAttempt = async (req, res) => {
     if (attempt.status !== "in-progress") {
         throw new BadRequest_1.BadRequest("Attempt already submitted or graded");
     }
-    // Auto-grading simple questions
+    // Auto-grading
     let totalPoints = 0;
     let correctCount = 0;
     let wrongCount = 0;
@@ -158,7 +160,7 @@ const submitAttempt = async (req, res) => {
         if (!q)
             continue;
         let awarded = 0;
-        if (["single-choice", "multiple-choice", "true-false", "short-answer"].includes(q.type)) {
+        if (["MCQ", "short-answer"].includes(q.type)) {
             if (JSON.stringify(ans.answer) === JSON.stringify(q.correctAnswer)) {
                 awarded = q.points ?? 0;
                 correctCount++;
@@ -184,8 +186,7 @@ const getMyAttempts = async (req, res) => {
     if (!req.user)
         throw new Errors_1.UnauthorizedError("Unauthorized");
     const attempts = await Attempt_1.AttemptModel.find({ student: req.user.id })
-        .populate("exam", "title subject_name level department startAt endAt durationMinutes")
-        .populate("answers.question", "text type points");
+        .populate("exam", "title subject_name level department startAt endAt durationMinutes"); // بس exam
     (0, response_1.SuccessResponse)(res, { attempts }, 200);
 };
 exports.getMyAttempts = getMyAttempts;
