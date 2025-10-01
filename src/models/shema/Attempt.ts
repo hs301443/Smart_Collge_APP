@@ -1,7 +1,17 @@
 import mongoose, { Schema } from "mongoose";
 
+// هنا هنخزن نسخة السؤال نفسه بدل ref لـ Question
+const QuestionSchema = new Schema({
+  text: { type: String, required: true },
+  type: { type: String, enum: ["MCQ", "short-answer", "file-upload"], required: true },
+  choices: [{ text: String }],
+  correctAnswer: Schema.Types.Mixed,
+  points: { type: Number, default: 1 },
+  image: String
+}, { _id: false });
+
 const AnswerSchema = new Schema({
-  question: { type: Schema.Types.ObjectId, ref: "Question" },
+  question: QuestionSchema, // بدل ObjectId + ref
   answer: Schema.Types.Mixed,
   file: String,
   pointsAwarded: { type: Number, default: 0 },
