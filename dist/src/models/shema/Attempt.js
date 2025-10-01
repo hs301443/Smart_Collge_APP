@@ -35,8 +35,17 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AttemptModel = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
+// هنا هنخزن نسخة السؤال نفسه بدل ref لـ Question
+const QuestionSchema = new mongoose_1.Schema({
+    text: { type: String, required: true },
+    type: { type: String, enum: ["MCQ", "short-answer", "file-upload"], required: true },
+    choices: [{ text: String }],
+    correctAnswer: mongoose_1.Schema.Types.Mixed,
+    points: { type: Number, default: 1 },
+    image: String
+}, { _id: false });
 const AnswerSchema = new mongoose_1.Schema({
-    question: { type: mongoose_1.Schema.Types.ObjectId, ref: "Question" },
+    question: QuestionSchema, // بدل ObjectId + ref
     answer: mongoose_1.Schema.Types.Mixed,
     file: String,
     pointsAwarded: { type: Number, default: 0 },

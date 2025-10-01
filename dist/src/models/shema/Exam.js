@@ -54,7 +54,7 @@ const ExamSchema = new mongoose_1.Schema({
     startAt: { type: Date, required: true },
     endAt: { type: Date, required: true },
     durationMinutes: { type: Number, required: true },
-    questions: [QuestionSchema],
+    questions: [QuestionSchema], // الأسئلة embedded جوا الامتحان
     isPublished: { type: Boolean, default: false }
 }, { timestamps: true });
 exports.ExamModel = mongoose_1.default.model("Exam", ExamSchema);
