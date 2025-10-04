@@ -1,7 +1,14 @@
 import mongoose, { Schema } from "mongoose";
-
 const AnswerSchema = new Schema({
-  question: { type: Schema.Types.ObjectId, ref: "Question" }, // نخزن ID بس
+  question: {
+    _id: Schema.Types.ObjectId,
+    text: String,
+    type: String,
+    choices: [{ text: String }],
+    correctAnswer: Schema.Types.Mixed,
+    points: Number,
+    image: String
+  },
   answer: Schema.Types.Mixed,
   file: String,
   pointsAwarded: { type: Number, default: 0 },

@@ -3,8 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteAccount = exports.getProfile = exports.completeProfileStudent = exports.updateProfileImage = exports.completeProfile = exports.resetPassword = exports.verifyResetCode = exports.sendResetCode = exports.getFcmToken = exports.login = exports.verifyEmail = exports.signup = void 0;
-const handleImages_1 = require("../../utils/handleImages");
+exports.deleteProfile = exports.updateProfile = exports.getProfile = exports.completeProfileStudent = exports.updateProfileImage = exports.completeProfile = exports.resetPassword = exports.verifyResetCode = exports.sendResetCode = exports.getFcmToken = exports.login = exports.verifyEmail = exports.signup = void 0;
 const emailVerifications_1 = require("../../models/shema/auth/emailVerifications");
 const User_1 = require("../../models/shema/auth/User");
 const bcrypt_1 = __importDefault(require("bcrypt"));
@@ -14,6 +13,8 @@ const Errors_1 = require("../../Errors");
 const auth_1 = require("../../utils/auth");
 const sendEmails_1 = require("../../utils/sendEmails");
 const BadRequest_1 = require("../../Errors/BadRequest");
+const mongoose_1 = __importDefault(require("mongoose"));
+const handleImages_1 = require("../../utils/handleImages");
 const signup = async (req, res) => {
     const { name, email, password, role, BaseImage64, graduatedData, level, department } = req.body;
     // التحقق من وجود المستخدم مسبقًا
@@ -22,7 +23,10 @@ const signup = async (req, res) => {
         throw new Errors_1.UniqueConstrainError("Email", "User already signed up with this email");
     // تشفير الباسورد
     const hashedPassword = await bcrypt_1.default.hash(password, 10);
-    // تجهيز الداتا حسب الـ role
+    let imageUrl = "";
+    if (BaseImage64) {
+        imageUrl = await (0, handleImages_1.saveBase64Image)(BaseImage64, new mongoose_1.default.Types.ObjectId().toString(), req, "users");
+    }
     const userData = {
         name,
         email,
@@ -302,22 +306,54 @@ const completeProfileStudent = async (req, res) => {
     });
 };
 exports.completeProfileStudent = completeProfileStudent;
+// ✅ Get profile
 const getProfile = async (req, res) => {
     if (!req.user)
-        throw new Errors_1.UnauthorizedError("User not found");
-    const user = await User_1.UserModel.findById(req.user.id).select("-password -fcmtoken -__v -isNew -isVerified -isOnline -lastSeen -updatedAt");
+        throw new Errors_1.UnauthorizedError("Unauthorized");
+    const user = await User_1.UserModel.findById(req.user.id).select("-password");
     if (!user)
         throw new Errors_1.NotFound("User not found");
-    (0, response_1.SuccessResponse)(res, user);
+    // لو المستخدم خريج → هات بياناته من GraduatedModel كمان
+    let graduated = null;
+    if (user.role === "Graduated") {
+        graduated = await User_1.GraduatedModel.findOne({ user: user._id });
+    }
+    (0, response_1.SuccessResponse)(res, { user, graduated }, 200);
 };
 exports.getProfile = getProfile;
-const deleteAccount = async (req, res) => {
+// ✅ Update profile
+const updateProfile = async (req, res) => {
+    if (!req.user || !req.user.id) {
+        throw new Errors_1.UnauthorizedError("Unauthorized");
+    }
+    const { name, BaseImage64, department, level } = req.body;
+    const user = await User_1.UserModel.findById(req.user.id);
+    if (!user) {
+        throw new Errors_1.NotFound("User not found");
+    }
+    // ✅ لو في صورة جديدة نحفظها
+    if (BaseImage64) {
+        const imageUrl = await (0, handleImages_1.saveBase64Image)(BaseImage64, user._id.toString(), req, "users");
+        user.BaseImage64 = imageUrl;
+    }
+    if (name)
+        user.name = name;
+    await user.save();
+    (0, response_1.SuccessResponse)(res, { message: "Profile updated successfully", user }, 200);
+};
+exports.updateProfile = updateProfile;
+// ✅ Delete profile
+const deleteProfile = async (req, res) => {
     if (!req.user)
-        throw new Errors_1.UnauthorizedError("User not found");
+        throw new Errors_1.UnauthorizedError("Unauthorized");
     const user = await User_1.UserModel.findById(req.user.id);
     if (!user)
         throw new Errors_1.NotFound("User not found");
+    // لو خريج → احذف بيانات الخريج كمان
+    if (user.role === "Graduated") {
+        await User_1.GraduatedModel.findOneAndDelete({ user: user._id });
+    }
     await user.deleteOne();
-    (0, response_1.SuccessResponse)(res, { message: "Account deleted successfully" });
+    (0, response_1.SuccessResponse)(res, { message: "User deleted successfully" }, 200);
 };
-exports.deleteAccount = deleteAccount;
+exports.deleteProfile = deleteProfile;

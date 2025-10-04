@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import { saveBase64Image } from "../../utils/handleImages";
 import { EmailVerificationModel} from "../../models/shema/auth/emailVerifications";
 import { GraduatedModel, UserModel } from "../../models/shema/auth/User";
 import bcrypt from "bcrypt";
@@ -16,7 +15,7 @@ import { sendEmail } from "../../utils/sendEmails";
 import { BadRequest } from "../../Errors/BadRequest";
 import mongoose, { ObjectId } from "mongoose";
 import { AuthenticatedRequest } from "../../types/custom";
-
+import{saveBase64Image}from"../../utils/handleImages"
 
 export const signup = async (req: Request, res: Response) => {
   const { name, email, password, role, BaseImage64, graduatedData, level, department } = req.body;
@@ -28,7 +27,11 @@ export const signup = async (req: Request, res: Response) => {
   // تشفير الباسورد
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  // تجهيز الداتا حسب الـ role
+let imageUrl = "";
+if (BaseImage64) {
+  imageUrl = await saveBase64Image(BaseImage64, new mongoose.Types.ObjectId().toString(), req, "users");
+} 
+
   const userData: any = {
     name,
     email,
@@ -382,19 +385,62 @@ export const completeProfileStudent = async (req: Request, res: Response) => {
 };
 
 
-export const getProfile = async (req: AuthenticatedRequest, res: Response) => {
-  if (!req.user) throw new UnauthorizedError("User not found");
-  const user = await UserModel.findById(req.user.id).select("-password -fcmtoken -__v -isNew -isVerified -isOnline -lastSeen -updatedAt");
+// ✅ Get profile
+export const getProfile = async (req: Request, res: Response) => {
+  if (!req.user) throw new UnauthorizedError("Unauthorized");
+
+  const user = await UserModel.findById(req.user.id).select("-password");
   if (!user) throw new NotFound("User not found");
-  SuccessResponse(res, user);
+
+  // لو المستخدم خريج → هات بياناته من GraduatedModel كمان
+  let graduated = null;
+  if (user.role === "Graduated") {
+    graduated = await GraduatedModel.findOne({ user: user._id });
+  }
+
+  SuccessResponse(res, { user, graduated }, 200);
 };
 
+// ✅ Update profile
+export const updateProfile = async (req: Request, res: Response) => {
+    if (!req.user || !req.user.id) {
+      throw new UnauthorizedError("Unauthorized");
+    }
 
-export const deleteAccount = async (req: AuthenticatedRequest, res: Response) => {
-  if (!req.user) throw new UnauthorizedError("User not found");
+    const { name, BaseImage64,department,level} = req.body;
+
+    const user = await UserModel.findById(req.user.id);
+    if (!user) {
+      throw new NotFound("User not found");
+    }
+
+    // ✅ لو في صورة جديدة نحفظها
+    if (BaseImage64) {
+      const imageUrl = await saveBase64Image(BaseImage64, user._id.toString(), req, "users");
+      user.BaseImage64 = imageUrl;
+    }
+
+    if (name) user.name = name;
+
+    await user.save();
+
+    SuccessResponse(res, { message: "Profile updated successfully", user }, 200);  
+};
+// ✅ Delete profile
+export const deleteProfile = async (req: Request, res: Response) => {
+  if (!req.user) throw new UnauthorizedError("Unauthorized");
+
   const user = await UserModel.findById(req.user.id);
   if (!user) throw new NotFound("User not found");
+
+  // لو خريج → احذف بيانات الخريج كمان
+  if (user.role === "Graduated") {
+    await GraduatedModel.findOneAndDelete({ user: user._id });
+  }
+
   await user.deleteOne();
-  SuccessResponse(res, { message: "Account deleted successfully" });
+
+  SuccessResponse(res, { message: "User deleted successfully" }, 200);
 };
+
 

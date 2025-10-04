@@ -36,7 +36,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AttemptModel = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 const AnswerSchema = new mongoose_1.Schema({
-    question: { type: mongoose_1.Schema.Types.ObjectId, ref: "Question" }, // نخزن ID بس
+    question: {
+        _id: mongoose_1.Schema.Types.ObjectId,
+        text: String,
+        type: String,
+        choices: [{ text: String }],
+        correctAnswer: mongoose_1.Schema.Types.Mixed,
+        points: Number,
+        image: String
+    },
     answer: mongoose_1.Schema.Types.Mixed,
     file: String,
     pointsAwarded: { type: Number, default: 0 },
