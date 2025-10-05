@@ -11,14 +11,24 @@ const Errors_1 = require("../../Errors");
 const response_1 = require("../../utils/response");
 const BadRequest_1 = require("../../Errors/BadRequest");
 const multer_1 = require("../../utils/multer");
-// ✅ جلب امتحانات الطالب
 const getExamsForStudent = async (req, res) => {
-    if (!req.user)
+    if (!req.user || !req.user.id)
         throw new Errors_1.UnauthorizedError("Unauthorized");
+    // 🧠 نجيب كل المحاولات اللي الطالب خلصها أو انتهت
+    const finishedAttempts = await Attempt_1.AttemptModel.find({
+        student: req.user.id,
+        status: { $in: ["submitted", "expired"] },
+    }).select("exam");
+    const finishedExamIds = finishedAttempts
+        .map(a => a.exam?.toString())
+        .filter(Boolean);
+    // 📚 نجيب الامتحانات اللي الطالب لسه ما عملهاش
     const exams = await Exam_1.ExamModel.find({
         level: req.user.level,
         department: req.user.department,
-    }).select("-questions");
+        _id: { $nin: finishedExamIds }, // 👈 نستبعد الامتحانات اللي خلصها
+        isPublished: true, // 👈 فقط المنشورة
+    }).select("-questions"); // 👈 من غير الأسئلة للحماية
     (0, response_1.SuccessResponse)(res, { exams }, 200);
 };
 exports.getExamsForStudent = getExamsForStudent;

@@ -7,14 +7,27 @@ import { SuccessResponse } from "../../utils/response";
 import { BadRequest } from "../../Errors/BadRequest";
 import { uploadAnswerFile } from "../../utils/multer";
 
-// ✅ جلب امتحانات الطالب
-export const getExamsForStudent = async (req: Request, res: Response) => {
-  if (!req.user) throw new UnauthorizedError("Unauthorized");
 
+export const getExamsForStudent = async (req: Request, res: Response) => {
+  if (!req.user || !req.user.id) throw new UnauthorizedError("Unauthorized");
+
+  // 🧠 نجيب كل المحاولات اللي الطالب خلصها أو انتهت
+  const finishedAttempts = await AttemptModel.find({
+    student: req.user.id,
+    status: { $in: ["submitted", "expired"] },
+  }).select("exam");
+
+  const finishedExamIds = finishedAttempts
+    .map(a => a.exam?.toString())
+    .filter(Boolean);
+
+  // 📚 نجيب الامتحانات اللي الطالب لسه ما عملهاش
   const exams = await ExamModel.find({
     level: req.user.level,
     department: req.user.department,
-  }).select("-questions");
+    _id: { $nin: finishedExamIds }, // 👈 نستبعد الامتحانات اللي خلصها
+    isPublished: true, // 👈 فقط المنشورة
+  }).select("-questions"); // 👈 من غير الأسئلة للحماية
 
   SuccessResponse(res, { exams }, 200);
 };
