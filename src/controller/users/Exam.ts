@@ -79,47 +79,40 @@ export const startAttempt = async (req: Request, res: Response) => {
 };
 
 // ✅ حفظ إجابة
-export const saveAnswer = async (req: Request, res: Response) => {
-  if (!req.user || !req.user.id) throw new UnauthorizedError("Unauthorized");
-  const userId = req.user.id;
+export const saveAnswer = async (req: any, res: Response) => {
+  try {
+    if (!req.user || !req.user.id)
+      return res.status(401).json({ message: "Unauthorized" });
 
-  uploadAnswerFile.single("file")(req, res, async (err: any) => {
-    if (err) return res.status(400).json({ message: err.message });
+    const userId = req.user.id;
+
+    await new Promise<void>((resolve, reject) => {
+      uploadAnswerFile.single("file")(req, res, (err: any) => {
+        if (err) return reject(err);
+        resolve();
+      });
+    });
 
     const { attemptId, questionId, answer } = req.body;
+    if (!attemptId || !questionId)
+      return res.status(400).json({ message: "attemptId and questionId are required" });
 
-    if (!attemptId || !questionId) {
-      throw new BadRequest("attemptId and questionId are required");
-    }
-
-    if (!mongoose.Types.ObjectId.isValid(attemptId)) {
-      throw new BadRequest("Invalid attemptId format");
-    }
-
-    // جلب Attempt
     const attempt = await AttemptModel.findById(attemptId);
-    if (!attempt) throw new NotFound("Attempt not found");
+    if (!attempt) return res.status(404).json({ message: "Attempt not found" });
 
-    if (attempt.student?.toString() !== userId.toString()) {
-      throw new UnauthorizedError("You are not allowed to modify this attempt");
-    }
-
-    if (attempt.status !== "in-progress") {
-      throw new BadRequest("Attempt is already submitted");
-    }
+    if (attempt.student?.toString() !== userId.toString())
+      return res.status(403).json({ message: "Not allowed" });
 
     const exam = await ExamModel.findOne({ "questions._id": questionId });
-    if (!exam) throw new NotFound("Question not found");
+    if (!exam) return res.status(404).json({ message: "Question not found" });
 
     const question = exam.questions.id(questionId);
-    if (!question) throw new NotFound("Question not found");
+    if (!question) return res.status(404).json({ message: "Question not found" });
 
-    // ملف الطالب
     const filePath = req.file
       ? `${req.protocol}://${req.get("host")}/uploads/answers/${req.file.filename}`
       : null;
 
-    // تحديث أو إضافة الإجابة
     const existingAnswer = attempt.answers.find(
       (a: any) => a.question && a.question._id.toString() === questionId
     );
@@ -128,19 +121,18 @@ export const saveAnswer = async (req: Request, res: Response) => {
       existingAnswer.answer = answer;
       if (filePath) existingAnswer.file = filePath;
     } else {
-      attempt.answers.push({
-        question: question.toObject(), // 👈 snapshot من السؤال
-        answer,
-        file: filePath
-      });
+      attempt.answers.push({ question: question.toObject(), answer, file: filePath });
     }
 
     await attempt.save();
-    SuccessResponse(res, { attempt }, 200);
-  });
+    return SuccessResponse(res, { attempt }, 200);
+  } catch (error: any) {
+    console.error(error);
+    return res.status(500).json({ message: error.message });
+  }
 };
 
-// ✅ Submit Attempt
+
 // ✅ Submit Attempt
 export const submitAttempt = async (req: Request, res: Response) => {
   if (!req.user || !req.user.id) throw new UnauthorizedError("Unauthorized");
