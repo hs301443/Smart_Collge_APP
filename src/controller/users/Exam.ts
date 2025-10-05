@@ -93,12 +93,12 @@ export const startAttempt = async (req: Request, res: Response) => {
 
 // ✅ حفظ إجابة
 export const saveAnswer = async (req: any, res: Response) => {
-  try {
     if (!req.user || !req.user.id)
       return res.status(401).json({ message: "Unauthorized" });
 
     const userId = req.user.id;
 
+    // ✅ ننتظر رفع الملف (لو موجود)
     await new Promise<void>((resolve, reject) => {
       uploadAnswerFile.single("file")(req, res, (err: any) => {
         if (err) return reject(err);
@@ -116,34 +116,46 @@ export const saveAnswer = async (req: any, res: Response) => {
     if (attempt.student?.toString() !== userId.toString())
       return res.status(403).json({ message: "Not allowed" });
 
+    // ✅ تأكد أن السؤال فعلاً موجود في الامتحان
     const exam = await ExamModel.findOne({ "questions._id": questionId });
     if (!exam) return res.status(404).json({ message: "Question not found" });
 
     const question = exam.questions.id(questionId);
     if (!question) return res.status(404).json({ message: "Question not found" });
 
+    // ✅ تحقق من انتهاء الوقت
+    if (attempt.endAt && new Date(attempt.endAt) < new Date()) {
+      attempt.status = "expired";
+      await attempt.save();
+      return res.status(400).json({ message: "Time is over! Exam has expired." });
+    }
+
     const filePath = req.file
       ? `${req.protocol}://${req.get("host")}/uploads/answers/${req.file.filename}`
       : null;
 
+    // ✅ تأكد لو الطالب جاوب السؤال ده قبل كده
     const existingAnswer = attempt.answers.find(
-      (a: any) => a.question && a.question._id.toString() === questionId
+      (a: any) => a.question?.toString() === questionId
     );
 
     if (existingAnswer) {
       existingAnswer.answer = answer;
       if (filePath) existingAnswer.file = filePath;
     } else {
-      attempt.answers.push({ question: question.toObject(), answer, file: filePath });
+      // ✅ خزن الـ question كـ ObjectId فقط
+      attempt.answers.push({
+        question: question._id,
+        answer,
+        file: filePath,
+      });
     }
 
     await attempt.save();
     return SuccessResponse(res, { attempt }, 200);
-  } catch (error: any) {
-    console.error(error);
-    return res.status(500).json({ message: error.message });
-  }
+  
 };
+
 
 
 // ✅ Submit Attempt

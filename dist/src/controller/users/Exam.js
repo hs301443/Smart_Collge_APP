@@ -90,50 +90,58 @@ const startAttempt = async (req, res) => {
 exports.startAttempt = startAttempt;
 // ✅ حفظ إجابة
 const saveAnswer = async (req, res) => {
-    try {
-        if (!req.user || !req.user.id)
-            return res.status(401).json({ message: "Unauthorized" });
-        const userId = req.user.id;
-        await new Promise((resolve, reject) => {
-            multer_1.uploadAnswerFile.single("file")(req, res, (err) => {
-                if (err)
-                    return reject(err);
-                resolve();
-            });
+    if (!req.user || !req.user.id)
+        return res.status(401).json({ message: "Unauthorized" });
+    const userId = req.user.id;
+    // ✅ ننتظر رفع الملف (لو موجود)
+    await new Promise((resolve, reject) => {
+        multer_1.uploadAnswerFile.single("file")(req, res, (err) => {
+            if (err)
+                return reject(err);
+            resolve();
         });
-        const { attemptId, questionId, answer } = req.body;
-        if (!attemptId || !questionId)
-            return res.status(400).json({ message: "attemptId and questionId are required" });
-        const attempt = await Attempt_1.AttemptModel.findById(attemptId);
-        if (!attempt)
-            return res.status(404).json({ message: "Attempt not found" });
-        if (attempt.student?.toString() !== userId.toString())
-            return res.status(403).json({ message: "Not allowed" });
-        const exam = await Exam_1.ExamModel.findOne({ "questions._id": questionId });
-        if (!exam)
-            return res.status(404).json({ message: "Question not found" });
-        const question = exam.questions.id(questionId);
-        if (!question)
-            return res.status(404).json({ message: "Question not found" });
-        const filePath = req.file
-            ? `${req.protocol}://${req.get("host")}/uploads/answers/${req.file.filename}`
-            : null;
-        const existingAnswer = attempt.answers.find((a) => a.question && a.question._id.toString() === questionId);
-        if (existingAnswer) {
-            existingAnswer.answer = answer;
-            if (filePath)
-                existingAnswer.file = filePath;
-        }
-        else {
-            attempt.answers.push({ question: question.toObject(), answer, file: filePath });
-        }
+    });
+    const { attemptId, questionId, answer } = req.body;
+    if (!attemptId || !questionId)
+        return res.status(400).json({ message: "attemptId and questionId are required" });
+    const attempt = await Attempt_1.AttemptModel.findById(attemptId);
+    if (!attempt)
+        return res.status(404).json({ message: "Attempt not found" });
+    if (attempt.student?.toString() !== userId.toString())
+        return res.status(403).json({ message: "Not allowed" });
+    // ✅ تأكد أن السؤال فعلاً موجود في الامتحان
+    const exam = await Exam_1.ExamModel.findOne({ "questions._id": questionId });
+    if (!exam)
+        return res.status(404).json({ message: "Question not found" });
+    const question = exam.questions.id(questionId);
+    if (!question)
+        return res.status(404).json({ message: "Question not found" });
+    // ✅ تحقق من انتهاء الوقت
+    if (attempt.endAt && new Date(attempt.endAt) < new Date()) {
+        attempt.status = "expired";
         await attempt.save();
-        return (0, response_1.SuccessResponse)(res, { attempt }, 200);
+        return res.status(400).json({ message: "Time is over! Exam has expired." });
     }
-    catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: error.message });
+    const filePath = req.file
+        ? `${req.protocol}://${req.get("host")}/uploads/answers/${req.file.filename}`
+        : null;
+    // ✅ تأكد لو الطالب جاوب السؤال ده قبل كده
+    const existingAnswer = attempt.answers.find((a) => a.question?.toString() === questionId);
+    if (existingAnswer) {
+        existingAnswer.answer = answer;
+        if (filePath)
+            existingAnswer.file = filePath;
     }
+    else {
+        // ✅ خزن الـ question كـ ObjectId فقط
+        attempt.answers.push({
+            question: question._id,
+            answer,
+            file: filePath,
+        });
+    }
+    await attempt.save();
+    return (0, response_1.SuccessResponse)(res, { attempt }, 200);
 };
 exports.saveAnswer = saveAnswer;
 // ✅ Submit Attempt
