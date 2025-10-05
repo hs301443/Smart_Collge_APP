@@ -6,27 +6,76 @@ import { NotFound } from "../../Errors";
 import { UnauthorizedError } from "../../Errors";
 import { Request, Response } from "express";
 
-
 export const createNews = async (req: Request, res: Response) => {
- 
-  const { title, content, type, event_link, event_date, images = [], optional = [], mainImageBase64, mainImage } = req.body;
+  const {
+    title,
+    content,
+    type,
+    event_link,
+    event_date,
+    images = [], // صور إضافية
+    optional = [], // ملفات إضافية (pdf, videos, ...)
+    mainImageBase64,
+    mainImage,
+  } = req.body;
 
-  if (!title || !content || !type) throw new BadRequest("title, content and type are required");
+  if (!title || !content || !type)
+    throw new BadRequest("title, content and type are required");
 
+  // 🔹 حفظ الصورة الرئيسية
   let finalMainImage = mainImage || "";
   if (mainImageBase64) {
-    finalMainImage = await saveBase64Image(mainImageBase64, Date.now().toString(), req, "news");
+    finalMainImage = await saveBase64Image(
+      mainImageBase64,
+      Date.now().toString(),
+      req,
+      "news"
+    );
   }
 
-  if (!finalMainImage) throw new BadRequest("mainImage is required");
+  if (!finalMainImage)
+    throw new BadRequest("mainImage is required");
 
+  // 🔹 حفظ الصور الإضافية (images)
+  const savedImages: string[] = [];
+  for (const imgBase64 of images) {
+    if (imgBase64.startsWith("data:")) {
+      const imgUrl = await saveBase64Image(
+        imgBase64,
+        Date.now().toString(),
+        req,
+        "news/images"
+      );
+      savedImages.push(imgUrl);
+    } else {
+      savedImages.push(imgBase64); // لو كانت URL جاهزة
+    }
+  }
+
+  // 🔹 حفظ الملفات الإضافية (optional)
+  const savedOptional: string[] = [];
+  for (const fileBase64 of optional) {
+    if (fileBase64.startsWith("data:")) {
+      const fileUrl = await saveBase64Image(
+        fileBase64,
+        Date.now().toString(),
+        req,
+        "news/optional"
+      );
+      savedOptional.push(fileUrl);
+    } else {
+      savedOptional.push(fileBase64); // لو كانت URL جاهزة
+    }
+  }
+
+  // 🔹 إنشاء الخبر
   const news = await NewsModel.create({
     title,
     content,
     type,
     mainImage: finalMainImage,
-    images,
-    optional,
+    images: savedImages,
+    optional: savedOptional,
     event_link,
     event_date,
   });
@@ -34,28 +83,85 @@ export const createNews = async (req: Request, res: Response) => {
   return SuccessResponse(res, { news }, 201);
 };
 
+
 export const updateNews = async (req: Request, res: Response) => {
-  
   const { id } = req.params;
   const news = await NewsModel.findById(id);
   if (!news) throw new NotFound("News not found");
 
-  const { title, content, type, event_link, event_date, images, optional, mainImageBase64 } = req.body;
+  const {
+    title,
+    content,
+    type,
+    event_link,
+    event_date,
+    images = [],
+    optional = [],
+    mainImageBase64,
+    mainImage,
+  } = req.body;
 
   if (title) news.title = title;
   if (content) news.content = content;
   if (type) news.type = type;
   if (event_link) news.event_link = event_link;
   if (event_date) news.event_date = event_date;
-  if (images) news.images = images;
-  if (optional) news.optional = optional;
+
+  // 🔹 تحديث الصورة الرئيسية
   if (mainImageBase64) {
-    news.mainImage = await saveBase64Image(mainImageBase64, news._id.toString(), req, "news");
+    news.mainImage = await saveBase64Image(
+      mainImageBase64,
+      news._id.toString(),
+      req,
+      "news"
+    );
+  } else if (mainImage) {
+    news.mainImage = mainImage;
+  }
+
+  // 🔹 تحديث الصور (images)
+  if (images && images.length > 0) {
+    const updatedImages: string[] = [];
+    for (const img of images) {
+      if (img.startsWith("data:")) {
+        const url = await saveBase64Image(
+          img,
+          Date.now().toString(),
+          req,
+          "news/images"
+        );
+        updatedImages.push(url);
+      } else {
+        updatedImages.push(img);
+      }
+    }
+    news.images = updatedImages;
+  }
+
+  // 🔹 تحديث الملفات (optional)
+  if (optional && optional.length > 0) {
+    const updatedOptional: string[] = [];
+    for (const file of optional) {
+      if (file.startsWith("data:")) {
+        const url = await saveBase64Image(
+          file,
+          Date.now().toString(),
+          req,
+          "news/optional"
+        );
+        updatedOptional.push(url);
+      } else {
+        updatedOptional.push(file);
+      }
+    }
+    news.optional = updatedOptional;
   }
 
   await news.save();
   return SuccessResponse(res, { news }, 200);
 };
+
+
 
 
 export const deleteNews = async (req: Request, res: Response) => {
