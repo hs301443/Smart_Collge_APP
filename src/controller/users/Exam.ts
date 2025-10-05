@@ -7,70 +7,48 @@ import { SuccessResponse } from "../../utils/response";
 import { BadRequest } from "../../Errors/BadRequest";
 import { uploadAnswerFile } from "../../utils/multer";
 
-
-// ✅ جلب كل الامتحانات المتاحة للطالب
+// ✅ جلب امتحانات الطالب
 export const getExamsForStudent = async (req: Request, res: Response) => {
-  if (!req.user || !req.user.id) throw new UnauthorizedError("Unauthorized");
+  if (!req.user) throw new UnauthorizedError("Unauthorized");
 
-  // 🧠 نجيب كل المحاولات اللي الطالب خلصها أو انتهى وقتها
-  const finishedAttempts = await AttemptModel.find({
-    student: req.user.id,
-    status: { $in: ["submitted", "expired"] },
-  }).select("exam");
-
-  const finishedExamIds = finishedAttempts.map((a) => a.exam?.toString()).filter(Boolean);
-
-  // 📚 نجيب الامتحانات اللي الطالب لسه ما عملهاش
   const exams = await ExamModel.find({
     level: req.user.level,
     department: req.user.department,
-    _id: { $nin: finishedExamIds },
-    isPublished: true,
-  }).lean();
+  }).select("-questions");
 
-  // 🚫 نحذف الأسئلة يدويًا
-  const safeExams = exams.map(({ questions, ...rest }) => rest);
-
-  SuccessResponse(res, { message: "Exams fetched successfully", exams: safeExams }, 200);
+  SuccessResponse(res, { exams }, 200);
 };
 
-// ✅ جلب امتحان محدد (بدون الأسئلة)
+// ✅ جلب امتحان محدد
 export const getExamByIdForStudent = async (req: Request, res: Response) => {
   if (!req.user) throw new UnauthorizedError("Unauthorized");
 
-  const exam = await ExamModel.findById(req.params.id).lean();
+  const exam = await ExamModel.findById(req.params.id).select("-questions");
   if (!exam || !exam.isPublished) throw new NotFound("Exam not published");
 
-  // 🚫 إزالة الأسئلة قبل الإرسال
-  const { questions, ...safeExam } = exam;
-  SuccessResponse(res, { exam: safeExam }, 200);
+  SuccessResponse(res, { exam }, 200);
 };
 
-// ✅ جلب الأسئلة بدون correctAnswer
+// ✅ جلب الأسئلة بدون الإجابات الصحيحة
 export const getQuestionsForExam = async (req: Request, res: Response) => {
   if (!req.user) throw new UnauthorizedError("Unauthorized");
 
-  const examId = req.params.examId;
-
-  // تأكد أن الطالب بدأ attempt فعلاً
-  const attempt = await AttemptModel.findOne({
-    exam: examId,
-    student: req.user.id,
-    status: "in-progress",
-  });
-  if (!attempt) throw new BadRequest("You must start the exam before viewing questions");
-
-  const exam = await ExamModel.findById(examId).lean();
+  const exam = await ExamModel.findById(req.params.examId);
   if (!exam || !exam.isPublished) throw new NotFound("Exam not found");
 
-const questions = exam.questions.map((question: any) => {
-  const { correctAnswer, ...safeQ } = question;
-  return safeQ;
-});
+  const questions = exam.questions.map(q => ({
+    _id: q._id,
+    text: q.text,
+    type: q.type,
+    choices: q.choices,
+    points: q.points,
+    image: q.image
+  }));
+
   SuccessResponse(res, { questions }, 200);
 };
 
-// ✅ بدء Attempt جديدة
+// ✅ بدء Attempt
 export const startAttempt = async (req: Request, res: Response) => {
   if (!req.user) throw new UnauthorizedError("Unauthorized");
 
@@ -80,13 +58,13 @@ export const startAttempt = async (req: Request, res: Response) => {
   const exam = await ExamModel.findById(examId);
   if (!exam || !exam.isPublished) throw new NotFound("Exam not found");
 
-  // ❌ منع محاولة جديدة لو عنده Attempt شغالة
   const existing = await AttemptModel.findOne({
     exam: examId,
     student: req.user.id,
-    status: { $in: ["in-progress", "submitted"] },
+    status: "in-progress"
   });
-  if (existing) throw new BadRequest("You already have an attempt for this exam");
+
+  if (existing) return SuccessResponse(res, { attempt: existing }, 200);
 
   const attempt = await AttemptModel.create({
     exam: examId,
@@ -94,13 +72,13 @@ export const startAttempt = async (req: Request, res: Response) => {
     answers: [],
     status: "in-progress",
     startedAt: new Date(),
-    endAt: new Date(Date.now() + exam.durationMinutes * 60 * 1000),
+    endAt: new Date(Date.now() + exam.durationMinutes * 60 * 1000)
   });
 
   SuccessResponse(res, { attempt }, 201);
 };
 
-// ✅ حفظ إجابة سؤال
+// ✅ حفظ إجابة
 export const saveAnswer = async (req: Request, res: Response) => {
   if (!req.user || !req.user.id) throw new UnauthorizedError("Unauthorized");
   const userId = req.user.id;
@@ -109,10 +87,16 @@ export const saveAnswer = async (req: Request, res: Response) => {
     if (err) return res.status(400).json({ message: err.message });
 
     const { attemptId, questionId, answer } = req.body;
-    if (!attemptId || !questionId) throw new BadRequest("attemptId and questionId are required");
 
-    if (!mongoose.Types.ObjectId.isValid(attemptId)) throw new BadRequest("Invalid attemptId format");
+    if (!attemptId || !questionId) {
+      throw new BadRequest("attemptId and questionId are required");
+    }
 
+    if (!mongoose.Types.ObjectId.isValid(attemptId)) {
+      throw new BadRequest("Invalid attemptId format");
+    }
+
+    // جلب Attempt
     const attempt = await AttemptModel.findById(attemptId);
     if (!attempt) throw new NotFound("Attempt not found");
 
@@ -120,24 +104,22 @@ export const saveAnswer = async (req: Request, res: Response) => {
       throw new UnauthorizedError("You are not allowed to modify this attempt");
     }
 
-    // ⏰ التأكد أن الوقت ما انتهاش
-    if (new Date(attempt.endAt!).getTime() < Date.now()) {
-      attempt.status = "expired";
-      await attempt.save();
-      throw new BadRequest("Time is over! Exam has expired.");
+    if (attempt.status !== "in-progress") {
+      throw new BadRequest("Attempt is already submitted");
     }
-
-    if (attempt.status !== "in-progress") throw new BadRequest("Attempt already submitted or expired");
 
     const exam = await ExamModel.findOne({ "questions._id": questionId });
     if (!exam) throw new NotFound("Question not found");
 
-    const question = exam.questions.find((q: any) => q._id.toString() === questionId);
-if (!question) throw new NotFound("Question not found");
+    const question = exam.questions.id(questionId);
+    if (!question) throw new NotFound("Question not found");
+
+    // ملف الطالب
     const filePath = req.file
       ? `${req.protocol}://${req.get("host")}/uploads/answers/${req.file.filename}`
       : null;
 
+    // تحديث أو إضافة الإجابة
     const existingAnswer = attempt.answers.find(
       (a: any) => a.question && a.question._id.toString() === questionId
     );
@@ -147,9 +129,9 @@ if (!question) throw new NotFound("Question not found");
       if (filePath) existingAnswer.file = filePath;
     } else {
       attempt.answers.push({
-  question: Object.assign({}, question),
+        question: question.toObject(), // 👈 snapshot من السؤال
         answer,
-        file: filePath,
+        file: filePath
       });
     }
 
@@ -158,42 +140,42 @@ if (!question) throw new NotFound("Question not found");
   });
 };
 
-// ✅ Submit Attempt (تصحيح تلقائي)
+// ✅ Submit Attempt
+// ✅ Submit Attempt
 export const submitAttempt = async (req: Request, res: Response) => {
   if (!req.user || !req.user.id) throw new UnauthorizedError("Unauthorized");
 
   const { attemptId } = req.body;
   if (!attemptId) throw new BadRequest("attemptId is required");
 
-  if (!mongoose.Types.ObjectId.isValid(attemptId)) throw new BadRequest("Invalid attemptId format");
+  if (!mongoose.Types.ObjectId.isValid(attemptId)) {
+    throw new BadRequest("Invalid attemptId format");
+  }
 
-  const attempt = await AttemptModel.findById(attemptId);
+  // ✨ populate answers.question عشان نقدر نجيب type و correctAnswer
+  const attempt = await AttemptModel.findById(attemptId).populate("answers.question");
   if (!attempt) throw new NotFound("Attempt not found");
 
   if (attempt.student?.toString() !== req.user.id.toString()) {
     throw new UnauthorizedError("You are not allowed to submit this attempt");
   }
 
-  // ⏰ تحقق من الوقت
-  if (new Date() > new Date(attempt.endAt ?? "")) {
-    attempt.status = "expired";
-    await attempt.save();
-    throw new BadRequest("You cannot submit after time has ended");
+  if (attempt.status !== "in-progress") {
+    throw new BadRequest("Attempt already submitted or graded");
   }
 
-  if (attempt.status !== "in-progress") throw new BadRequest("Attempt already submitted or graded");
-
+  // ✅ Auto-grading
   let totalPoints = 0;
   let correctCount = 0;
   let wrongCount = 0;
 
-  // ✅ التصحيح التلقائي
   for (const ans of attempt.answers) {
     const q: any = ans.question;
     if (!q) continue;
 
     let awarded = 0;
 
+    // لو السؤال MCQ أو Short-answer
     if (["MCQ", "short-answer"].includes(q.type)) {
       if (JSON.stringify(ans.answer) === JSON.stringify(q.correctAnswer)) {
         awarded = q.points ?? 0;
@@ -215,33 +197,16 @@ export const submitAttempt = async (req: Request, res: Response) => {
 
   await attempt.save();
 
-  const result = {
-    examId: attempt.exam,
-    totalPoints,
-    correctCount,
-    wrongCount,
-    submittedAt: attempt.submittedAt,
-    answers: attempt.answers.map((a: any) => ({
-      questionText: a.question.text,
-      questionType: a.question.type,
-      points: a.question.points,
-      studentAnswer: a.answer,
-      correctAnswer: a.question.correctAnswer,
-      isCorrect: JSON.stringify(a.answer) === JSON.stringify(a.question.correctAnswer),
-      pointsAwarded: a.pointsAwarded,
-    })),
-  };
-
-  SuccessResponse(res, { result }, 200);
+  SuccessResponse(res, { attempt }, 200);
 };
 
-// ✅ كل محاولات الطالب
+// ✅ جلب كل محاولات الطالب
 export const getMyAttempts = async (req: Request, res: Response) => {
   if (!req.user) throw new UnauthorizedError("Unauthorized");
 
   const attempts = await AttemptModel.find({ student: req.user.id })
     .populate("exam", "title subject_name level department startAt endAt durationMinutes")
-    .lean();
+    .populate("answers.question", "text type points"); // ✨ جبت نص السؤال ونوعه والنقط
 
   SuccessResponse(res, { attempts }, 200);
 };
