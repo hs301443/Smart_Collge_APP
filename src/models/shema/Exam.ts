@@ -1,11 +1,25 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose, { Schema, Document, Types } from "mongoose";
+
+interface Choice {
+  text: string;
+}
+
+export interface Question extends Document {
+  exam: Types.ObjectId;
+  text: string;
+  type: "MCQ" | "short-answer" | "file-upload";
+  choices?: Choice[];
+  correctAnswer?: any;
+  points: number;
+  image?: string;
+}
 
 const ChoiceSchema = new Schema({
   text: String
 }, { _id: true });
 
-const QuestionSchema = new Schema({
-  exam: { type: Schema.Types.ObjectId, ref: "Exam" }, // نربط السؤال بالامتحان
+const QuestionSchema = new Schema<Question>({
+  exam: { type: Schema.Types.ObjectId, ref: "Exam" },
   text: { type: String, required: true },
   type: { type: String, enum: ["MCQ", "short-answer", "file-upload"], required: true },
   choices: [ChoiceSchema],
@@ -14,9 +28,23 @@ const QuestionSchema = new Schema({
   image: String
 }, { timestamps: true });
 
-export const QuestionModel = mongoose.model("Question", QuestionSchema);
+export const QuestionModel = mongoose.model<Question>("Question", QuestionSchema);
 
-const ExamSchema = new Schema({
+// ==========================================================
+
+export interface Exam extends Document {
+  title: string;
+  subject_name: string;
+  level: number;
+  department: string;
+  startAt: Date;
+  endAt: Date;
+  durationMinutes: number;
+  questions: Types.ObjectId[]; // هنا نخليها واضحة لـ TypeScript
+  isPublished: boolean;
+}
+
+const ExamSchema = new Schema<Exam>({
   title: { type: String, required: true },
   subject_name: { type: String, required: true },
   level: { type: Number, required: true },
@@ -24,8 +52,8 @@ const ExamSchema = new Schema({
   startAt: { type: Date, required: true },
   endAt: { type: Date, required: true },
   durationMinutes: { type: Number, required: true },
-  questions: [QuestionSchema], // الأسئلة embedded جوا الامتحان
+  questions: [{ type: Schema.Types.ObjectId, ref: "Question" }],
   isPublished: { type: Boolean, default: false }
 }, { timestamps: true });
 
-export const ExamModel = mongoose.model("Exam", ExamSchema);
+export const ExamModel = mongoose.model<Exam>("Exam", ExamSchema);

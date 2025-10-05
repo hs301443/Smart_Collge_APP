@@ -39,7 +39,7 @@ const ChoiceSchema = new mongoose_1.Schema({
     text: String
 }, { _id: true });
 const QuestionSchema = new mongoose_1.Schema({
-    exam: { type: mongoose_1.Schema.Types.ObjectId, ref: "Exam" }, // نربط السؤال بالامتحان
+    exam: { type: mongoose_1.Schema.Types.ObjectId, ref: "Exam" },
     text: { type: String, required: true },
     type: { type: String, enum: ["MCQ", "short-answer", "file-upload"], required: true },
     choices: [ChoiceSchema],
@@ -56,7 +56,7 @@ const ExamSchema = new mongoose_1.Schema({
     startAt: { type: Date, required: true },
     endAt: { type: Date, required: true },
     durationMinutes: { type: Number, required: true },
-    questions: [QuestionSchema], // الأسئلة embedded جوا الامتحان
+    questions: [{ type: mongoose_1.Schema.Types.ObjectId, ref: "Question" }],
     isPublished: { type: Boolean, default: false }
 }, { timestamps: true });
 exports.ExamModel = mongoose_1.default.model("Exam", ExamSchema);
