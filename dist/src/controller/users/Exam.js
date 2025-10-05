@@ -11,25 +11,28 @@ const Errors_1 = require("../../Errors");
 const response_1 = require("../../utils/response");
 const BadRequest_1 = require("../../Errors/BadRequest");
 const multer_1 = require("../../utils/multer");
-// ✅ جلب امتحانات الطالب
 const getExamsForStudent = async (req, res) => {
-    if (!req.user)
+    if (!req.user || !req.user.id)
         throw new Errors_1.UnauthorizedError("Unauthorized");
-    // هات كل attempts اللي الطالب خلصها
-    const submittedAttempts = await Attempt_1.AttemptModel.find({
+    // 🧠 نجيب كل المحاولات اللي الطالب خلصها أو انتهى وقتها
+    const finishedAttempts = await Attempt_1.AttemptModel.find({
         student: req.user.id,
-        status: "submitted",
+        status: { $in: ["submitted", "expired"] },
     }).select("exam");
-    const submittedExamIds = submittedAttempts
+    const finishedExamIds = finishedAttempts
         .map((a) => a.exam?.toString())
         .filter(Boolean);
-    // استثناء الامتحانات اللي الطالب خلصها
+    // 📚 نجيب الامتحانات اللي الطالب لسه ما عملهاش
     const exams = await Exam_1.ExamModel.find({
         level: req.user.level,
         department: req.user.department,
-        _id: { $nin: submittedExamIds },
-    }).select("-questions");
-    (0, response_1.SuccessResponse)(res, { exams }, 200);
+        _id: { $nin: finishedExamIds },
+        isPublished: true, // لو عندك شرط للنشر
+    }).select("-questions"); // بنشيل الأسئلة علشان الأمان
+    (0, response_1.SuccessResponse)(res, {
+        message: "Exams fetched successfully",
+        exams,
+    }, 200);
 };
 exports.getExamsForStudent = getExamsForStudent;
 // ✅ جلب امتحان محدد

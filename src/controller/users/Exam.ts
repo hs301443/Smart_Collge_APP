@@ -7,27 +7,32 @@ import { SuccessResponse } from "../../utils/response";
 import { BadRequest } from "../../Errors/BadRequest";
 import { uploadAnswerFile } from "../../utils/multer";
 
-// ✅ جلب امتحانات الطالب
-export const getExamsForStudent = async (req: Request, res: Response) => {
-  if (!req.user) throw new UnauthorizedError("Unauthorized");
 
-  // هات كل attempts اللي الطالب خلصها
-  const submittedAttempts = await AttemptModel.find({
+export const getExamsForStudent = async (req: Request, res: Response) => {
+  if (!req.user || !req.user.id) throw new UnauthorizedError("Unauthorized");
+
+  // 🧠 نجيب كل المحاولات اللي الطالب خلصها أو انتهى وقتها
+  const finishedAttempts = await AttemptModel.find({
     student: req.user.id,
-    status: "submitted",
+    status: { $in: ["submitted", "expired"] },
   }).select("exam");
 
-const submittedExamIds = submittedAttempts
-  .map((a) => a.exam?.toString())
-  .filter(Boolean);
-  // استثناء الامتحانات اللي الطالب خلصها
+  const finishedExamIds = finishedAttempts
+    .map((a) => a.exam?.toString())
+    .filter(Boolean);
+
+  // 📚 نجيب الامتحانات اللي الطالب لسه ما عملهاش
   const exams = await ExamModel.find({
     level: req.user.level,
     department: req.user.department,
-    _id: { $nin: submittedExamIds },
-  }).select("-questions");
+    _id: { $nin: finishedExamIds },
+    isPublished: true, // لو عندك شرط للنشر
+  }).select("-questions"); // بنشيل الأسئلة علشان الأمان
 
-  SuccessResponse(res, { exams }, 200);
+  SuccessResponse(res, {
+    message: "Exams fetched successfully",
+    exams,
+  }, 200);
 };
 
 // ✅ جلب امتحان محدد
