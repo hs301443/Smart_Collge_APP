@@ -22,17 +22,24 @@ export const getExamsForStudent = async (req: Request, res: Response) => {
     .filter(Boolean);
 
   // 📚 نجيب الامتحانات اللي الطالب لسه ما عملهاش
-  const exams = await ExamModel.find({
-    level: req.user.level,
-    department: req.user.department,
-    _id: { $nin: finishedExamIds },
-    isPublished: true, // لو عندك شرط للنشر
-  }).select("-questions"); // بنشيل الأسئلة علشان الأمان
+const exams = await ExamModel.find({
+  level: req.user.level,
+  department: req.user.department,
+  _id: { $nin: finishedExamIds },
+  isPublished: true,
+}).lean(); // نجيبها كـ object عادي
 
-  SuccessResponse(res, {
-    message: "Exams fetched successfully",
-    exams,
-  }, 200);
+// نحذف الأسئلة يدويًا
+const safeExams = exams.map(exam => {
+  const { questions, ...rest } = exam;
+  return rest;
+});
+
+SuccessResponse(res, {
+  message: "Exams fetched successfully",
+  exams: safeExams,
+}, 200);
+
 };
 
 // ✅ جلب امتحان محدد

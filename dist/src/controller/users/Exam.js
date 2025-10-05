@@ -27,11 +27,16 @@ const getExamsForStudent = async (req, res) => {
         level: req.user.level,
         department: req.user.department,
         _id: { $nin: finishedExamIds },
-        isPublished: true, // لو عندك شرط للنشر
-    }).select("-questions"); // بنشيل الأسئلة علشان الأمان
+        isPublished: true,
+    }).lean(); // نجيبها كـ object عادي
+    // نحذف الأسئلة يدويًا
+    const safeExams = exams.map(exam => {
+        const { questions, ...rest } = exam;
+        return rest;
+    });
     (0, response_1.SuccessResponse)(res, {
         message: "Exams fetched successfully",
-        exams,
+        exams: safeExams,
     }, 200);
 };
 exports.getExamsForStudent = getExamsForStudent;
