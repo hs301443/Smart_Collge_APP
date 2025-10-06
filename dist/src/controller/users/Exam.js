@@ -154,7 +154,7 @@ const submitAttempt = async (req, res) => {
     if (!mongoose_1.default.Types.ObjectId.isValid(attemptId)) {
         throw new BadRequest_1.BadRequest("Invalid attemptId format");
     }
-    // لا نستخدم populate لأن question داخل attempt فعلاً
+    // لا تستخدم populate لأن السؤال موجود فعليًا داخل attempt
     const attempt = await Attempt_1.AttemptModel.findById(attemptId);
     if (!attempt)
         throw new Errors_1.NotFound("Attempt not found");
@@ -184,7 +184,8 @@ const submitAttempt = async (req, res) => {
         if (["MCQ", "short-answer"].includes(q.type)) {
             const userAns = normalize(ans.answer);
             const correctAns = normalize(q.correctAnswer);
-            if (JSON.stringify(userAns) === JSON.stringify(correctAns)) {
+            // تأكد أن correctAnswer موجود فعلاً
+            if (correctAns && JSON.stringify(userAns) === JSON.stringify(correctAns)) {
                 awarded = q.points ?? 0;
                 correctCount++;
             }
@@ -201,7 +202,6 @@ const submitAttempt = async (req, res) => {
     attempt.status = "submitted";
     attempt.submittedAt = new Date();
     await attempt.save();
-    // ✨ بعد الحفظ نرجع النتيجة
     (0, response_1.SuccessResponse)(res, { attempt }, 200);
 };
 exports.submitAttempt = submitAttempt;

@@ -169,7 +169,7 @@ export const submitAttempt = async (req: Request, res: Response) => {
     throw new BadRequest("Invalid attemptId format");
   }
 
-  // لا نستخدم populate لأن question داخل attempt فعلاً
+  // لا تستخدم populate لأن السؤال موجود فعليًا داخل attempt
   const attempt = await AttemptModel.findById(attemptId);
   if (!attempt) throw new NotFound("Attempt not found");
 
@@ -203,7 +203,8 @@ export const submitAttempt = async (req: Request, res: Response) => {
       const userAns = normalize(ans.answer);
       const correctAns = normalize(q.correctAnswer);
 
-      if (JSON.stringify(userAns) === JSON.stringify(correctAns)) {
+      // تأكد أن correctAnswer موجود فعلاً
+      if (correctAns && JSON.stringify(userAns) === JSON.stringify(correctAns)) {
         awarded = q.points ?? 0;
         correctCount++;
       } else {
@@ -223,10 +224,8 @@ export const submitAttempt = async (req: Request, res: Response) => {
 
   await attempt.save();
 
-  // ✨ بعد الحفظ نرجع النتيجة
   SuccessResponse(res, { attempt }, 200);
 };
-
 
 // ✅ جلب كل محاولات الطالب
 export const getMyAttempts = async (req: Request, res: Response) => {
