@@ -154,8 +154,8 @@ const submitAttempt = async (req, res) => {
     if (!mongoose_1.default.Types.ObjectId.isValid(attemptId)) {
         throw new BadRequest_1.BadRequest("Invalid attemptId format");
     }
-    // ✨ populate answers.question عشان نقدر نجيب type و correctAnswer
-    const attempt = await Attempt_1.AttemptModel.findById(attemptId).populate("answers.question");
+    // لا نستخدم populate لأن question داخل attempt فعلاً
+    const attempt = await Attempt_1.AttemptModel.findById(attemptId);
     if (!attempt)
         throw new Errors_1.NotFound("Attempt not found");
     if (attempt.student?.toString() !== req.user.id.toString()) {
@@ -164,10 +164,17 @@ const submitAttempt = async (req, res) => {
     if (attempt.status !== "in-progress") {
         throw new BadRequest_1.BadRequest("Attempt already submitted or graded");
     }
-    // ✅ Auto-grading
+    // ✅ Auto-grading logic
     let totalPoints = 0;
     let correctCount = 0;
     let wrongCount = 0;
+    const normalize = (val) => {
+        if (Array.isArray(val))
+            return val.map(String).sort();
+        if (typeof val === "string")
+            return val.trim().toLowerCase();
+        return String(val);
+    };
     for (const ans of attempt.answers) {
         const q = ans.question;
         if (!q)
@@ -175,7 +182,9 @@ const submitAttempt = async (req, res) => {
         let awarded = 0;
         // لو السؤال MCQ أو Short-answer
         if (["MCQ", "short-answer"].includes(q.type)) {
-            if (JSON.stringify(ans.answer) === JSON.stringify(q.correctAnswer)) {
+            const userAns = normalize(ans.answer);
+            const correctAns = normalize(q.correctAnswer);
+            if (JSON.stringify(userAns) === JSON.stringify(correctAns)) {
                 awarded = q.points ?? 0;
                 correctCount++;
             }
@@ -192,6 +201,7 @@ const submitAttempt = async (req, res) => {
     attempt.status = "submitted";
     attempt.submittedAt = new Date();
     await attempt.save();
+    // ✨ بعد الحفظ نرجع النتيجة
     (0, response_1.SuccessResponse)(res, { attempt }, 200);
 };
 exports.submitAttempt = submitAttempt;

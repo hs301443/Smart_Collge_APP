@@ -169,8 +169,8 @@ export const submitAttempt = async (req: Request, res: Response) => {
     throw new BadRequest("Invalid attemptId format");
   }
 
-  // ✨ populate answers.question عشان نقدر نجيب type و correctAnswer
-  const attempt = await AttemptModel.findById(attemptId).populate("answers.question");
+  // لا نستخدم populate لأن question داخل attempt فعلاً
+  const attempt = await AttemptModel.findById(attemptId);
   if (!attempt) throw new NotFound("Attempt not found");
 
   if (attempt.student?.toString() !== req.user.id.toString()) {
@@ -181,10 +181,16 @@ export const submitAttempt = async (req: Request, res: Response) => {
     throw new BadRequest("Attempt already submitted or graded");
   }
 
-  // ✅ Auto-grading
+  // ✅ Auto-grading logic
   let totalPoints = 0;
   let correctCount = 0;
   let wrongCount = 0;
+
+  const normalize = (val: any) => {
+    if (Array.isArray(val)) return val.map(String).sort();
+    if (typeof val === "string") return val.trim().toLowerCase();
+    return String(val);
+  };
 
   for (const ans of attempt.answers) {
     const q: any = ans.question;
@@ -194,7 +200,10 @@ export const submitAttempt = async (req: Request, res: Response) => {
 
     // لو السؤال MCQ أو Short-answer
     if (["MCQ", "short-answer"].includes(q.type)) {
-      if (JSON.stringify(ans.answer) === JSON.stringify(q.correctAnswer)) {
+      const userAns = normalize(ans.answer);
+      const correctAns = normalize(q.correctAnswer);
+
+      if (JSON.stringify(userAns) === JSON.stringify(correctAns)) {
         awarded = q.points ?? 0;
         correctCount++;
       } else {
@@ -214,8 +223,10 @@ export const submitAttempt = async (req: Request, res: Response) => {
 
   await attempt.save();
 
+  // ✨ بعد الحفظ نرجع النتيجة
   SuccessResponse(res, { attempt }, 200);
 };
+
 
 // ✅ جلب كل محاولات الطالب
 export const getMyAttempts = async (req: Request, res: Response) => {
