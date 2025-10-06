@@ -168,7 +168,6 @@ export const submitAttempt = async (req: Request, res: Response) => {
     throw new BadRequest("Invalid attemptId format");
   }
 
-  // لا تستخدم populate لأن السؤال موجود فعليًا داخل attempt
   const attempt = await AttemptModel.findById(attemptId);
   if (!attempt) throw new NotFound("Attempt not found");
 
@@ -180,7 +179,6 @@ export const submitAttempt = async (req: Request, res: Response) => {
     throw new BadRequest("Attempt already submitted or graded");
   }
 
-  // ✅ Auto-grading logic
   let totalPoints = 0;
   let correctCount = 0;
   let wrongCount = 0;
@@ -191,20 +189,22 @@ export const submitAttempt = async (req: Request, res: Response) => {
     return String(val);
   };
 
+  // ✅ نجيب الامتحان عشان نقدر نجيب الإجابات الصحيحة من الأسئلة الأصلية
+  const exam = await ExamModel.findById(attempt.exam);
+  if (!exam) throw new NotFound("Exam not found");
+
   for (const ans of attempt.answers) {
-    const q: any = ans.question;
-    if (!q) continue;
+const questionId = ans.question ? new mongoose.Types.ObjectId(ans.question) : null;
+const question = questionId ? exam.questions.id(questionId) : null;
+    if (!question) continue;
 
     let awarded = 0;
+    const userAns = normalize(ans.answer);
+    const correctAns = normalize(question.correctAnswer);
 
-    // لو السؤال MCQ أو Short-answer
-    if (["MCQ", "short-answer"].includes(q.type)) {
-      const userAns = normalize(ans.answer);
-      const correctAns = normalize(q.correctAnswer);
-
-      // تأكد أن correctAnswer موجود فعلاً
+    if (["MCQ", "short-answer"].includes(question.type)) {
       if (correctAns && JSON.stringify(userAns) === JSON.stringify(correctAns)) {
-        awarded = q.points ?? 0;
+        awarded = question.points ?? 0;
         correctCount++;
       } else {
         wrongCount++;
@@ -225,6 +225,7 @@ export const submitAttempt = async (req: Request, res: Response) => {
 
   SuccessResponse(res, { attempt }, 200);
 };
+
 
 // ✅ جلب كل محاولات الطالب
 export const getMyAttempts = async (req: Request, res: Response) => {

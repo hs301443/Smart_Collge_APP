@@ -155,7 +155,6 @@ const submitAttempt = async (req, res) => {
     if (!mongoose_1.default.Types.ObjectId.isValid(attemptId)) {
         throw new BadRequest_1.BadRequest("Invalid attemptId format");
     }
-    // لا تستخدم populate لأن السؤال موجود فعليًا داخل attempt
     const attempt = await Attempt_1.AttemptModel.findById(attemptId);
     if (!attempt)
         throw new Errors_1.NotFound("Attempt not found");
@@ -165,7 +164,6 @@ const submitAttempt = async (req, res) => {
     if (attempt.status !== "in-progress") {
         throw new BadRequest_1.BadRequest("Attempt already submitted or graded");
     }
-    // ✅ Auto-grading logic
     let totalPoints = 0;
     let correctCount = 0;
     let wrongCount = 0;
@@ -176,18 +174,21 @@ const submitAttempt = async (req, res) => {
             return val.trim().toLowerCase();
         return String(val);
     };
+    // ✅ نجيب الامتحان عشان نقدر نجيب الإجابات الصحيحة من الأسئلة الأصلية
+    const exam = await Exam_1.ExamModel.findById(attempt.exam);
+    if (!exam)
+        throw new Errors_1.NotFound("Exam not found");
     for (const ans of attempt.answers) {
-        const q = ans.question;
-        if (!q)
+        const questionId = ans.question ? new mongoose_1.default.Types.ObjectId(ans.question) : null;
+        const question = questionId ? exam.questions.id(questionId) : null;
+        if (!question)
             continue;
         let awarded = 0;
-        // لو السؤال MCQ أو Short-answer
-        if (["MCQ", "short-answer"].includes(q.type)) {
-            const userAns = normalize(ans.answer);
-            const correctAns = normalize(q.correctAnswer);
-            // تأكد أن correctAnswer موجود فعلاً
+        const userAns = normalize(ans.answer);
+        const correctAns = normalize(question.correctAnswer);
+        if (["MCQ", "short-answer"].includes(question.type)) {
             if (correctAns && JSON.stringify(userAns) === JSON.stringify(correctAns)) {
-                awarded = q.points ?? 0;
+                awarded = question.points ?? 0;
                 correctCount++;
             }
             else {
