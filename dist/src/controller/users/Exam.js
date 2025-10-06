@@ -93,6 +93,7 @@ const saveAnswer = async (req, res) => {
     if (!req.user || !req.user.id)
         return res.status(401).json({ message: "Unauthorized" });
     const userId = req.user.id;
+    // ⬇️ رفع الملف (لو فيه ملف مرفق)
     await new Promise((resolve, reject) => {
         multer_1.uploadAnswerFile.single("file")(req, res, (err) => {
             if (err)
@@ -103,26 +104,31 @@ const saveAnswer = async (req, res) => {
     const { attemptId, questionId, answer } = req.body;
     if (!attemptId || !questionId)
         return res.status(400).json({ message: "attemptId and questionId are required" });
+    // ⬇️ نجيب محاولة الطالب
     const attempt = await Attempt_1.AttemptModel.findById(attemptId);
     if (!attempt)
         return res.status(404).json({ message: "Attempt not found" });
     if (attempt.student?.toString() !== userId.toString())
         return res.status(403).json({ message: "Not allowed" });
+    // ⬇️ نجيب الامتحان والسؤال المطلوب
     const exam = await Exam_1.ExamModel.findOne({ "questions._id": questionId });
     if (!exam)
         return res.status(404).json({ message: "Question not found" });
     const question = exam.questions.id(questionId);
     if (!question)
         return res.status(404).json({ message: "Question not found" });
+    // ⏰ التأكد من الوقت
     if (attempt.endAt && new Date(attempt.endAt) < new Date()) {
         attempt.status = "expired";
         await attempt.save();
         return res.status(400).json({ message: "Time is over! Exam has expired." });
     }
+    // ⬇️ تحديد مسار الملف (لو موجود)
     const filePath = req.file
         ? `${req.protocol}://${req.get("host")}/uploads/answers/${req.file.filename}`
         : null;
-    const existingAnswer = attempt.answers.find((a) => a.question?._id?.toString() === questionId);
+    // ⬇️ التأكد هل الطالب جاوب على السؤال قبل كده
+    const existingAnswer = attempt.answers.find((a) => a.question?.toString() === questionId);
     if (existingAnswer) {
         existingAnswer.answer = answer;
         if (filePath)
@@ -130,15 +136,7 @@ const saveAnswer = async (req, res) => {
     }
     else {
         attempt.answers.push({
-            question: {
-                _id: question._id,
-                text: question.text,
-                type: question.type,
-                correctAnswer: question.correctAnswer,
-                points: question.points,
-                choices: question.choices,
-                image: question.image,
-            },
+            question: question._id, // 👈 نخزن الـ ObjectId فقط
             answer,
             file: filePath,
         });
