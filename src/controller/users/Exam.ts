@@ -233,7 +233,7 @@ export const getMyAttempts = async (req: Request, res: Response) => {
 
   const attempts = await AttemptModel.find({ student: req.user.id })
     .populate("exam", "title subject_name level department startAt endAt durationMinutes")
-    .populate("answers.question", "text type points"); // ✨ جبت نص السؤال ونوعه والنقط
+    .populate("answers.question", "text type points image correctAnswer choices  answer"); // ✨ جبت نص السؤال ونوعه والنقط
 
   SuccessResponse(res, { attempts }, 200);
 };

@@ -213,7 +213,7 @@ const getMyAttempts = async (req, res) => {
         throw new Errors_1.UnauthorizedError("Unauthorized");
     const attempts = await Attempt_1.AttemptModel.find({ student: req.user.id })
         .populate("exam", "title subject_name level department startAt endAt durationMinutes")
-        .populate("answers.question", "text type points"); // ✨ جبت نص السؤال ونوعه والنقط
+        .populate("answers.question", "text type points image correctAnswer choices  answer"); // ✨ جبت نص السؤال ونوعه والنقط
     (0, response_1.SuccessResponse)(res, { attempts }, 200);
 };
 exports.getMyAttempts = getMyAttempts;
