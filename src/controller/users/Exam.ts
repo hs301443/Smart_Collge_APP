@@ -232,8 +232,24 @@ export const getMyAttempts = async (req: Request, res: Response) => {
   if (!req.user) throw new UnauthorizedError("Unauthorized");
 
   const attempts = await AttemptModel.find({ student: req.user.id })
-    .populate("exam", "title subject_name level department startAt endAt durationMinutes")
-    .populate("answers.question", "text type points image correctAnswer choices  answer"); // ✨ جبت نص السؤال ونوعه والنقط
+    .populate(
+      "exam",
+      "title subject_name level department startAt endAt durationMinutes"
+    )
+    .populate("answers.question", "text type points correctAnswer");
 
-  SuccessResponse(res, { attempts }, 200);
+  // 🎯 إخفاء الإجابات الصحيحة لو الطالب لسه ما سلّمش الامتحان
+  const filteredAttempts = attempts.map((attempt: any) => {
+    if (attempt.status !== "submitted") {
+      attempt.answers = attempt.answers.map((ans: any) => {
+        if (ans.question && ans.question.correctAnswer) {
+          ans.question.correctAnswer = undefined; // 🔒 نخفيها مؤقتًا
+        }
+        return ans;
+      });
+    }
+    return attempt;
+  });
+
+  SuccessResponse(res, { attempts: filteredAttempts }, 200);
 };
