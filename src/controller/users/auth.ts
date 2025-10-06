@@ -407,7 +407,7 @@ export const updateProfile = async (req: Request, res: Response) => {
       throw new UnauthorizedError("Unauthorized");
     }
 
-    const { name, BaseImage64,department,level} = req.body;
+    const { name, BaseImage64,department,level,graduatedData } = req.body;
 
     const user = await UserModel.findById(req.user.id);
     if (!user) {
@@ -421,6 +421,22 @@ export const updateProfile = async (req: Request, res: Response) => {
     }
 
     if (name) user.name = name;
+    if (department) user.department = department;
+    if (level) user.level = level;
+    if(user.role === "Graduated"){
+      if (graduatedData) {
+        const graduated = await GraduatedModel.findOne({ user: user._id });
+        if (!graduated) {
+          await GraduatedModel.create({
+            user: user._id,
+            ...graduatedData,
+          });
+        } else {
+          Object.assign(graduated, graduatedData);
+          await graduated.save();
+        }
+      }
+    }
 
     await user.save();
 

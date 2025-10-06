@@ -326,7 +326,7 @@ const updateProfile = async (req, res) => {
     if (!req.user || !req.user.id) {
         throw new Errors_1.UnauthorizedError("Unauthorized");
     }
-    const { name, BaseImage64, department, level } = req.body;
+    const { name, BaseImage64, department, level, graduatedData } = req.body;
     const user = await User_1.UserModel.findById(req.user.id);
     if (!user) {
         throw new Errors_1.NotFound("User not found");
@@ -338,6 +338,25 @@ const updateProfile = async (req, res) => {
     }
     if (name)
         user.name = name;
+    if (department)
+        user.department = department;
+    if (level)
+        user.level = level;
+    if (user.role === "Graduated") {
+        if (graduatedData) {
+            const graduated = await User_1.GraduatedModel.findOne({ user: user._id });
+            if (!graduated) {
+                await User_1.GraduatedModel.create({
+                    user: user._id,
+                    ...graduatedData,
+                });
+            }
+            else {
+                Object.assign(graduated, graduatedData);
+                await graduated.save();
+            }
+        }
+    }
     await user.save();
     (0, response_1.SuccessResponse)(res, { message: "Profile updated successfully", user }, 200);
 };
