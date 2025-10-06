@@ -93,67 +93,69 @@ export const startAttempt = async (req: Request, res: Response) => {
 
 // ✅ حفظ إجابة
 export const saveAnswer = async (req: any, res: Response) => {
-    if (!req.user || !req.user.id)
-      return res.status(401).json({ message: "Unauthorized" });
+  if (!req.user || !req.user.id)
+    return res.status(401).json({ message: "Unauthorized" });
 
-    const userId = req.user.id;
+  const userId = req.user.id;
 
-    // ✅ ننتظر رفع الملف (لو موجود)
-    await new Promise<void>((resolve, reject) => {
-      uploadAnswerFile.single("file")(req, res, (err: any) => {
-        if (err) return reject(err);
-        resolve();
-      });
+  await new Promise<void>((resolve, reject) => {
+    uploadAnswerFile.single("file")(req, res, (err: any) => {
+      if (err) return reject(err);
+      resolve();
     });
+  });
 
-    const { attemptId, questionId, answer } = req.body;
-    if (!attemptId || !questionId)
-      return res.status(400).json({ message: "attemptId and questionId are required" });
+  const { attemptId, questionId, answer } = req.body;
+  if (!attemptId || !questionId)
+    return res.status(400).json({ message: "attemptId and questionId are required" });
 
-    const attempt = await AttemptModel.findById(attemptId);
-    if (!attempt) return res.status(404).json({ message: "Attempt not found" });
+  const attempt = await AttemptModel.findById(attemptId);
+  if (!attempt) return res.status(404).json({ message: "Attempt not found" });
 
-    if (attempt.student?.toString() !== userId.toString())
-      return res.status(403).json({ message: "Not allowed" });
+  if (attempt.student?.toString() !== userId.toString())
+    return res.status(403).json({ message: "Not allowed" });
 
-    // ✅ تأكد أن السؤال فعلاً موجود في الامتحان
-    const exam = await ExamModel.findOne({ "questions._id": questionId });
-    if (!exam) return res.status(404).json({ message: "Question not found" });
+  const exam = await ExamModel.findOne({ "questions._id": questionId });
+  if (!exam) return res.status(404).json({ message: "Question not found" });
 
-    const question = exam.questions.id(questionId);
-    if (!question) return res.status(404).json({ message: "Question not found" });
+  const question = exam.questions.id(questionId);
+  if (!question) return res.status(404).json({ message: "Question not found" });
 
-    // ✅ تحقق من انتهاء الوقت
-    if (attempt.endAt && new Date(attempt.endAt) < new Date()) {
-      attempt.status = "expired";
-      await attempt.save();
-      return res.status(400).json({ message: "Time is over! Exam has expired." });
-    }
-
-    const filePath = req.file
-      ? `${req.protocol}://${req.get("host")}/uploads/answers/${req.file.filename}`
-      : null;
-
-    // ✅ تأكد لو الطالب جاوب السؤال ده قبل كده
-    const existingAnswer = attempt.answers.find(
-      (a: any) => a.question?.toString() === questionId
-    );
-
-    if (existingAnswer) {
-      existingAnswer.answer = answer;
-      if (filePath) existingAnswer.file = filePath;
-    } else {
-      // ✅ خزن الـ question كـ ObjectId فقط
-      attempt.answers.push({
-        question: question._id,
-        answer,
-        file: filePath,
-      });
-    }
-
+  if (attempt.endAt && new Date(attempt.endAt) < new Date()) {
+    attempt.status = "expired";
     await attempt.save();
-    return SuccessResponse(res, { attempt }, 200);
-  
+    return res.status(400).json({ message: "Time is over! Exam has expired." });
+  }
+
+  const filePath = req.file
+    ? `${req.protocol}://${req.get("host")}/uploads/answers/${req.file.filename}`
+    : null;
+
+  const existingAnswer = attempt.answers.find(
+    (a: any) => a.question?._id?.toString() === questionId
+  );
+
+  if (existingAnswer) {
+    existingAnswer.answer = answer;
+    if (filePath) existingAnswer.file = filePath;
+  } else {
+    attempt.answers.push({
+      question: {
+        _id: question._id,
+        text: question.text,
+        type: question.type,
+        correctAnswer: question.correctAnswer,
+        points: question.points,
+        choices: question.choices,
+        image: question.image,
+      },
+      answer,
+      file: filePath,
+    });
+  }
+
+  await attempt.save();
+  return SuccessResponse(res, { attempt }, 200);
 };
 
 

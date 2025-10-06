@@ -93,7 +93,6 @@ const saveAnswer = async (req, res) => {
     if (!req.user || !req.user.id)
         return res.status(401).json({ message: "Unauthorized" });
     const userId = req.user.id;
-    // ✅ ننتظر رفع الملف (لو موجود)
     await new Promise((resolve, reject) => {
         multer_1.uploadAnswerFile.single("file")(req, res, (err) => {
             if (err)
@@ -109,14 +108,12 @@ const saveAnswer = async (req, res) => {
         return res.status(404).json({ message: "Attempt not found" });
     if (attempt.student?.toString() !== userId.toString())
         return res.status(403).json({ message: "Not allowed" });
-    // ✅ تأكد أن السؤال فعلاً موجود في الامتحان
     const exam = await Exam_1.ExamModel.findOne({ "questions._id": questionId });
     if (!exam)
         return res.status(404).json({ message: "Question not found" });
     const question = exam.questions.id(questionId);
     if (!question)
         return res.status(404).json({ message: "Question not found" });
-    // ✅ تحقق من انتهاء الوقت
     if (attempt.endAt && new Date(attempt.endAt) < new Date()) {
         attempt.status = "expired";
         await attempt.save();
@@ -125,17 +122,23 @@ const saveAnswer = async (req, res) => {
     const filePath = req.file
         ? `${req.protocol}://${req.get("host")}/uploads/answers/${req.file.filename}`
         : null;
-    // ✅ تأكد لو الطالب جاوب السؤال ده قبل كده
-    const existingAnswer = attempt.answers.find((a) => a.question?.toString() === questionId);
+    const existingAnswer = attempt.answers.find((a) => a.question?._id?.toString() === questionId);
     if (existingAnswer) {
         existingAnswer.answer = answer;
         if (filePath)
             existingAnswer.file = filePath;
     }
     else {
-        // ✅ خزن الـ question كـ ObjectId فقط
         attempt.answers.push({
-            question: question._id,
+            question: {
+                _id: question._id,
+                text: question.text,
+                type: question.type,
+                correctAnswer: question.correctAnswer,
+                points: question.points,
+                choices: question.choices,
+                image: question.image,
+            },
             answer,
             file: filePath,
         });
