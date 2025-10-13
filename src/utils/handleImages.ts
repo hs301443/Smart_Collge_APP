@@ -8,7 +8,7 @@ export async function saveBase64Image(
   req: Request,
   folder: string
 ): Promise<string> {
-  // ✅ تأكيد الصيغة
+  // ✅ إزالة البريفكس من base64
   const matches = base64.match(/^data:(.+);base64,(.+)$/);
   let ext = "png";
   let data = base64;
@@ -21,8 +21,9 @@ export async function saveBase64Image(
   const buffer = Buffer.from(data, "base64");
   const fileName = `${userId}.${ext}`;
 
-  // ✅ نحفظ الصورة داخل dist/uploads
-  const uploadsDir = path.join(__dirname, "uploads", folder);
+  // ✅ نخلي مجلد uploads في ROOT project (مش جوا src أو dist)
+  const rootDir = path.resolve(__dirname, "../../"); // يطلع لمجلد المشروع الأساسي
+  const uploadsDir = path.join(rootDir, "uploads", folder);
 
   try {
     await fs.mkdir(uploadsDir, { recursive: true });
@@ -32,9 +33,9 @@ export async function saveBase64Image(
     throw err;
   }
 
-  // ✅ نستخدم https على Railway دائمًا
-  const protocol = req.get("x-forwarded-proto") || "https";
+  // ✅ البروتوكول الصحيح (https أو http)
+  const protocol = req.get("x-forwarded-proto") || req.protocol || "https";
 
-  // ✅ نرجّع الرابط النهائي
+  // ✅ ارجع رابط الصورة النهائي
   return `${protocol}://${req.get("host")}/uploads/${folder}/${fileName}`;
 }

@@ -24,11 +24,8 @@ app.use(cookieParser());
 app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 
-// ✅ نخلي السيرفر يشوف الصور من dist/uploads
-app.use(
-  "/uploads",
-  express.static(path.join(__dirname, "uploads"))
-);
+const uploadsPath = path.join(__dirname, "../uploads");
+app.use("/uploads", express.static(uploadsPath));
 
 const server = http.createServer(app);
 
