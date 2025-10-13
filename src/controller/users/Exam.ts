@@ -46,21 +46,40 @@ export const getExamByIdForStudent = async (req: Request, res: Response) => {
 export const getQuestionsForExam = async (req: Request, res: Response) => {
   if (!req.user) throw new UnauthorizedError("Unauthorized");
 
-  const exam = await ExamModel.findById(req.params.examId);
+  const examId = req.params.examId;
+  const exam = await ExamModel.findById(examId);
   if (!exam || !exam.isPublished) throw new NotFound("Exam not found");
 
-  const questions = exam.questions.map(q => ({
-    _id: q._id,
-    text: q.text,
-    type: q.type,
-    choices: q.choices,
-    points: q.points,
-    image: q.image
-  }));
+  // ✅ نتحقق هل الطالب عمل محاولة Exam Attempt
+  const attempt = await AttemptModel.findOne({
+    exam: examId,
+    student: req.user._id,
+    status: "submitted", // فقط الامتحانات اللي خلصها فعلاً
+  });
 
-  SuccessResponse(res, { questions }, 200);
+  const hasSubmitted = !!attempt; // true لو الطالب خلص الامتحان
+
+  // ✅ نجهّز الأسئلة
+  const questions = exam.questions.map(q => {
+    const questionData: any = {
+      _id: q._id,
+      text: q.text,
+      type: q.type,
+      choices: q.choices,
+      points: q.points,
+      image: q.image,
+    };
+
+    // ✅ لو الطالب امتحن بالفعل، نضيف correctAnswer
+    if (hasSubmitted) {
+      questionData.correctAnswer = q.correctAnswer;
+    }
+
+    return questionData;
+  });
+
+  SuccessResponse(res, { questions, hasSubmitted }, 200);
 };
-
 // ✅ بدء Attempt
 export const startAttempt = async (req: Request, res: Response) => {
   if (!req.user) throw new UnauthorizedError("Unauthorized");
@@ -189,13 +208,16 @@ export const submitAttempt = async (req: Request, res: Response) => {
     return String(val);
   };
 
-  // ✅ نجيب الامتحان عشان نقدر نجيب الإجابات الصحيحة من الأسئلة الأصلية
+  // ✅ نجيب الامتحان الأصلي
   const exam = await ExamModel.findById(attempt.exam);
   if (!exam) throw new NotFound("Exam not found");
 
+  // ✅ نحسب مجموع نقاط الامتحان (الدرجة النهائية)
+  const maxPoints = exam.questions.reduce((sum, q) => sum + (q.points || 0), 0);
+
   for (const ans of attempt.answers) {
-const questionId = ans.question ? new mongoose.Types.ObjectId(ans.question) : null;
-const question = questionId ? exam.questions.id(questionId) : null;
+    const questionId = ans.question ? new mongoose.Types.ObjectId(ans.question) : null;
+    const question = questionId ? exam.questions.id(questionId) : null;
     if (!question) continue;
 
     let awarded = 0;
@@ -223,7 +245,13 @@ const question = questionId ? exam.questions.id(questionId) : null;
 
   await attempt.save();
 
-  SuccessResponse(res, { attempt }, 200);
+  // ✅ نرجّع النتيجة بدون النسبة
+  SuccessResponse(res, {
+    attempt,
+    examTitle: exam.title,
+    maxPoints,
+    scoredPoints: totalPoints
+  }, 200);
 };
 
 
