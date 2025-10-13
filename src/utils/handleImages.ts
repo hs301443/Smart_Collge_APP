@@ -4,39 +4,38 @@ import { Request } from "express";
 
 export async function saveBase64Image(
   base64: string,
-  uniqueId: string,
+  userId: string,
   req: Request,
   folder: string
 ): Promise<string> {
-  // ✅ نتأكد إن الصيغة صحيحة
+  // ✅ إزالة البريفكس من base64
   const matches = base64.match(/^data:(.+);base64,(.+)$/);
-  if (!matches || matches.length !== 3) {
-    throw new Error("Invalid base64 format");
+  let ext = "png";
+  let data = base64;
+
+  if (matches && matches.length === 3) {
+    ext = matches[1].split("/")[1];
+    data = matches[2];
   }
 
-  const mimeType = matches[1]; // مثل image/png أو application/pdf
-  const ext = mimeType.split("/")[1]; // ناخد الامتداد (png أو pdf أو docx...)
-  const buffer = Buffer.from(matches[2], "base64");
+  const buffer = Buffer.from(data, "base64");
+  const fileName = `${userId}.${ext}`;
 
-  const fileName = `${uniqueId}.${ext}`;
-  const uploadsDir = path.join(__dirname, "../..", "uploads", folder);
+  // ✅ نخلي مجلد uploads في ROOT project (مش جوا src أو dist)
+  const rootDir = path.resolve(__dirname, "../../"); // يطلع لمجلد المشروع الأساسي
+  const uploadsDir = path.join(rootDir, "uploads", folder);
 
   try {
     await fs.mkdir(uploadsDir, { recursive: true });
+    await fs.writeFile(path.join(uploadsDir, fileName), buffer);
   } catch (err) {
-    console.error("Failed to create directory:", err);
+    console.error("❌ Failed to save image:", err);
     throw err;
   }
 
-  const filePath = path.join(uploadsDir, fileName);
+  // ✅ البروتوكول الصحيح (https أو http)
+  const protocol = req.get("x-forwarded-proto") || req.protocol || "https";
 
-  try {
-    await fs.writeFile(filePath, buffer);
-  } catch (err) {
-    console.error("Failed to write file:", err);
-    throw err;
-  }
-
-  // ✅ نرجّع رابط الوصول الكامل للملف
-  return `${req.protocol}://${req.get("host")}/uploads/${folder}/${fileName}`;
+  // ✅ ارجع رابط الصورة النهائي
+  return `${protocol}://${req.get("host")}/uploads/${folder}/${fileName}`;
 }
