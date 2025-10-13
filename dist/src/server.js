@@ -16,6 +16,7 @@ const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const helmet_1 = __importDefault(require("helmet"));
 const connection_1 = require("./models/connection");
 const chatSocket_1 = require("./utils/chatSocket");
+const path_1 = __importDefault(require("path"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 (0, connection_1.connectDB)();
@@ -25,14 +26,15 @@ app.use((0, cors_1.default)({ origin: "*" }));
 app.use((0, cookie_parser_1.default)());
 app.use(express_1.default.json({ limit: "20mb" }));
 app.use(express_1.default.urlencoded({ extended: true, limit: "20mb" }));
-app.use("/uploads", express_1.default.static("uploads"));
+// ✅ نخلي السيرفر يشوف الصور من dist/uploads
+app.use("/uploads", express_1.default.static(path_1.default.join(__dirname, "uploads")));
 const server = http_1.default.createServer(app);
 // ✅ Socket.IO مع CORS + Polling فقط
 exports.io = new socket_io_1.Server(server, {
     cors: {
         origin: "*",
-        methods: ["GET", "POST"]
-    }
+        methods: ["GET", "POST"],
+    },
 });
 // Route للتجربة
 app.get("/", (req, res) => {
@@ -48,7 +50,6 @@ app.use((req, res, next) => {
 app.use(errorHandler_1.errorHandler);
 // Port
 const PORT = process.env.PORT || 3000;
-// Create server
 server.listen(PORT, () => {
     console.log(`🚀 Server is running on http://localhost:${PORT}`);
 });

@@ -10,6 +10,7 @@ import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import { connectDB } from "./models/connection";
 import { initChatSocket } from "./utils/chatSocket";
+import path from "path";
 
 dotenv.config();
 
@@ -22,17 +23,22 @@ app.use(cors({ origin: "*" }));
 app.use(cookieParser());
 app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ extended: true, limit: "20mb" }));
-app.use("/uploads", express.static("uploads"));
+
+// ✅ نخلي السيرفر يشوف الصور من dist/uploads
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "uploads"))
+);
+
 const server = http.createServer(app);
 
 // ✅ Socket.IO مع CORS + Polling فقط
 export const io = new Server(server, {
   cors: {
     origin: "*",
-    methods: ["GET", "POST"]
-  }
+    methods: ["GET", "POST"],
+  },
 });
-
 
 // Route للتجربة
 app.get("/", (req, res) => {
@@ -51,9 +57,6 @@ app.use(errorHandler);
 
 // Port
 const PORT = process.env.PORT || 3000;
-
-// Create server
-
 
 server.listen(PORT, () => {
   console.log(`🚀 Server is running on http://localhost:${PORT}`);
