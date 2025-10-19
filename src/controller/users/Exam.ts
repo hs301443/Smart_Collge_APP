@@ -287,7 +287,7 @@ export const getMyAttempts = async (req: Request, res: Response) => {
     return {
       ...attempt.toObject(),
       examTitle: attempt.exam?.title,
-      maxPoints, // ✅ أضفناها هنا
+      maxPoints,
     };
   });
 

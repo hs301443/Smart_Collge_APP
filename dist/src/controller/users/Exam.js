@@ -253,7 +253,7 @@ const getMyAttempts = async (req, res) => {
         return {
             ...attempt.toObject(),
             examTitle: attempt.exam?.title,
-            maxPoints, // ✅ أضفناها هنا
+            maxPoints,
         };
     });
     (0, response_1.SuccessResponse)(res, { attempts: formattedAttempts }, 200);
