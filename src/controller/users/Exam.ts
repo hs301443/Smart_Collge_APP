@@ -255,29 +255,41 @@ export const submitAttempt = async (req: Request, res: Response) => {
 };
 
 
-// ✅ جلب كل محاولات الطالب
+
 export const getMyAttempts = async (req: Request, res: Response) => {
   if (!req.user) throw new UnauthorizedError("Unauthorized");
 
   const attempts = await AttemptModel.find({ student: req.user.id })
     .populate(
       "exam",
-      "title subject_name level department startAt endAt durationMinutes"
+      "title subject_name level department startAt endAt durationMinutes questions.points"
     )
     .populate("answers.question", "text type points correctAnswer");
 
-  // 🎯 إخفاء الإجابات الصحيحة لو الطالب لسه ما سلّمش الامتحان
-  const filteredAttempts = attempts.map((attempt: any) => {
+  // 🎯 تجهيز النتايج
+  const formattedAttempts = attempts.map((attempt: any) => {
+    // ✅ نحسب maxPoints من exam
+    const maxPoints = attempt.exam?.questions?.reduce(
+      (sum: number, q: any) => sum + (q.points || 0),
+      0
+    ) || 0;
+
+    // 🔒 نخفي الإجابات الصحيحة لو الطالب لسه ما سلّمش الامتحان
     if (attempt.status !== "submitted") {
       attempt.answers = attempt.answers.map((ans: any) => {
         if (ans.question && ans.question.correctAnswer) {
-          ans.question.correctAnswer = undefined; // 🔒 نخفيها مؤقتًا
+          ans.question.correctAnswer = undefined;
         }
         return ans;
       });
     }
-    return attempt;
+
+    return {
+      ...attempt.toObject(),
+      examTitle: attempt.exam?.title,
+      maxPoints, // ✅ أضفناها هنا
+    };
   });
 
-  SuccessResponse(res, { attempts: filteredAttempts }, 200);
+  SuccessResponse(res, { attempts: formattedAttempts }, 200);
 };
