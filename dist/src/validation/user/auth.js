@@ -9,9 +9,9 @@ exports.signupSchema = joi_1.default.object({
     name: joi_1.default.string().min(3).max(50).required(),
     email: joi_1.default.string().email().required(),
     password: joi_1.default.string().min(6).required(),
-    role: joi_1.default.string().valid("Student", "Graduated").required(),
+    role: joi_1.default.string(),
     level: joi_1.default.number().min(1).max(5),
-    department: joi_1.default.string().valid("IT", "CS", "IS", "AI"),
+    department: joi_1.default.string(),
     imageBase64: joi_1.default.string().optional(),
     graduatedData: joi_1.default.object({
         cv: joi_1.default.string().optional(),

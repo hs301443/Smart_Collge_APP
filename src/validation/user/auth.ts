@@ -4,9 +4,9 @@ export const signupSchema = Joi.object({
   name: Joi.string().min(3).max(50).required(),
   email: Joi.string().email().required(),
   password: Joi.string().min(6).required(),
-  role: Joi.string().valid("Student","Graduated").required(),
+  role: Joi.string(),
   level: Joi.number().min(1).max(5),
-  department: Joi.string().valid("IT","CS","IS","AI"),
+  department: Joi.string(),
   imageBase64: Joi.string().optional(),
    graduatedData: Joi.object({
     cv: Joi.string().optional(),

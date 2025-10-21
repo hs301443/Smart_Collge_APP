@@ -106,36 +106,69 @@ export const verifyEmail = async (req: Request, res: Response) => {
   const { userId, code } = req.body;
 
   if (!userId || !code) {
-    return res.status(400).json({ success: false, error: { code: 400, message: "userId and code are required" } });
+    return res.status(400).json({
+      success: false,
+      error: { code: 400, message: "userId and code are required" },
+    });
   }
 
   const record = await EmailVerificationModel.findOne({ userId });
   if (!record) {
-    return res.status(400).json({ success: false, error: { code: 400, message: "No verification record found" } });
+    return res.status(400).json({
+      success: false,
+      error: { code: 400, message: "No verification record found" },
+    });
   }
 
   if (record.verificationCode !== code) {
-    return res.status(400).json({ success: false, error: { code: 400, message: "Invalid verification code" } });
+    return res.status(400).json({
+      success: false,
+      error: { code: 400, message: "Invalid verification code" },
+    });
   }
 
   if (record.expiresAt < new Date()) {
-    return res.status(400).json({ success: false, error: { code: 400, message: "Verification code expired" } });
+    return res.status(400).json({
+      success: false,
+      error: { code: 400, message: "Verification code expired" },
+    });
   }
 
-  // تحديث المستخدم مباشرة بدون save()
+  // ✅ تحديث المستخدم وتفعيله
   const user = await UserModel.findByIdAndUpdate(
     userId,
     { isVerified: true },
-    { new: true } // يرجع النسخة المحدثة
+    { new: true } // يرجع النسخة الجديدة بعد التحديث
   );
 
-  // حذف سجل التحقق
+  // لو المستخدم مش موجود لأي سبب
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      error: { code: 404, message: "User not found" },
+    });
+  }
+
+  // ✅ حذف سجل التحقق
   await EmailVerificationModel.deleteOne({ userId });
 
-  res.json({ success: true, message: "Email verified successfully"});
+  // ✅ توليد التوكن بعد التفعيل
+  const token = generateToken(user, "user");
+
+  return res.json({
+    success: true,
+    message: "Email verified successfully",
+    token,
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      level: user.level,
+      department: user.department,
+    },
+  });
 };
-
-
 
 // login.ts
 export const login = async (req: Request, res: Response) => {

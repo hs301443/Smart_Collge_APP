@@ -11,6 +11,8 @@ import ExamRouter from './Exam'
 import AttemptRouter from './Attempt'
 import chatRouter from './chat'
 import lectureRouter from './lecture'
+import DepartmrntRouter from './department'
+import LevelRouter from './level'
 export const route = Router();
 
 route.use("/auth", authRouter);
@@ -24,4 +26,6 @@ route.use("/exam",ExamRouter);
 route.use("/attempt",AttemptRouter)
 route.use("/chat",chatRouter)
 route.use("/lecture",lectureRouter)
+route.use("/department",DepartmrntRouter)
+route.use("/level",LevelRouter)
 export default route;
