@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { ExamModel } from "../../models/shema/Exam";
 import { BadRequest } from "../../Errors/BadRequest";
-import { NotFound, UnauthorizedError } from "../../Errors";
+import { NotFound } from "../../Errors";
 import { SuccessResponse } from "../../utils/response";
 import { saveBase64Image } from "../../utils/handleImages";
 
@@ -10,8 +10,6 @@ const allowedDepartments = ["CS", "IT", "IS", "CE", "EE"];
 
 // ✅ إنشاء امتحان مع أسئلة
 export const createExamWithQuestions = async (req: any, res: Response) => {
-  
-
   const adminId = req.user.id;
 
   const {
@@ -24,10 +22,20 @@ export const createExamWithQuestions = async (req: any, res: Response) => {
     subject_name,
     startAt,
     endAt,
-    durationMinutes
+    durationMinutes,
   } = req.body;
 
-  if (!title || !description || !doctorname || !level || !department || !subject_name || !startAt || !endAt || !durationMinutes) {
+  if (
+    !title ||
+    !description ||
+    !doctorname ||
+    !level ||
+    !department ||
+    !subject_name ||
+    !startAt ||
+    !endAt ||
+    !durationMinutes
+  ) {
     throw new BadRequest("Please fill all the fields");
   }
 
@@ -50,7 +58,7 @@ export const createExamWithQuestions = async (req: any, res: Response) => {
     subject_name,
     startAt,
     endAt,
-    durationMinutes
+    durationMinutes,
   });
 
   // إضافة الأسئلة مباشرة داخل Exam
@@ -65,17 +73,17 @@ export const createExamWithQuestions = async (req: any, res: Response) => {
 
       let imageUrl: string | null = null;
       if (q.imageBase64) {
-        imageUrl = await saveBase64Image(q.imageBase64, adminId.toString(), req, "questions");
+        // ✅ تم تعديل الدالة لتستقبل 3 براميترز فقط
+        imageUrl = await saveBase64Image(q.imageBase64, adminId.toString(), "questions");
       }
 
-      // إضافة السؤال في المصفوفة مباشرة
       newExam.questions.push({
         text: q.text,
         type: q.type,
         choices: parsedChoices,
         correctAnswer: q.correctAnswer,
         points: q.points,
-        image: imageUrl
+        image: imageUrl,
       });
     }
 
@@ -135,7 +143,8 @@ export const getAllQuestionsForExam = async (req: Request, res: Response) => {
 // ✅ جلب سؤال واحد
 export const getQuestionById = async (req: Request, res: Response) => {
   const { examId, questionId } = req.params;
-  if (!examId || !questionId) throw new BadRequest("examId and questionId are required");
+  if (!examId || !questionId)
+    throw new BadRequest("examId and questionId are required");
 
   const exam = await ExamModel.findById(examId);
   if (!exam) throw new NotFound("Exam not found");
@@ -149,7 +158,8 @@ export const getQuestionById = async (req: Request, res: Response) => {
 // ✅ حذف سؤال
 export const deleteQuestionById = async (req: Request, res: Response) => {
   const { examId, questionId } = req.params;
-  if (!examId || !questionId) throw new BadRequest("examId and questionId are required");
+  if (!examId || !questionId)
+    throw new BadRequest("examId and questionId are required");
 
   const exam = await ExamModel.findById(examId);
   if (!exam) throw new NotFound("Exam not found");
@@ -165,7 +175,8 @@ export const deleteQuestionById = async (req: Request, res: Response) => {
 // ✅ تعديل سؤال
 export const updateQuestionById = async (req: Request, res: Response) => {
   const { examId, questionId } = req.params;
-  if (!examId || !questionId) throw new BadRequest("examId and questionId are required");
+  if (!examId || !questionId)
+    throw new BadRequest("examId and questionId are required");
 
   const exam = await ExamModel.findById(examId);
   if (!exam) throw new NotFound("Exam not found");

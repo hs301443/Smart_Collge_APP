@@ -29,18 +29,20 @@ export const signup = async (req: Request, res: Response) => {
 
 let imageUrl = "";
 if (BaseImage64) {
-  imageUrl = await saveBase64Image(BaseImage64, new mongoose.Types.ObjectId().toString(), req, "users");
-} 
+  imageUrl = await saveBase64Image(BaseImage64, new mongoose.Types.ObjectId().toString(), "users");
+}
+
 
   const userData: any = {
-    name,
-    email,
-    password: hashedPassword,
-    role,
-    BaseImage64: BaseImage64 || null,
-    isVerified: false,
-    isNew: false,
-  };
+  name,
+  email,
+  password: hashedPassword,
+  role,
+  BaseImage64: imageUrl || null,
+  isVerified: false,
+  isNew: false,
+};
+
 
   if (role === "Student") {
     userData.level = level;
@@ -371,7 +373,7 @@ export const updateProfileImage = async (req: AuthenticatedRequest, res: Respons
   const user = await UserModel.findById(req.user?.id);
   if (!user) throw new NotFound("User not found");
 
-  const imageUrl = await saveBase64Image(BaseImage64, user._id.toString(), req, "profile_images");
+const imageUrl = await saveBase64Image(BaseImage64, user._id.toString(), "profile_images");
 
   user.BaseImage64 = imageUrl; 
   await user.save();
@@ -449,7 +451,7 @@ export const updateProfile = async (req: Request, res: Response) => {
 
     // ✅ لو في صورة جديدة نحفظها
     if (BaseImage64) {
-      const imageUrl = await saveBase64Image(BaseImage64, user._id.toString(), req, "users");
+const imageUrl = await saveBase64Image(BaseImage64, user._id.toString(), "users");
       user.BaseImage64 = imageUrl;
     }
 

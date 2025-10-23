@@ -13,7 +13,8 @@ const createLecture = async (req, res) => {
     }
     let iconUrl = "";
     if (iconBase64) {
-        iconUrl = await (0, handleImages_1.saveBase64Image)(iconBase64, Date.now().toString(), req, "lectures/icons");
+        // ✅ رفع الأيقونة إلى Cloudinary
+        iconUrl = await (0, handleImages_1.saveBase64Image)(iconBase64, "lectures/icons", Date.now().toString());
     }
     const lecture = new lecture_1.LectureModel({
         sub_name,
@@ -27,7 +28,7 @@ const createLecture = async (req, res) => {
     return (0, response_1.SuccessResponse)(res, lecture, 201);
 };
 exports.createLecture = createLecture;
-// رفع أكثر من PDF
+// ----------------------------------------------------------
 const uploadLecturePDF = async (req, res) => {
     const lecture = await lecture_1.LectureModel.findById(req.params.id);
     if (!lecture)
@@ -35,43 +36,45 @@ const uploadLecturePDF = async (req, res) => {
     const files = req.files;
     if (!files || files.length === 0)
         throw new BadRequest_1.BadRequest("No PDFs uploaded");
-    files.forEach(file => {
+    // ✅ رفع كل ملف PDF إلى Cloudinary
+    for (const file of files) {
+        const result = await (0, handleImages_1.uploadFileToCloudinary)(file.path, "lectures/pdfs");
         lecture.pdfs.push({
             name: file.originalname,
-            url: `${req.protocol}://${req.get("host")}/uploads/pdfs/${file.filename}`
+            url: result.secure_url,
         });
-    });
+    }
     await lecture.save();
     return (0, response_1.SuccessResponse)(res, lecture);
 };
 exports.uploadLecturePDF = uploadLecturePDF;
+// ----------------------------------------------------------
 const uploadLectureVideo = async (req, res) => {
-    try {
-        const lecture = await lecture_1.LectureModel.findById(req.params.id);
-        if (!lecture)
-            throw new Errors_1.NotFound("Lecture not found");
-        if (!req.file)
-            throw new BadRequest_1.BadRequest("No video file uploaded");
-        lecture.video = {
-            name: req.file.originalname,
-            url: `${req.protocol}://${req.get("host")}/uploads/videos/${req.file.filename}`,
-            duration: 0, // default
-            quality: "720p", // default
-            uploadDate: new Date() // default
-        };
-        await lecture.save();
-        return (0, response_1.SuccessResponse)(res, lecture);
-    }
-    catch (error) {
-        return res.status(error.statusCode || 500).json({ error: error.message });
-    }
+    const lecture = await lecture_1.LectureModel.findById(req.params.id);
+    if (!lecture)
+        throw new Errors_1.NotFound("Lecture not found");
+    if (!req.file)
+        throw new BadRequest_1.BadRequest("No video file uploaded");
+    // ✅ رفع الفيديو إلى Cloudinary
+    const result = await (0, handleImages_1.uploadFileToCloudinary)(req.file.path, "lectures/videos", "video");
+    lecture.video = {
+        name: req.file.originalname,
+        url: result.secure_url,
+        duration: 0,
+        quality: "720p",
+        uploadDate: new Date(),
+    };
+    await lecture.save();
+    return (0, response_1.SuccessResponse)(res, lecture);
 };
 exports.uploadLectureVideo = uploadLectureVideo;
+// ----------------------------------------------------------
 const getLectures = async (req, res) => {
     const lectures = await lecture_1.LectureModel.find();
     return (0, response_1.SuccessResponse)(res, lectures);
 };
 exports.getLectures = getLectures;
+// ----------------------------------------------------------
 const getLectureById = async (req, res) => {
     const lecture = await lecture_1.LectureModel.findById(req.params.id);
     if (!lecture)
@@ -79,6 +82,7 @@ const getLectureById = async (req, res) => {
     return (0, response_1.SuccessResponse)(res, lecture);
 };
 exports.getLectureById = getLectureById;
+// ----------------------------------------------------------
 const updateLecture = async (req, res) => {
     const lecture = await lecture_1.LectureModel.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!lecture)
@@ -86,6 +90,7 @@ const updateLecture = async (req, res) => {
     return (0, response_1.SuccessResponse)(res, lecture);
 };
 exports.updateLecture = updateLecture;
+// ----------------------------------------------------------
 const deleteLecture = async (req, res) => {
     const lecture = await lecture_1.LectureModel.findByIdAndDelete(req.params.id);
     if (!lecture)

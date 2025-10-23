@@ -4,32 +4,30 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.saveBase64Image = saveBase64Image;
-const path_1 = __importDefault(require("path"));
-const promises_1 = __importDefault(require("fs/promises"));
-async function saveBase64Image(base64, userId, req, folder) {
-    // ✅ إزالة البريفكس من base64
-    const matches = base64.match(/^data:(.+);base64,(.+)$/);
-    let ext = "png";
-    let data = base64;
-    if (matches && matches.length === 3) {
-        ext = matches[1].split("/")[1];
-        data = matches[2];
-    }
-    const buffer = Buffer.from(data, "base64");
-    const fileName = `${userId}.${ext}`;
-    // ✅ نخلي مجلد uploads في ROOT project (مش جوا src أو dist)
-    const rootDir = path_1.default.resolve(__dirname, "../../"); // يطلع لمجلد المشروع الأساسي
-    const uploadsDir = path_1.default.join(rootDir, "uploads", folder);
-    try {
-        await promises_1.default.mkdir(uploadsDir, { recursive: true });
-        await promises_1.default.writeFile(path_1.default.join(uploadsDir, fileName), buffer);
-    }
-    catch (err) {
-        console.error("❌ Failed to save image:", err);
-        throw err;
-    }
-    // ✅ البروتوكول الصحيح (https أو http)
-    const protocol = req.get("x-forwarded-proto") || req.protocol || "https";
-    // ✅ ارجع رابط الصورة النهائي
-    return `${protocol}://${req.get("host")}/uploads/${folder}/${fileName}`;
+exports.uploadFileToCloudinary = uploadFileToCloudinary;
+const cloudinary_1 = require("cloudinary");
+const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config();
+// ✅ إعداد Cloudinary
+cloudinary_1.v2.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME || "diubywm4o",
+    api_key: process.env.CLOUDINARY_API_KEY || "335626385153357",
+    api_secret: process.env.CLOUDINARY_API_SECRET || "mHdq6I40G1Ivsqy_QfPCnfG6gIY",
+});
+// ✅ رفع صورة Base64 إلى Cloudinary
+async function saveBase64Image(base64, folder, publicId) {
+    const result = await cloudinary_1.v2.uploader.upload(base64, {
+        folder,
+        public_id: publicId,
+        resource_type: "auto",
+    });
+    return result.secure_url;
+}
+// ✅ رفع ملف من النظام (PDF أو فيديو)
+async function uploadFileToCloudinary(filePath, folder, resourceType = "auto") {
+    const result = await cloudinary_1.v2.uploader.upload(filePath, {
+        folder,
+        resource_type: resourceType,
+    });
+    return result;
 }

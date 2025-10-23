@@ -12,8 +12,16 @@ const allowedDepartments = ["CS", "IT", "IS", "CE", "EE"];
 const createExamWithQuestions = async (req, res) => {
     const adminId = req.user.id;
     const { title, description, doctorname, level, department, questions, // Array of questions
-    subject_name, startAt, endAt, durationMinutes } = req.body;
-    if (!title || !description || !doctorname || !level || !department || !subject_name || !startAt || !endAt || !durationMinutes) {
+    subject_name, startAt, endAt, durationMinutes, } = req.body;
+    if (!title ||
+        !description ||
+        !doctorname ||
+        !level ||
+        !department ||
+        !subject_name ||
+        !startAt ||
+        !endAt ||
+        !durationMinutes) {
         throw new BadRequest_1.BadRequest("Please fill all the fields");
     }
     if (!allowedLevels.includes(Number(level))) {
@@ -33,7 +41,7 @@ const createExamWithQuestions = async (req, res) => {
         subject_name,
         startAt,
         endAt,
-        durationMinutes
+        durationMinutes,
     });
     // إضافة الأسئلة مباشرة داخل Exam
     if (Array.isArray(questions) && questions.length > 0) {
@@ -47,16 +55,16 @@ const createExamWithQuestions = async (req, res) => {
             }
             let imageUrl = null;
             if (q.imageBase64) {
-                imageUrl = await (0, handleImages_1.saveBase64Image)(q.imageBase64, adminId.toString(), req, "questions");
+                // ✅ تم تعديل الدالة لتستقبل 3 براميترز فقط
+                imageUrl = await (0, handleImages_1.saveBase64Image)(q.imageBase64, adminId.toString(), "questions");
             }
-            // إضافة السؤال في المصفوفة مباشرة
             newExam.questions.push({
                 text: q.text,
                 type: q.type,
                 choices: parsedChoices,
                 correctAnswer: q.correctAnswer,
                 points: q.points,
-                image: imageUrl
+                image: imageUrl,
             });
         }
         await newExam.save();

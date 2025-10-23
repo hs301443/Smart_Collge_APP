@@ -3,7 +3,6 @@ import { saveBase64Image } from "../../utils/handleImages";
 import { BadRequest } from "../../Errors/BadRequest";
 import { SuccessResponse } from "../../utils/response";
 import { NotFound } from "../../Errors";
-import { UnauthorizedError } from "../../Errors";
 import { Request, Response } from "express";
 
 export const createNews = async (req: Request, res: Response) => {
@@ -27,14 +26,12 @@ export const createNews = async (req: Request, res: Response) => {
   if (mainImageBase64) {
     finalMainImage = await saveBase64Image(
       mainImageBase64,
-      Date.now().toString(),
-      req,
-      "news"
+      "news",
+      Date.now().toString()
     );
   }
 
-  if (!finalMainImage)
-    throw new BadRequest("mainImage is required");
+  if (!finalMainImage) throw new BadRequest("mainImage is required");
 
   // 🔹 حفظ الصور الإضافية (images)
   const savedImages: string[] = [];
@@ -42,9 +39,8 @@ export const createNews = async (req: Request, res: Response) => {
     if (imgBase64.startsWith("data:")) {
       const imgUrl = await saveBase64Image(
         imgBase64,
-        Date.now().toString(),
-        req,
-        "news/images"
+        "news/images",
+        Date.now().toString()
       );
       savedImages.push(imgUrl);
     } else {
@@ -58,9 +54,8 @@ export const createNews = async (req: Request, res: Response) => {
     if (fileBase64.startsWith("data:")) {
       const fileUrl = await saveBase64Image(
         fileBase64,
-        Date.now().toString(),
-        req,
-        "news/optional"
+        "news/optional",
+        Date.now().toString()
       );
       savedOptional.push(fileUrl);
     } else {
@@ -83,6 +78,7 @@ export const createNews = async (req: Request, res: Response) => {
   return SuccessResponse(res, { news }, 201);
 };
 
+// ----------------------------------------------------------
 
 export const updateNews = async (req: Request, res: Response) => {
   const { id } = req.params;
@@ -111,9 +107,8 @@ export const updateNews = async (req: Request, res: Response) => {
   if (mainImageBase64) {
     news.mainImage = await saveBase64Image(
       mainImageBase64,
-      news._id.toString(),
-      req,
-      "news"
+      "news",
+      news._id.toString()
     );
   } else if (mainImage) {
     news.mainImage = mainImage;
@@ -126,9 +121,8 @@ export const updateNews = async (req: Request, res: Response) => {
       if (img.startsWith("data:")) {
         const url = await saveBase64Image(
           img,
-          Date.now().toString(),
-          req,
-          "news/images"
+          "news/images",
+          Date.now().toString()
         );
         updatedImages.push(url);
       } else {
@@ -145,9 +139,8 @@ export const updateNews = async (req: Request, res: Response) => {
       if (file.startsWith("data:")) {
         const url = await saveBase64Image(
           file,
-          Date.now().toString(),
-          req,
-          "news/optional"
+          "news/optional",
+          Date.now().toString()
         );
         updatedOptional.push(url);
       } else {
@@ -161,11 +154,9 @@ export const updateNews = async (req: Request, res: Response) => {
   return SuccessResponse(res, { news }, 200);
 };
 
-
-
+// ----------------------------------------------------------
 
 export const deleteNews = async (req: Request, res: Response) => {
-  
   const { id } = req.params;
   const news = await NewsModel.findById(id);
   if (!news) throw new NotFound("News not found");
@@ -174,14 +165,16 @@ export const deleteNews = async (req: Request, res: Response) => {
   return SuccessResponse(res, { message: "News deleted successfully" }, 200);
 };
 
-export const getAllNews = async (req: Request, res: Response) => {
+// ----------------------------------------------------------
 
+export const getAllNews = async (req: Request, res: Response) => {
   const newsList = await NewsModel.find().sort({ createdAt: -1 });
   return SuccessResponse(res, { news: newsList }, 200);
 };
 
+// ----------------------------------------------------------
+
 export const getNewsById = async (req: Request, res: Response) => {
- 
   const { id } = req.params;
   const news = await NewsModel.findById(id);
   if (!news) throw new NotFound("News not found");

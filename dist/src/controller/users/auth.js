@@ -25,14 +25,14 @@ const signup = async (req, res) => {
     const hashedPassword = await bcrypt_1.default.hash(password, 10);
     let imageUrl = "";
     if (BaseImage64) {
-        imageUrl = await (0, handleImages_1.saveBase64Image)(BaseImage64, new mongoose_1.default.Types.ObjectId().toString(), req, "users");
+        imageUrl = await (0, handleImages_1.saveBase64Image)(BaseImage64, new mongoose_1.default.Types.ObjectId().toString(), "users");
     }
     const userData = {
         name,
         email,
         password: hashedPassword,
         role,
-        BaseImage64: BaseImage64 || null,
+        BaseImage64: imageUrl || null,
         isVerified: false,
         isNew: false,
     };
@@ -298,7 +298,7 @@ const updateProfileImage = async (req, res) => {
     const user = await User_1.UserModel.findById(req.user?.id);
     if (!user)
         throw new Errors_1.NotFound("User not found");
-    const imageUrl = await (0, handleImages_1.saveBase64Image)(BaseImage64, user._id.toString(), req, "profile_images");
+    const imageUrl = await (0, handleImages_1.saveBase64Image)(BaseImage64, user._id.toString(), "profile_images");
     user.BaseImage64 = imageUrl;
     await user.save();
     (0, response_1.SuccessResponse)(res, { message: "Profile image updated successfully", imageUrl }, 200);
@@ -366,7 +366,7 @@ const updateProfile = async (req, res) => {
     }
     // ✅ لو في صورة جديدة نحفظها
     if (BaseImage64) {
-        const imageUrl = await (0, handleImages_1.saveBase64Image)(BaseImage64, user._id.toString(), req, "users");
+        const imageUrl = await (0, handleImages_1.saveBase64Image)(BaseImage64, user._id.toString(), "users");
         user.BaseImage64 = imageUrl;
     }
     if (name)

@@ -15,7 +15,7 @@ const createNews = async (req, res) => {
     // 🔹 حفظ الصورة الرئيسية
     let finalMainImage = mainImage || "";
     if (mainImageBase64) {
-        finalMainImage = await (0, handleImages_1.saveBase64Image)(mainImageBase64, Date.now().toString(), req, "news");
+        finalMainImage = await (0, handleImages_1.saveBase64Image)(mainImageBase64, "news", Date.now().toString());
     }
     if (!finalMainImage)
         throw new BadRequest_1.BadRequest("mainImage is required");
@@ -23,7 +23,7 @@ const createNews = async (req, res) => {
     const savedImages = [];
     for (const imgBase64 of images) {
         if (imgBase64.startsWith("data:")) {
-            const imgUrl = await (0, handleImages_1.saveBase64Image)(imgBase64, Date.now().toString(), req, "news/images");
+            const imgUrl = await (0, handleImages_1.saveBase64Image)(imgBase64, "news/images", Date.now().toString());
             savedImages.push(imgUrl);
         }
         else {
@@ -34,7 +34,7 @@ const createNews = async (req, res) => {
     const savedOptional = [];
     for (const fileBase64 of optional) {
         if (fileBase64.startsWith("data:")) {
-            const fileUrl = await (0, handleImages_1.saveBase64Image)(fileBase64, Date.now().toString(), req, "news/optional");
+            const fileUrl = await (0, handleImages_1.saveBase64Image)(fileBase64, "news/optional", Date.now().toString());
             savedOptional.push(fileUrl);
         }
         else {
@@ -55,6 +55,7 @@ const createNews = async (req, res) => {
     return (0, response_1.SuccessResponse)(res, { news }, 201);
 };
 exports.createNews = createNews;
+// ----------------------------------------------------------
 const updateNews = async (req, res) => {
     const { id } = req.params;
     const news = await News_1.NewsModel.findById(id);
@@ -73,7 +74,7 @@ const updateNews = async (req, res) => {
         news.event_date = event_date;
     // 🔹 تحديث الصورة الرئيسية
     if (mainImageBase64) {
-        news.mainImage = await (0, handleImages_1.saveBase64Image)(mainImageBase64, news._id.toString(), req, "news");
+        news.mainImage = await (0, handleImages_1.saveBase64Image)(mainImageBase64, "news", news._id.toString());
     }
     else if (mainImage) {
         news.mainImage = mainImage;
@@ -83,7 +84,7 @@ const updateNews = async (req, res) => {
         const updatedImages = [];
         for (const img of images) {
             if (img.startsWith("data:")) {
-                const url = await (0, handleImages_1.saveBase64Image)(img, Date.now().toString(), req, "news/images");
+                const url = await (0, handleImages_1.saveBase64Image)(img, "news/images", Date.now().toString());
                 updatedImages.push(url);
             }
             else {
@@ -97,7 +98,7 @@ const updateNews = async (req, res) => {
         const updatedOptional = [];
         for (const file of optional) {
             if (file.startsWith("data:")) {
-                const url = await (0, handleImages_1.saveBase64Image)(file, Date.now().toString(), req, "news/optional");
+                const url = await (0, handleImages_1.saveBase64Image)(file, "news/optional", Date.now().toString());
                 updatedOptional.push(url);
             }
             else {
@@ -110,6 +111,7 @@ const updateNews = async (req, res) => {
     return (0, response_1.SuccessResponse)(res, { news }, 200);
 };
 exports.updateNews = updateNews;
+// ----------------------------------------------------------
 const deleteNews = async (req, res) => {
     const { id } = req.params;
     const news = await News_1.NewsModel.findById(id);
@@ -119,11 +121,13 @@ const deleteNews = async (req, res) => {
     return (0, response_1.SuccessResponse)(res, { message: "News deleted successfully" }, 200);
 };
 exports.deleteNews = deleteNews;
+// ----------------------------------------------------------
 const getAllNews = async (req, res) => {
     const newsList = await News_1.NewsModel.find().sort({ createdAt: -1 });
     return (0, response_1.SuccessResponse)(res, { news: newsList }, 200);
 };
 exports.getAllNews = getAllNews;
+// ----------------------------------------------------------
 const getNewsById = async (req, res) => {
     const { id } = req.params;
     const news = await News_1.NewsModel.findById(id);
