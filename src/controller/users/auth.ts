@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { EmailVerificationModel} from "../../models/shema/auth/emailVerifications";
+import { EmailVerificationModel } from "../../models/shema/auth/emailVerifications";
 import { GraduatedModel, UserModel } from "../../models/shema/auth/User";
 import bcrypt from "bcrypt";
 import { SuccessResponse } from "../../utils/response";
@@ -13,65 +13,50 @@ import {
 import { generateToken } from "../../utils/auth";
 import { sendEmail } from "../../utils/sendEmails";
 import { BadRequest } from "../../Errors/BadRequest";
-import mongoose, { ObjectId } from "mongoose";
+import mongoose from "mongoose";
 import { AuthenticatedRequest } from "../../types/custom";
-import{saveBase64Image}from"../../utils/handleImages"
+import { saveBase64Image } from "../../utils/handleImages";
 
 
-// login.ts
+// ✅ Login
 export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
-  if (!password) {
-    throw new UnauthorizedError("Password is required");
-  }
+  if (!password) throw new UnauthorizedError("Password is required");
 
   const user = await UserModel.findOne({ email });
-  if (!user || !user.password) {
-    throw new UnauthorizedError("Invalid email or password");
-  }
+  if (!user || !user.password) throw new UnauthorizedError("Invalid email or password");
 
   const isMatch = await bcrypt.compare(password, user.password);
-  if (!isMatch) {
-    throw new UnauthorizedError("Invalid email or password");
-  }
+  if (!isMatch) throw new UnauthorizedError("Invalid email or password");
 
-  if (!user.isVerified) {
-    throw new ForbiddenError("Verify your email first");
-  }
+  if (!user.isVerified) throw new ForbiddenError("Verify your email first");
 
-  // ابعت user كامل مش object معمول له تعديل
   const token = generateToken(user, "user");
 
-  SuccessResponse(
-    res,
-    {
-      message: "Login Successful",
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        level: user.level,
-        department: user.department,
-      },
+  SuccessResponse(res, {
+    message: "Login Successful",
+    token,
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      level: user.level,
+      department: user.department,
     },
-    200
-  );
+  }, 200);
 };
 
 
+// ✅ Get FCM Token
 export const getFcmToken = async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user?.id;
-  if (!userId) {
-    throw new UnauthorizedError("User not found");
-  }
+  if (!userId) throw new UnauthorizedError("User not found");
 
   const user = await UserModel.findById(userId);
-  if (!user) {
-    throw new NotFound("User not found");
-  }
+  if (!user) throw new NotFound("User not found");
+
   user.fcmtoken = req.body.token;
   await user.save();
 
@@ -79,26 +64,19 @@ export const getFcmToken = async (req: AuthenticatedRequest, res: Response) => {
 };
 
 
-
+// ✅ Send Reset Code
 export const sendResetCode = async (req: Request, res: Response) => {
   const { email } = req.body;
-
   const user = await UserModel.findOne({ email });
+
   if (!user) throw new NotFound("User not found");
   if (!user.isVerified) throw new BadRequest("User is not verified");
 
   const code = randomInt(100000, 999999).toString();
-
-  // حذف أي كود موجود مسبقًا
   await EmailVerificationModel.deleteMany({ userId: user._id });
 
-  // إنشاء كود جديد
-  const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000); // ساعتين
-  await EmailVerificationModel.create({
-    userId: user._id,
-    verificationCode: code,
-    expiresAt,
-  });
+  const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
+  await EmailVerificationModel.create({ userId: user._id, verificationCode: code, expiresAt });
 
   await sendEmail(
     email,
@@ -115,31 +93,25 @@ Smart College Team`
   SuccessResponse(res, { message: "Reset code sent to your email" }, 200);
 };
 
-// 2️⃣ التحقق من الكود
+
+// ✅ Verify Reset Code
 export const verifyResetCode = async (req: Request, res: Response) => {
   const { email, code } = req.body;
 
-  // ✅ 1. دور على اليوزر
   const user = await UserModel.findOne({ email });
   if (!user) throw new NotFound("User not found");
 
-  const userId = user._id;
-  // ✅ 2. دور على الكود باستخدام user._id
-  const record = await EmailVerificationModel.findOne({ userId});
+  const record = await EmailVerificationModel.findOne({ userId: user._id });
   if (!record) throw new BadRequest("No reset code found");
 
-  // ✅ 3. تحقق من الكود
   if (record.verificationCode !== code) throw new BadRequest("Invalid code");
-
-  // ✅ 4. تحقق من الصلاحية
   if (record.expiresAt < new Date()) throw new BadRequest("Code expired");
 
-
-  // ✅ 5. رجّع رد النجاح
   SuccessResponse(res, { message: "Reset code verified successfully" }, 200);
 };
 
-// 3️⃣ إعادة تعيين كلمة المرور
+
+// ✅ Reset Password
 export const resetPassword = async (req: Request, res: Response) => {
   const { email, newPassword } = req.body;
 
@@ -149,38 +121,34 @@ export const resetPassword = async (req: Request, res: Response) => {
   const record = await EmailVerificationModel.findOne({ userId: user._id });
   if (!record) throw new BadRequest("No reset code found");
 
-  // تحديث الباسورد
   user.password = await bcrypt.hash(newPassword, 10);
   await user.save();
 
-  // حذف سجل التحقق
   await EmailVerificationModel.deleteOne({ userId: user._id });
-const token = generateToken(user, "user");
 
-  SuccessResponse(
-    res,
-    {
-      message: "Login Successful",
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        level: user.level,
-        department: user.department,
-      },
+  const token = generateToken(user, "user");
+
+  SuccessResponse(res, {
+    message: "Password reset successfully",
+    token,
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      level: user.level,
+      department: user.department,
     },
-    200
-  );};
+  }, 200);
+};
 
+
+// ✅ Complete Profile (Graduated)
 export const completeProfile = async (req: Request, res: Response) => {
+  const { userId, role, graduatedData } = req.body;
 
-  const { userId,role, graduatedData } = req.body; 
-
-  if (!role || !["Student", "Graduated"].includes(role)) {
+  if (!role || !["Student", "Graduated"].includes(role))
     return res.status(400).json({ message: "Invalid role provided" });
-  }
 
   const user = await UserModel.findById(userId);
   if (!user) return res.status(404).json({ message: "User not found" });
@@ -190,27 +158,20 @@ export const completeProfile = async (req: Request, res: Response) => {
 
   if (role === "Graduated" && graduatedData) {
     let graduated = await GraduatedModel.findOne({ user: user._id });
-    if (!graduated) {
-      graduated = await GraduatedModel.create({
-        user: user._id,
-        ...graduatedData,
-      });
-    } else {
+    if (!graduated)
+      graduated = await GraduatedModel.create({ user: user._id, ...graduatedData });
+    else {
       Object.assign(graduated, graduatedData);
       await graduated.save();
     }
   }
 
-  const { password, ...userData } = user.toObject();
-
-  SuccessResponse(res,"complete profile successfuly")
+  SuccessResponse(res, "complete profile successfully");
 };
 
 
-
-
-
-export const completeProfileStudent = async (req: Request, res: Response) => {
+// ✅ Complete Profile (Student)
+export const completeProfileStudent = async (req: AuthenticatedRequest, res: Response) => {
   if (!req.user) throw new UnauthorizedError("User not found");
 
   const { department, level } = req.body;
@@ -220,21 +181,15 @@ export const completeProfileStudent = async (req: Request, res: Response) => {
   const user = await UserModel.findById(req.user.id);
   if (!user) throw new NotFound("User not found");
 
-  if (user.role !== "Student") {
-    throw new BadRequest("Only students can complete student profile");
-  }
-
-  // 🛑 تحقق إذا كان البروفايل مكتمل بالفعل
-  if (!user.isNew) {
-    throw new BadRequest("Profile already completed");
-  }
+  if (user.role !== "Student") throw new BadRequest("Only students can complete student profile");
+  if (!user.isNew) throw new BadRequest("Profile already completed");
 
   user.department = department;
   user.level = level;
   user.isNew = false;
   await user.save();
 
-  return SuccessResponse(res, {
+  SuccessResponse(res, {
     message: "Profile completed successfully",
     user: {
       _id: user._id,
@@ -242,20 +197,19 @@ export const completeProfileStudent = async (req: Request, res: Response) => {
       email: user.email,
       role: user.role,
       level: user.level,
-      department: user.department
-    }
+      department: user.department,
+    },
   });
 };
 
 
-// ✅ Get profile
-export const getProfile = async (req: Request, res: Response) => {
+// ✅ Get Profile
+export const getProfile = async (req: AuthenticatedRequest, res: Response) => {
   if (!req.user) throw new UnauthorizedError("Unauthorized");
 
   const user = await UserModel.findById(req.user.id).select("-password");
   if (!user) throw new NotFound("User not found");
 
-  // لو المستخدم خريج → هات بياناته من GraduatedModel كمان
   let graduated = null;
   if (user.role === "Graduated") {
     graduated = await GraduatedModel.findOne({ user: user._id });
@@ -264,25 +218,24 @@ export const getProfile = async (req: Request, res: Response) => {
   SuccessResponse(res, { user, graduated }, 200);
 };
 
-// ✅ Delete profile
-export const deleteProfile = async (req: Request, res: Response) => {
+
+// ✅ Delete Profile
+export const deleteProfile = async (req: AuthenticatedRequest, res: Response) => {
   if (!req.user) throw new UnauthorizedError("Unauthorized");
 
   const user = await UserModel.findById(req.user.id);
   if (!user) throw new NotFound("User not found");
 
-  // لو خريج → احذف بيانات الخريج كمان
   if (user.role === "Graduated") {
     await GraduatedModel.findOneAndDelete({ user: user._id });
   }
 
   await user.deleteOne();
-
   SuccessResponse(res, { message: "User deleted successfully" }, 200);
 };
 
 
-// ✅ Signup
+// ✅ Signup (مع رفع الصورة إلى Cloudinary)
 export const signup = async (req: Request, res: Response) => {
   const { name, email, password, role, BaseImage64, graduatedData, level, department } = req.body;
 
@@ -293,7 +246,10 @@ export const signup = async (req: Request, res: Response) => {
 
   let imageUrl = "";
   if (BaseImage64) {
-    imageUrl = await saveBase64Image(BaseImage64, "users", new mongoose.Types.ObjectId().toString());
+    const imageData = BaseImage64.startsWith("data:")
+      ? BaseImage64
+      : `data:image/png;base64,${BaseImage64}`;
+    imageUrl = await saveBase64Image(imageData, "graduates/users", new mongoose.Types.ObjectId().toString());
   }
 
   const userData: any = {
@@ -344,6 +300,7 @@ Your verification code is: ${code}
   SuccessResponse(res, { message: "Signup successful, check your email for code", userId: newUser._id }, 201);
 };
 
+
 // ✅ Verify Email
 export const verifyEmail = async (req: Request, res: Response) => {
   const { userId, code } = req.body;
@@ -362,10 +319,11 @@ export const verifyEmail = async (req: Request, res: Response) => {
 
   const token = generateToken(user, "user");
 
-  return SuccessResponse(res, { message: "Email verified successfully", token, user }, 200);
+  SuccessResponse(res, { message: "Email verified successfully", token, user }, 200);
 };
 
-// ✅ Update profile image
+
+// ✅ Update Profile Image (Cloudinary)
 export const updateProfileImage = async (req: AuthenticatedRequest, res: Response) => {
   if (!req.user) throw new UnauthorizedError("User not found");
 
@@ -375,14 +333,19 @@ export const updateProfileImage = async (req: AuthenticatedRequest, res: Respons
   const user = await UserModel.findById(req.user.id);
   if (!user) throw new NotFound("User not found");
 
-  const imageUrl = await saveBase64Image(BaseImage64, "profile_images", user._id.toString());
+  const imageData = BaseImage64.startsWith("data:")
+    ? BaseImage64
+    : `data:image/png;base64,${BaseImage64}`;
+  const imageUrl = await saveBase64Image(imageData, "graduates/profile_images", user._id.toString());
+
   user.BaseImage64 = imageUrl;
   await user.save();
 
   SuccessResponse(res, { message: "Profile image updated successfully", imageUrl }, 200);
 };
 
-// ✅ Update profile
+
+// ✅ Update Profile
 export const updateProfile = async (req: AuthenticatedRequest, res: Response) => {
   if (!req.user) throw new UnauthorizedError("Unauthorized");
 
@@ -392,7 +355,10 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response) =>
   if (!user) throw new NotFound("User not found");
 
   if (BaseImage64) {
-    const imageUrl = await saveBase64Image(BaseImage64, "users", user._id.toString());
+    const imageData = BaseImage64.startsWith("data:")
+      ? BaseImage64
+      : `data:image/png;base64,${BaseImage64}`;
+    const imageUrl = await saveBase64Image(imageData, "graduates/users", user._id.toString());
     user.BaseImage64 = imageUrl;
   }
 
@@ -402,9 +368,9 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response) =>
 
   if (user.role === "Graduated" && graduatedData) {
     const graduated = await GraduatedModel.findOne({ user: user._id });
-    if (!graduated) {
+    if (!graduated)
       await GraduatedModel.create({ user: user._id, ...graduatedData });
-    } else {
+    else {
       Object.assign(graduated, graduatedData);
       await graduated.save();
     }

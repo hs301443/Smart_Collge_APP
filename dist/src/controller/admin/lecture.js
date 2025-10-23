@@ -12,11 +12,10 @@ const createLecture = async (req, res) => {
         throw new BadRequest_1.BadRequest("Required fields are missing");
     }
     let iconUrl = "";
-    if (iconBase64) {
-        // ✅ رفع الأيقونة إلى Cloudinary
-        iconUrl = await (0, handleImages_1.saveBase64Image)(iconBase64, "lectures/icons", Date.now().toString());
+    if (iconBase64 && iconBase64.startsWith("data:image")) {
+        iconUrl = await (0, handleImages_1.saveBase64Image)(iconBase64, "damanhour/lectures/icons", Date.now().toString());
     }
-    const lecture = new lecture_1.LectureModel({
+    const lecture = await lecture_1.LectureModel.create({
         sub_name,
         level,
         department,
@@ -24,7 +23,6 @@ const createLecture = async (req, res) => {
         title,
         icon: iconUrl,
     });
-    await lecture.save();
     return (0, response_1.SuccessResponse)(res, lecture, 201);
 };
 exports.createLecture = createLecture;
@@ -34,14 +32,13 @@ const uploadLecturePDF = async (req, res) => {
     if (!lecture)
         throw new Errors_1.NotFound("Lecture not found");
     const files = req.files;
-    if (!files || files.length === 0)
-        throw new BadRequest_1.BadRequest("No PDFs uploaded");
-    // ✅ رفع كل ملف PDF إلى Cloudinary
+    if (!files?.length)
+        throw new BadRequest_1.BadRequest("No PDF files uploaded");
     for (const file of files) {
-        const result = await (0, handleImages_1.uploadFileToCloudinary)(file.path, "lectures/pdfs");
+        const pdfUrl = await (0, handleImages_1.uploadFileToCloudinary)(file.path, "damanhour/lectures/pdfs", "auto");
         lecture.pdfs.push({
             name: file.originalname,
-            url: result.secure_url,
+            url: pdfUrl,
         });
     }
     await lecture.save();
@@ -55,11 +52,10 @@ const uploadLectureVideo = async (req, res) => {
         throw new Errors_1.NotFound("Lecture not found");
     if (!req.file)
         throw new BadRequest_1.BadRequest("No video file uploaded");
-    // ✅ رفع الفيديو إلى Cloudinary
-    const result = await (0, handleImages_1.uploadFileToCloudinary)(req.file.path, "lectures/videos", "video");
+    const videoUrl = await (0, handleImages_1.uploadFileToCloudinary)(req.file.path, "damanhour/lectures/videos", "video");
     lecture.video = {
         name: req.file.originalname,
-        url: result.secure_url,
+        url: videoUrl,
         duration: 0,
         quality: "720p",
         uploadDate: new Date(),

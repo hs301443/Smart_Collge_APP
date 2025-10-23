@@ -15,24 +15,19 @@ const sendEmails_1 = require("../../utils/sendEmails");
 const BadRequest_1 = require("../../Errors/BadRequest");
 const mongoose_1 = __importDefault(require("mongoose"));
 const handleImages_1 = require("../../utils/handleImages");
-// login.ts
+// ✅ Login
 const login = async (req, res) => {
     const { email, password } = req.body;
-    if (!password) {
+    if (!password)
         throw new Errors_1.UnauthorizedError("Password is required");
-    }
     const user = await User_1.UserModel.findOne({ email });
-    if (!user || !user.password) {
+    if (!user || !user.password)
         throw new Errors_1.UnauthorizedError("Invalid email or password");
-    }
     const isMatch = await bcrypt_1.default.compare(password, user.password);
-    if (!isMatch) {
+    if (!isMatch)
         throw new Errors_1.UnauthorizedError("Invalid email or password");
-    }
-    if (!user.isVerified) {
+    if (!user.isVerified)
         throw new Errors_1.ForbiddenError("Verify your email first");
-    }
-    // ابعت user كامل مش object معمول له تعديل
     const token = (0, auth_1.generateToken)(user, "user");
     (0, response_1.SuccessResponse)(res, {
         message: "Login Successful",
@@ -48,20 +43,20 @@ const login = async (req, res) => {
     }, 200);
 };
 exports.login = login;
+// ✅ Get FCM Token
 const getFcmToken = async (req, res) => {
     const userId = req.user?.id;
-    if (!userId) {
+    if (!userId)
         throw new Errors_1.UnauthorizedError("User not found");
-    }
     const user = await User_1.UserModel.findById(userId);
-    if (!user) {
+    if (!user)
         throw new Errors_1.NotFound("User not found");
-    }
     user.fcmtoken = req.body.token;
     await user.save();
     (0, response_1.SuccessResponse)(res, { message: "FCM token updated successfully" }, 200);
 };
 exports.getFcmToken = getFcmToken;
+// ✅ Send Reset Code
 const sendResetCode = async (req, res) => {
     const { email } = req.body;
     const user = await User_1.UserModel.findOne({ email });
@@ -70,15 +65,9 @@ const sendResetCode = async (req, res) => {
     if (!user.isVerified)
         throw new BadRequest_1.BadRequest("User is not verified");
     const code = (0, crypto_1.randomInt)(100000, 999999).toString();
-    // حذف أي كود موجود مسبقًا
     await emailVerifications_1.EmailVerificationModel.deleteMany({ userId: user._id });
-    // إنشاء كود جديد
-    const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000); // ساعتين
-    await emailVerifications_1.EmailVerificationModel.create({
-        userId: user._id,
-        verificationCode: code,
-        expiresAt,
-    });
+    const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    await emailVerifications_1.EmailVerificationModel.create({ userId: user._id, verificationCode: code, expiresAt });
     await (0, sendEmails_1.sendEmail)(email, "Reset Password Code", `Hello ${user.name},
 
 Your password reset code is: ${code}
@@ -89,29 +78,23 @@ Smart College Team`);
     (0, response_1.SuccessResponse)(res, { message: "Reset code sent to your email" }, 200);
 };
 exports.sendResetCode = sendResetCode;
-// 2️⃣ التحقق من الكود
+// ✅ Verify Reset Code
 const verifyResetCode = async (req, res) => {
     const { email, code } = req.body;
-    // ✅ 1. دور على اليوزر
     const user = await User_1.UserModel.findOne({ email });
     if (!user)
         throw new Errors_1.NotFound("User not found");
-    const userId = user._id;
-    // ✅ 2. دور على الكود باستخدام user._id
-    const record = await emailVerifications_1.EmailVerificationModel.findOne({ userId });
+    const record = await emailVerifications_1.EmailVerificationModel.findOne({ userId: user._id });
     if (!record)
         throw new BadRequest_1.BadRequest("No reset code found");
-    // ✅ 3. تحقق من الكود
     if (record.verificationCode !== code)
         throw new BadRequest_1.BadRequest("Invalid code");
-    // ✅ 4. تحقق من الصلاحية
     if (record.expiresAt < new Date())
         throw new BadRequest_1.BadRequest("Code expired");
-    // ✅ 5. رجّع رد النجاح
     (0, response_1.SuccessResponse)(res, { message: "Reset code verified successfully" }, 200);
 };
 exports.verifyResetCode = verifyResetCode;
-// 3️⃣ إعادة تعيين كلمة المرور
+// ✅ Reset Password
 const resetPassword = async (req, res) => {
     const { email, newPassword } = req.body;
     const user = await User_1.UserModel.findOne({ email });
@@ -120,14 +103,12 @@ const resetPassword = async (req, res) => {
     const record = await emailVerifications_1.EmailVerificationModel.findOne({ userId: user._id });
     if (!record)
         throw new BadRequest_1.BadRequest("No reset code found");
-    // تحديث الباسورد
     user.password = await bcrypt_1.default.hash(newPassword, 10);
     await user.save();
-    // حذف سجل التحقق
     await emailVerifications_1.EmailVerificationModel.deleteOne({ userId: user._id });
     const token = (0, auth_1.generateToken)(user, "user");
     (0, response_1.SuccessResponse)(res, {
-        message: "Login Successful",
+        message: "Password reset successfully",
         token,
         user: {
             id: user._id,
@@ -140,11 +121,11 @@ const resetPassword = async (req, res) => {
     }, 200);
 };
 exports.resetPassword = resetPassword;
+// ✅ Complete Profile (Graduated)
 const completeProfile = async (req, res) => {
     const { userId, role, graduatedData } = req.body;
-    if (!role || !["Student", "Graduated"].includes(role)) {
+    if (!role || !["Student", "Graduated"].includes(role))
         return res.status(400).json({ message: "Invalid role provided" });
-    }
     const user = await User_1.UserModel.findById(userId);
     if (!user)
         return res.status(404).json({ message: "User not found" });
@@ -152,21 +133,17 @@ const completeProfile = async (req, res) => {
     await user.save();
     if (role === "Graduated" && graduatedData) {
         let graduated = await User_1.GraduatedModel.findOne({ user: user._id });
-        if (!graduated) {
-            graduated = await User_1.GraduatedModel.create({
-                user: user._id,
-                ...graduatedData,
-            });
-        }
+        if (!graduated)
+            graduated = await User_1.GraduatedModel.create({ user: user._id, ...graduatedData });
         else {
             Object.assign(graduated, graduatedData);
             await graduated.save();
         }
     }
-    const { password, ...userData } = user.toObject();
-    (0, response_1.SuccessResponse)(res, "complete profile successfuly");
+    (0, response_1.SuccessResponse)(res, "complete profile successfully");
 };
 exports.completeProfile = completeProfile;
+// ✅ Complete Profile (Student)
 const completeProfileStudent = async (req, res) => {
     if (!req.user)
         throw new Errors_1.UnauthorizedError("User not found");
@@ -178,18 +155,15 @@ const completeProfileStudent = async (req, res) => {
     const user = await User_1.UserModel.findById(req.user.id);
     if (!user)
         throw new Errors_1.NotFound("User not found");
-    if (user.role !== "Student") {
+    if (user.role !== "Student")
         throw new BadRequest_1.BadRequest("Only students can complete student profile");
-    }
-    // 🛑 تحقق إذا كان البروفايل مكتمل بالفعل
-    if (!user.isNew) {
+    if (!user.isNew)
         throw new BadRequest_1.BadRequest("Profile already completed");
-    }
     user.department = department;
     user.level = level;
     user.isNew = false;
     await user.save();
-    return (0, response_1.SuccessResponse)(res, {
+    (0, response_1.SuccessResponse)(res, {
         message: "Profile completed successfully",
         user: {
             _id: user._id,
@@ -197,19 +171,18 @@ const completeProfileStudent = async (req, res) => {
             email: user.email,
             role: user.role,
             level: user.level,
-            department: user.department
-        }
+            department: user.department,
+        },
     });
 };
 exports.completeProfileStudent = completeProfileStudent;
-// ✅ Get profile
+// ✅ Get Profile
 const getProfile = async (req, res) => {
     if (!req.user)
         throw new Errors_1.UnauthorizedError("Unauthorized");
     const user = await User_1.UserModel.findById(req.user.id).select("-password");
     if (!user)
         throw new Errors_1.NotFound("User not found");
-    // لو المستخدم خريج → هات بياناته من GraduatedModel كمان
     let graduated = null;
     if (user.role === "Graduated") {
         graduated = await User_1.GraduatedModel.findOne({ user: user._id });
@@ -217,14 +190,13 @@ const getProfile = async (req, res) => {
     (0, response_1.SuccessResponse)(res, { user, graduated }, 200);
 };
 exports.getProfile = getProfile;
-// ✅ Delete profile
+// ✅ Delete Profile
 const deleteProfile = async (req, res) => {
     if (!req.user)
         throw new Errors_1.UnauthorizedError("Unauthorized");
     const user = await User_1.UserModel.findById(req.user.id);
     if (!user)
         throw new Errors_1.NotFound("User not found");
-    // لو خريج → احذف بيانات الخريج كمان
     if (user.role === "Graduated") {
         await User_1.GraduatedModel.findOneAndDelete({ user: user._id });
     }
@@ -232,7 +204,7 @@ const deleteProfile = async (req, res) => {
     (0, response_1.SuccessResponse)(res, { message: "User deleted successfully" }, 200);
 };
 exports.deleteProfile = deleteProfile;
-// ✅ Signup
+// ✅ Signup (مع رفع الصورة إلى Cloudinary)
 const signup = async (req, res) => {
     const { name, email, password, role, BaseImage64, graduatedData, level, department } = req.body;
     const existing = await User_1.UserModel.findOne({ email });
@@ -241,7 +213,10 @@ const signup = async (req, res) => {
     const hashedPassword = await bcrypt_1.default.hash(password, 10);
     let imageUrl = "";
     if (BaseImage64) {
-        imageUrl = await (0, handleImages_1.saveBase64Image)(BaseImage64, "users", new mongoose_1.default.Types.ObjectId().toString());
+        const imageData = BaseImage64.startsWith("data:")
+            ? BaseImage64
+            : `data:image/png;base64,${BaseImage64}`;
+        imageUrl = await (0, handleImages_1.saveBase64Image)(imageData, "graduates/users", new mongoose_1.default.Types.ObjectId().toString());
     }
     const userData = {
         name,
@@ -297,10 +272,10 @@ const verifyEmail = async (req, res) => {
         throw new Errors_1.NotFound("User not found");
     await emailVerifications_1.EmailVerificationModel.deleteOne({ userId });
     const token = (0, auth_1.generateToken)(user, "user");
-    return (0, response_1.SuccessResponse)(res, { message: "Email verified successfully", token, user }, 200);
+    (0, response_1.SuccessResponse)(res, { message: "Email verified successfully", token, user }, 200);
 };
 exports.verifyEmail = verifyEmail;
-// ✅ Update profile image
+// ✅ Update Profile Image (Cloudinary)
 const updateProfileImage = async (req, res) => {
     if (!req.user)
         throw new Errors_1.UnauthorizedError("User not found");
@@ -310,13 +285,16 @@ const updateProfileImage = async (req, res) => {
     const user = await User_1.UserModel.findById(req.user.id);
     if (!user)
         throw new Errors_1.NotFound("User not found");
-    const imageUrl = await (0, handleImages_1.saveBase64Image)(BaseImage64, "profile_images", user._id.toString());
+    const imageData = BaseImage64.startsWith("data:")
+        ? BaseImage64
+        : `data:image/png;base64,${BaseImage64}`;
+    const imageUrl = await (0, handleImages_1.saveBase64Image)(imageData, "graduates/profile_images", user._id.toString());
     user.BaseImage64 = imageUrl;
     await user.save();
     (0, response_1.SuccessResponse)(res, { message: "Profile image updated successfully", imageUrl }, 200);
 };
 exports.updateProfileImage = updateProfileImage;
-// ✅ Update profile
+// ✅ Update Profile
 const updateProfile = async (req, res) => {
     if (!req.user)
         throw new Errors_1.UnauthorizedError("Unauthorized");
@@ -325,7 +303,10 @@ const updateProfile = async (req, res) => {
     if (!user)
         throw new Errors_1.NotFound("User not found");
     if (BaseImage64) {
-        const imageUrl = await (0, handleImages_1.saveBase64Image)(BaseImage64, "users", user._id.toString());
+        const imageData = BaseImage64.startsWith("data:")
+            ? BaseImage64
+            : `data:image/png;base64,${BaseImage64}`;
+        const imageUrl = await (0, handleImages_1.saveBase64Image)(imageData, "graduates/users", user._id.toString());
         user.BaseImage64 = imageUrl;
     }
     if (name)
@@ -336,9 +317,8 @@ const updateProfile = async (req, res) => {
         user.level = level;
     if (user.role === "Graduated" && graduatedData) {
         const graduated = await User_1.GraduatedModel.findOne({ user: user._id });
-        if (!graduated) {
+        if (!graduated)
             await User_1.GraduatedModel.create({ user: user._id, ...graduatedData });
-        }
         else {
             Object.assign(graduated, graduatedData);
             await graduated.save();

@@ -13,12 +13,15 @@ export const createLecture = async (req: Request, res: Response) => {
   }
 
   let iconUrl = "";
-  if (iconBase64) {
-    // ✅ رفع الأيقونة إلى Cloudinary
-    iconUrl = await saveBase64Image(iconBase64, "lectures/icons", Date.now().toString());
+  if (iconBase64 && iconBase64.startsWith("data:image")) {
+    iconUrl = await saveBase64Image(
+      iconBase64,
+      "damanhour/lectures/icons",
+      Date.now().toString()
+    );
   }
 
-  const lecture = new LectureModel({
+  const lecture = await LectureModel.create({
     sub_name,
     level,
     department,
@@ -27,7 +30,6 @@ export const createLecture = async (req: Request, res: Response) => {
     icon: iconUrl,
   });
 
-  await lecture.save();
   return SuccessResponse(res, lecture, 201);
 };
 
@@ -38,14 +40,13 @@ export const uploadLecturePDF = async (req: Request, res: Response) => {
   if (!lecture) throw new NotFound("Lecture not found");
 
   const files = req.files as Express.Multer.File[];
-  if (!files || files.length === 0) throw new BadRequest("No PDFs uploaded");
+  if (!files?.length) throw new BadRequest("No PDF files uploaded");
 
-  // ✅ رفع كل ملف PDF إلى Cloudinary
   for (const file of files) {
-    const result = await uploadFileToCloudinary(file.path, "lectures/pdfs");
+    const pdfUrl = await uploadFileToCloudinary(file.path, "damanhour/lectures/pdfs", "auto");
     lecture.pdfs.push({
       name: file.originalname,
-      url: result.secure_url,
+      url: pdfUrl,
     });
   }
 
@@ -61,12 +62,15 @@ export const uploadLectureVideo = async (req: Request, res: Response) => {
 
   if (!req.file) throw new BadRequest("No video file uploaded");
 
-  // ✅ رفع الفيديو إلى Cloudinary
-  const result = await uploadFileToCloudinary(req.file.path, "lectures/videos", "video");
+  const videoUrl = await uploadFileToCloudinary(
+    req.file.path,
+    "damanhour/lectures/videos",
+    "video"
+  );
 
   lecture.video = {
     name: req.file.originalname,
-    url: result.secure_url,
+    url: videoUrl,
     duration: 0,
     quality: "720p",
     uploadDate: new Date(),
