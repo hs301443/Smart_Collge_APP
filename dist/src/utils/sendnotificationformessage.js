@@ -17,7 +17,7 @@ const sendNotification = async (token, title, body) => {
         return response;
     }
     catch (error) {
-        console.error("❌ Error sending notification:", error);
+        console.error(" Error sending notification:", error);
     }
 };
 exports.sendNotification = sendNotification;
