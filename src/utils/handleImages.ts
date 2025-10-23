@@ -5,9 +5,9 @@ dotenv.config();
 
 // ✅ إعداد Cloudinary
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || "diubywm4o",
-  api_key: process.env.CLOUDINARY_API_KEY || "335626385153357",
-  api_secret: process.env.CLOUDINARY_API_SECRET || "mHdq6I40G1Ivsqy_QfPCnfG6gIY",
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY ,
+  api_secret: process.env.CLOUDINARY_API_SECRET ,
 });
 
 // ✅ رفع صورة Base64 إلى Cloudinary
