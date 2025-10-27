@@ -118,8 +118,8 @@ export function initChatSocket(io: Server) {
 
         const populatedMsg = await msg.populate("sender");
 
-        // ابعت الرسالة لكل الـ sockets في الغرفة
-        io.to(`chat_${chat._id}`).emit("message", populatedMsg);
+        // ✅ حل مشكلة 'chat' is possibly 'null'
+        io.to(`chat_${chat!._id}`).emit("message", populatedMsg);
 
         // 🔔 FCM Notification باسم المرسل
         let targetToken: string | null = null;
@@ -138,7 +138,7 @@ export function initChatSocket(io: Server) {
           await messaging.send({
             token: targetToken,
             notification: {
-              title: senderName,  
+              title: senderName,
               body: populatedMsg.content,
             },
             data: {

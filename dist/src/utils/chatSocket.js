@@ -109,7 +109,7 @@ function initChatSocket(io) {
                     readBy: [user._id],
                 });
                 const populatedMsg = await msg.populate("sender");
-                // ابعت الرسالة لكل الـ sockets في الغرفة
+                // ✅ حل مشكلة 'chat' is possibly 'null'
                 io.to(`chat_${chat._id}`).emit("message", populatedMsg);
                 // 🔔 FCM Notification باسم المرسل
                 let targetToken = null;
