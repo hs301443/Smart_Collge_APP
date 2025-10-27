@@ -34,18 +34,28 @@ export const login = async (req: Request, res: Response) => {
 
   const token = generateToken(user, "user");
 
-  SuccessResponse(res, {
-    message: "Login Successful",
-    token,
-    user: {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      level: user.level,
-      department: user.department,
+  // تجهيز بيانات المستخدم حسب الدور
+  const userData: any = {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+  };
+
+  if (user.role === "Student") {
+    userData.level = user.level;
+    userData.department = user.department;
+  }
+
+  SuccessResponse(
+    res,
+    {
+      message: "Login Successful",
+      token,
+      user: userData,
     },
-  }, 200);
+    200
+  );
 };
 
 

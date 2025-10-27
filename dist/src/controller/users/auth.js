@@ -29,17 +29,21 @@ const login = async (req, res) => {
     if (!user.isVerified)
         throw new Errors_1.ForbiddenError("Verify your email first");
     const token = (0, auth_1.generateToken)(user, "user");
+    // تجهيز بيانات المستخدم حسب الدور
+    const userData = {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+    };
+    if (user.role === "Student") {
+        userData.level = user.level;
+        userData.department = user.department;
+    }
     (0, response_1.SuccessResponse)(res, {
         message: "Login Successful",
         token,
-        user: {
-            id: user._id,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            level: user.level,
-            department: user.department,
-        },
+        user: userData,
     }, 200);
 };
 exports.login = login;
