@@ -6,6 +6,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.updateProfile = exports.updateProfileImage = exports.verifyEmail = exports.signup = exports.deleteProfile = exports.getProfile = exports.completeProfileStudent = exports.completeProfile = exports.resetPassword = exports.verifyResetCode = exports.sendResetCode = exports.getFcmToken = exports.login = void 0;
 const emailVerifications_1 = require("../../models/shema/auth/emailVerifications");
 const User_1 = require("../../models/shema/auth/User");
+const cloudinary_1 = __importDefault(require("../../config/cloudinary"));
+const fs_1 = __importDefault(require("fs"));
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const response_1 = require("../../utils/response");
 const crypto_1 = require("crypto");
@@ -211,10 +213,13 @@ exports.deleteProfile = deleteProfile;
 // ✅ Signup (مع رفع الصورة إلى Cloudinary)
 const signup = async (req, res) => {
     const { name, email, password, role, BaseImage64, graduatedData, level, department } = req.body;
+    // 🧩 تحقق من وجود المستخدم مسبقًا
     const existing = await User_1.UserModel.findOne({ email });
     if (existing)
         throw new Errors_1.UniqueConstrainError("Email", "User already signed up with this email");
+    // 🔒 تشفير الباسورد
     const hashedPassword = await bcrypt_1.default.hash(password, 10);
+    // 🖼️ رفع الصورة الشخصية (اختياري)
     let imageUrl = "";
     if (BaseImage64) {
         const imageData = BaseImage64.startsWith("data:")
@@ -222,6 +227,7 @@ const signup = async (req, res) => {
             : `data:image/png;base64,${BaseImage64}`;
         imageUrl = await (0, handleImages_1.saveBase64Image)(imageData, "graduates/users", new mongoose_1.default.Types.ObjectId().toString());
     }
+    // 🧾 إعداد بيانات المستخدم
     const userData = {
         name,
         email,
@@ -237,15 +243,32 @@ const signup = async (req, res) => {
     }
     const newUser = new User_1.UserModel(userData);
     await newUser.save();
-    if (role === "Graduated" && graduatedData) {
+    // 🎓 لو المستخدم خريج (Graduated)
+    if (role === "Graduated") {
+        let cvUrl = "";
+        // 📎 رفع الـ CV لو الملف موجود
+        if (req.file) {
+            try {
+                const result = await cloudinary_1.default.uploader.upload(req.file.path, {
+                    folder: "graduates/cv",
+                    resource_type: "raw", // لأن الملف PDF
+                });
+                cvUrl = result.secure_url;
+            }
+            catch (err) {
+                console.error("Error uploading CV:", err);
+            }
+        }
         await User_1.GraduatedModel.create({
             user: newUser._id,
             name: newUser.name,
             email: newUser.email,
             BaseImage64: newUser.BaseImage64,
-            ...graduatedData,
+            cv: cvUrl || null,
+            ...(graduatedData ? graduatedData : {}),
         });
     }
+    // ✉️ إنشاء كود التفعيل وإرساله عبر البريد
     const code = (0, crypto_1.randomInt)(100000, 999999).toString();
     const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
     await new emailVerifications_1.EmailVerificationModel({
@@ -256,7 +279,10 @@ const signup = async (req, res) => {
     await (0, sendEmails_1.sendEmail)(email, "Verify Your Email", `Hello ${name},
 Your verification code is: ${code}
 (This code is valid for 2 hours only)`);
-    (0, response_1.SuccessResponse)(res, { message: "Signup successful, check your email for code", userId: newUser._id }, 201);
+    (0, response_1.SuccessResponse)(res, {
+        message: "Signup successful, check your email for code",
+        userId: newUser._id,
+    }, 201);
 };
 exports.signup = signup;
 // ✅ Verify Email
@@ -301,58 +327,55 @@ exports.updateProfileImage = updateProfileImage;
 const updateProfile = async (req, res) => {
     if (!req.user)
         throw new Errors_1.UnauthorizedError("Unauthorized");
-    const { name, email, BaseImage64, department, level, graduatedData } = req.body;
-    // 🔍 البحث عن المستخدم
+    const { name, email, department, level, graduatedData } = req.body;
+    const file = req.file; // 👈 multer هيسلم هنا ملف الـ CV
     const user = await User_1.UserModel.findById(req.user.id);
     if (!user)
         throw new Errors_1.NotFound("User not found");
-    // 🖼️ تحديث الصورة لو موجودة
-    if (BaseImage64) {
-        try {
-            const imageData = BaseImage64.startsWith("data:")
-                ? BaseImage64
-                : `data:image/png;base64,${BaseImage64}`;
-            const imageUrl = await (0, handleImages_1.saveBase64Image)(imageData, "graduates/users", user._id.toString());
-            user.BaseImage64 = imageUrl;
-        }
-        catch (error) {
-            console.error("Error uploading image:", error);
-        }
-    }
-    // ✏️ تحديث الاسم والبريد (مشترك بين الكل)
+    // 🧾 تعديل بيانات المستخدم
     if (name)
         user.name = name;
     if (email)
         user.email = email;
-    // 👨‍🎓 لو المستخدم Student فقط
+    // 👨‍🎓 لو طالب
     if (user.role === "Student") {
         if (department)
             user.department = department;
         if (level)
             user.level = level;
     }
-    // 🎓 لو المستخدم Graduated فقط
-    if (user.role === "Graduated" && graduatedData) {
+    // 🎓 لو خريج
+    if (user.role === "Graduated") {
         let graduated = await User_1.GraduatedModel.findOne({ user: user._id });
         if (!graduated) {
-            graduated = new User_1.GraduatedModel({
-                user: user._id,
-                ...graduatedData,
-            });
+            graduated = new User_1.GraduatedModel({ user: user._id });
         }
-        else {
+        if (graduatedData && typeof graduatedData === "object") {
             Object.assign(graduated, graduatedData);
+        }
+        // 🗂️ لو فيه ملف CV مرفوع
+        if (file) {
+            try {
+                const uploadResult = await cloudinary_1.default.uploader.upload(file.path, {
+                    folder: "graduates/cv",
+                    resource_type: "raw", // علشان Cloudinary يعرف إنه ملف PDF/Word مش صورة
+                });
+                graduated.cv = uploadResult.secure_url;
+                fs_1.default.unlinkSync(file.path); // حذف النسخة المحلية بعد الرفع
+            }
+            catch (error) {
+                console.error("Error uploading CV:", error);
+            }
         }
         await graduated.save();
     }
     await user.save();
-    // 📦 تجهيز البيانات للإرسال حسب النوع
+    // 📦 تجهيز الاستجابة
     const responseUser = {
         _id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
-        BaseImage64: user.BaseImage64,
     };
     if (user.role === "Student") {
         responseUser.department = user.department;
@@ -361,7 +384,7 @@ const updateProfile = async (req, res) => {
     if (user.role === "Graduated") {
         responseUser.graduatedData = await User_1.GraduatedModel.findOne({ user: user._id });
     }
-    return (0, response_1.SuccessResponse)(res, {
+    (0, response_1.SuccessResponse)(res, {
         message: "Profile updated successfully",
         user: responseUser,
     });

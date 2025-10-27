@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import { EmailVerificationModel } from "../../models/shema/auth/emailVerifications";
 import { GraduatedModel, UserModel } from "../../models/shema/auth/User";
+import cloudinary from "../../config/cloudinary";
+import fs from "fs";
 import bcrypt from "bcrypt";
 import { SuccessResponse } from "../../utils/response";
 import { randomInt } from "crypto";
@@ -249,19 +251,27 @@ export const deleteProfile = async (req: AuthenticatedRequest, res: Response) =>
 export const signup = async (req: Request, res: Response) => {
   const { name, email, password, role, BaseImage64, graduatedData, level, department } = req.body;
 
+  // 🧩 تحقق من وجود المستخدم مسبقًا
   const existing = await UserModel.findOne({ email });
   if (existing) throw new UniqueConstrainError("Email", "User already signed up with this email");
 
+  // 🔒 تشفير الباسورد
   const hashedPassword = await bcrypt.hash(password, 10);
 
+  // 🖼️ رفع الصورة الشخصية (اختياري)
   let imageUrl = "";
   if (BaseImage64) {
     const imageData = BaseImage64.startsWith("data:")
       ? BaseImage64
       : `data:image/png;base64,${BaseImage64}`;
-    imageUrl = await saveBase64Image(imageData, "graduates/users", new mongoose.Types.ObjectId().toString());
+    imageUrl = await saveBase64Image(
+      imageData,
+      "graduates/users",
+      new mongoose.Types.ObjectId().toString()
+    );
   }
 
+  // 🧾 إعداد بيانات المستخدم
   const userData: any = {
     name,
     email,
@@ -280,16 +290,34 @@ export const signup = async (req: Request, res: Response) => {
   const newUser = new UserModel(userData);
   await newUser.save();
 
-  if (role === "Graduated" && graduatedData) {
+  // 🎓 لو المستخدم خريج (Graduated)
+  if (role === "Graduated") {
+    let cvUrl = "";
+
+    // 📎 رفع الـ CV لو الملف موجود
+    if (req.file) {
+      try {
+        const result = await cloudinary.uploader.upload(req.file.path, {
+          folder: "graduates/cv",
+          resource_type: "raw", // لأن الملف PDF
+        });
+        cvUrl = result.secure_url;
+      } catch (err) {
+        console.error("Error uploading CV:", err);
+      }
+    }
+
     await GraduatedModel.create({
       user: newUser._id,
       name: newUser.name,
       email: newUser.email,
       BaseImage64: newUser.BaseImage64,
-      ...graduatedData,
+      cv: cvUrl || null,
+      ...(graduatedData ? graduatedData : {}),
     });
   }
 
+  // ✉️ إنشاء كود التفعيل وإرساله عبر البريد
   const code = randomInt(100000, 999999).toString();
   const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
 
@@ -307,9 +335,11 @@ Your verification code is: ${code}
 (This code is valid for 2 hours only)`
   );
 
-  SuccessResponse(res, { message: "Signup successful, check your email for code", userId: newUser._id }, 201);
+  SuccessResponse(res, {
+    message: "Signup successful, check your email for code",
+    userId: newUser._id,
+  }, 201);
 };
-
 
 // ✅ Verify Email
 export const verifyEmail = async (req: Request, res: Response) => {
@@ -358,50 +388,45 @@ export const updateProfileImage = async (req: AuthenticatedRequest, res: Respons
 export const updateProfile = async (req: AuthenticatedRequest, res: Response) => {
   if (!req.user) throw new UnauthorizedError("Unauthorized");
 
-  const { name, email, BaseImage64, department, level, graduatedData } = req.body;
+  const { name, email, department, level, graduatedData } = req.body;
+  const file = req.file; // 👈 multer هيسلم هنا ملف الـ CV
 
-  // 🔍 البحث عن المستخدم
   const user = await UserModel.findById(req.user.id);
   if (!user) throw new NotFound("User not found");
 
-  // 🖼️ تحديث الصورة لو موجودة
-  if (BaseImage64) {
-    try {
-      const imageData = BaseImage64.startsWith("data:")
-        ? BaseImage64
-        : `data:image/png;base64,${BaseImage64}`;
-      const imageUrl = await saveBase64Image(
-        imageData,
-        "graduates/users",
-        user._id.toString()
-      );
-      user.BaseImage64 = imageUrl;
-    } catch (error) {
-      console.error("Error uploading image:", error);
-    }
-  }
-
-  // ✏️ تحديث الاسم والبريد (مشترك بين الكل)
+  // 🧾 تعديل بيانات المستخدم
   if (name) user.name = name;
   if (email) user.email = email;
 
-  // 👨‍🎓 لو المستخدم Student فقط
+  // 👨‍🎓 لو طالب
   if (user.role === "Student") {
     if (department) user.department = department;
     if (level) user.level = level;
   }
 
-  // 🎓 لو المستخدم Graduated فقط
-  if (user.role === "Graduated" && graduatedData) {
+  // 🎓 لو خريج
+  if (user.role === "Graduated") {
     let graduated = await GraduatedModel.findOne({ user: user._id });
-
     if (!graduated) {
-      graduated = new GraduatedModel({
-        user: user._id,
-        ...graduatedData,
-      });
-    } else {
+      graduated = new GraduatedModel({ user: user._id });
+    }
+
+    if (graduatedData && typeof graduatedData === "object") {
       Object.assign(graduated, graduatedData);
+    }
+
+    // 🗂️ لو فيه ملف CV مرفوع
+    if (file) {
+      try {
+        const uploadResult = await cloudinary.uploader.upload(file.path, {
+          folder: "graduates/cv",
+          resource_type: "raw", // علشان Cloudinary يعرف إنه ملف PDF/Word مش صورة
+        });
+        graduated.cv = uploadResult.secure_url;
+        fs.unlinkSync(file.path); // حذف النسخة المحلية بعد الرفع
+      } catch (error) {
+        console.error("Error uploading CV:", error);
+      }
     }
 
     await graduated.save();
@@ -409,13 +434,12 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response) =>
 
   await user.save();
 
-  // 📦 تجهيز البيانات للإرسال حسب النوع
+  // 📦 تجهيز الاستجابة
   const responseUser: any = {
     _id: user._id,
     name: user.name,
     email: user.email,
     role: user.role,
-    BaseImage64: user.BaseImage64,
   };
 
   if (user.role === "Student") {
@@ -427,7 +451,7 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response) =>
     responseUser.graduatedData = await GraduatedModel.findOne({ user: user._id });
   }
 
-  return SuccessResponse(res, {
+  SuccessResponse(res, {
     message: "Profile updated successfully",
     user: responseUser,
   });

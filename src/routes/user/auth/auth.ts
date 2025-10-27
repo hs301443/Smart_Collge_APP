@@ -4,10 +4,10 @@ import { validate } from '../../../middlewares/validation';
 import { authenticated } from '../../../middlewares/authenticated';
 import { catchAsync } from '../../../utils/catchAsync';
 import { checkResetCodeSchema, loginSchema, resetPasswordSchema, sendResetCodeSchema, signupSchema, verifyEmailSchema} from '../../../validation/user/auth';
-
+ import { uploadPDF } from '../../../utils/multer';
 const route = Router();
 
-route.post("/signup", validate(signupSchema), catchAsync(signup));
+route.post("/signup", validate(signupSchema),uploadPDF.single("cv") ,catchAsync(signup));
 route.post("/login", validate(loginSchema), catchAsync(login));
 route.post(
   "/verify-email",
@@ -23,7 +23,7 @@ route.patch("/update-image",authenticated ,catchAsync(updateProfileImage))
 route.post("/complete-student",authenticated,catchAsync(completeProfileStudent))
 route.get("/profile",authenticated, catchAsync(getProfile));
 route.delete("/delete",authenticated, catchAsync(deleteProfile));
-route.put("/update",authenticated, catchAsync(updateProfile));
+route.put("/update",authenticated, uploadPDF.single("cv") ,catchAsync(updateProfile));
 
 
 export default route;

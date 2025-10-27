@@ -6,8 +6,9 @@ const validation_1 = require("../../../middlewares/validation");
 const authenticated_1 = require("../../../middlewares/authenticated");
 const catchAsync_1 = require("../../../utils/catchAsync");
 const auth_2 = require("../../../validation/user/auth");
+const multer_1 = require("../../../utils/multer");
 const route = (0, express_1.Router)();
-route.post("/signup", (0, validation_1.validate)(auth_2.signupSchema), (0, catchAsync_1.catchAsync)(auth_1.signup));
+route.post("/signup", (0, validation_1.validate)(auth_2.signupSchema), multer_1.uploadPDF.single("cv"), (0, catchAsync_1.catchAsync)(auth_1.signup));
 route.post("/login", (0, validation_1.validate)(auth_2.loginSchema), (0, catchAsync_1.catchAsync)(auth_1.login));
 route.post("/verify-email", (0, validation_1.validate)(auth_2.verifyEmailSchema), (0, catchAsync_1.catchAsync)(auth_1.verifyEmail));
 route.post("/forgot-password", (0, validation_1.validate)(auth_2.sendResetCodeSchema), auth_1.sendResetCode);
@@ -19,5 +20,5 @@ route.patch("/update-image", authenticated_1.authenticated, (0, catchAsync_1.cat
 route.post("/complete-student", authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(auth_1.completeProfileStudent));
 route.get("/profile", authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(auth_1.getProfile));
 route.delete("/delete", authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(auth_1.deleteProfile));
-route.put("/update", authenticated_1.authenticated, (0, catchAsync_1.catchAsync)(auth_1.updateProfile));
+route.put("/update", authenticated_1.authenticated, multer_1.uploadPDF.single("cv"), (0, catchAsync_1.catchAsync)(auth_1.updateProfile));
 exports.default = route;
