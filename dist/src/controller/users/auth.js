@@ -297,48 +297,69 @@ exports.updateProfileImage = updateProfileImage;
 const updateProfile = async (req, res) => {
     if (!req.user)
         throw new Errors_1.UnauthorizedError("Unauthorized");
-    const { name, BaseImage64, department, level, graduatedData, // بيانات الخريج
-    email, } = req.body;
+    const { name, email, BaseImage64, department, level, graduatedData } = req.body;
+    // 🔍 البحث عن المستخدم
     const user = await User_1.UserModel.findById(req.user.id);
     if (!user)
         throw new Errors_1.NotFound("User not found");
-    // 🖼️ تحديث الصورة
+    // 🖼️ تحديث الصورة لو موجودة
     if (BaseImage64) {
-        const imageData = BaseImage64.startsWith("data:")
-            ? BaseImage64
-            : `data:image/png;base64,${BaseImage64}`;
-        const imageUrl = await (0, handleImages_1.saveBase64Image)(imageData, "graduates/users", user._id.toString());
-        user.BaseImage64 = imageUrl;
+        try {
+            const imageData = BaseImage64.startsWith("data:")
+                ? BaseImage64
+                : `data:image/png;base64,${BaseImage64}`;
+            const imageUrl = await (0, handleImages_1.saveBase64Image)(imageData, "graduates/users", user._id.toString());
+            user.BaseImage64 = imageUrl;
+        }
+        catch (error) {
+            console.error("Error uploading image:", error);
+        }
     }
-    // ✏️ تحديث بيانات المستخدم العامة
+    // ✏️ تحديث الاسم والبريد (مشترك بين الكل)
     if (name)
         user.name = name;
     if (email)
         user.email = email;
-    if (department)
-        user.department = department;
-    if (level)
-        user.level = level;
-    // 🎓 تحديث بيانات الخريج لو المستخدم Graduated
-    if (user.role === "Graduated") {
+    // 👨‍🎓 لو المستخدم Student فقط
+    if (user.role === "Student") {
+        if (department)
+            user.department = department;
+        if (level)
+            user.level = level;
+    }
+    // 🎓 لو المستخدم Graduated فقط
+    if (user.role === "Graduated" && graduatedData) {
         let graduated = await User_1.GraduatedModel.findOne({ user: user._id });
         if (!graduated) {
-            // إنشاء سجل جديد لو مش موجود
             graduated = new User_1.GraduatedModel({
                 user: user._id,
                 ...graduatedData,
             });
         }
-        else if (graduatedData && typeof graduatedData === "object") {
-            // تحديث البيانات الموجودة
+        else {
             Object.assign(graduated, graduatedData);
         }
         await graduated.save();
     }
     await user.save();
-    (0, response_1.SuccessResponse)(res, {
+    // 📦 تجهيز البيانات للإرسال حسب النوع
+    const responseUser = {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        BaseImage64: user.BaseImage64,
+    };
+    if (user.role === "Student") {
+        responseUser.department = user.department;
+        responseUser.level = user.level;
+    }
+    if (user.role === "Graduated") {
+        responseUser.graduatedData = await User_1.GraduatedModel.findOne({ user: user._id });
+    }
+    return (0, response_1.SuccessResponse)(res, {
         message: "Profile updated successfully",
-        user,
-    }, 200);
+        user: responseUser,
+    });
 };
 exports.updateProfile = updateProfile;
