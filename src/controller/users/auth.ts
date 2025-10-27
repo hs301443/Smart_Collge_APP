@@ -345,37 +345,62 @@ export const updateProfileImage = async (req: AuthenticatedRequest, res: Respons
 };
 
 
-// ✅ Update Profile
 export const updateProfile = async (req: AuthenticatedRequest, res: Response) => {
   if (!req.user) throw new UnauthorizedError("Unauthorized");
 
-  const { name, BaseImage64, department, level, graduatedData } = req.body;
+  const {
+    name,
+    BaseImage64,
+    department,
+    level,
+    graduatedData, // بيانات الخريج
+    email,
+  } = req.body;
 
   const user = await UserModel.findById(req.user.id);
   if (!user) throw new NotFound("User not found");
 
+  // 🖼️ تحديث الصورة
   if (BaseImage64) {
     const imageData = BaseImage64.startsWith("data:")
       ? BaseImage64
       : `data:image/png;base64,${BaseImage64}`;
-    const imageUrl = await saveBase64Image(imageData, "graduates/users", user._id.toString());
+    const imageUrl = await saveBase64Image(
+      imageData,
+      "graduates/users",
+      user._id.toString()
+    );
     user.BaseImage64 = imageUrl;
   }
 
+  // ✏️ تحديث بيانات المستخدم العامة
   if (name) user.name = name;
+  if (email) user.email = email;
   if (department) user.department = department;
   if (level) user.level = level;
 
-  if (user.role === "Graduated" && graduatedData) {
-    const graduated = await GraduatedModel.findOne({ user: user._id });
-    if (!graduated)
-      await GraduatedModel.create({ user: user._id, ...graduatedData });
-    else {
+  // 🎓 تحديث بيانات الخريج لو المستخدم Graduated
+  if (user.role === "Graduated") {
+    let graduated = await GraduatedModel.findOne({ user: user._id });
+
+    if (!graduated) {
+      // إنشاء سجل جديد لو مش موجود
+      graduated = new GraduatedModel({
+        user: user._id,
+        ...graduatedData,
+      });
+    } else if (graduatedData && typeof graduatedData === "object") {
+      // تحديث البيانات الموجودة
       Object.assign(graduated, graduatedData);
-      await graduated.save();
     }
+
+    await graduated.save();
   }
 
   await user.save();
-  SuccessResponse(res, { message: "Profile updated successfully", user }, 200);
+
+  SuccessResponse(res, {
+    message: "Profile updated successfully",
+    user,
+  }, 200);
 };
