@@ -25,7 +25,6 @@ export const createAdmin = async (req: Request, res: Response) => {
 SuccessResponse(res, {message:"Admin created successfully", admin});
 };
 
-// ✅ Get all admins with role + actions
 export const getAdmins = async (req: Request, res: Response) => {
   const admins = await AdminModel.find()
     .populate({
