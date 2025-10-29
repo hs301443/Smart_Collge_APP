@@ -240,8 +240,8 @@ exports.deleteProfile = deleteProfile;
 // ✅ Signup (مع رفع الصورة إلى Cloudinary)
 const signup = async (req, res) => {
     const { name, email, password, role, BaseImage64, level, department } = req.body;
-    // ✅ استلام بيانات الخريج من FormData مباشرة
-    const { employment_status, job_title, Company_email, Company_phone, Company_link, Company_location, about_company, } = req.body;
+    // ✅ استلام بيانات الخريج
+    const { employment_status, job_title, company_email, company_phone, company_link, company_location, about_company, } = req.body;
     // 🧩 تحقق من وجود المستخدم
     const existing = await User_1.UserModel.findOne({ email });
     if (existing)
@@ -272,10 +272,10 @@ const signup = async (req, res) => {
     }
     const newUser = new User_1.UserModel(userData);
     await newUser.save();
-    // 🎓 لو المستخدم خريج (Graduated)
+    // 🎓 لو المستخدم خريج
     if (role === "Graduated") {
         let cvUrl = "";
-        // 📎 رفع الـ CV لو الملف موجود
+        // 📎 رفع CV لو موجود
         if (req.file) {
             try {
                 const result = await cloudinary_1.default.uploader.upload(req.file.path, {
@@ -290,16 +290,13 @@ const signup = async (req, res) => {
         }
         await User_1.GraduatedModel.create({
             user: newUser._id,
-            name: newUser.name,
-            email: newUser.email,
-            BaseImage64: newUser.BaseImage64,
             cv: cvUrl || null,
             employment_status,
             job_title,
-            Company_email,
-            Company_phone,
-            Company_link,
-            Company_location,
+            company_email,
+            company_phone,
+            company_link,
+            company_location,
             about_company,
         });
     }

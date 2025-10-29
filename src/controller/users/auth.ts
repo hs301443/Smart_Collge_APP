@@ -284,14 +284,14 @@ export const deleteProfile = async (req: AuthenticatedRequest, res: Response) =>
 export const signup = async (req: Request, res: Response) => {
   const { name, email, password, role, BaseImage64, level, department } = req.body;
 
-  // ✅ استلام بيانات الخريج من FormData مباشرة
+  // ✅ استلام بيانات الخريج
   const {
     employment_status,
     job_title,
-    Company_email,
-    Company_phone,
-    Company_link,
-    Company_location,
+    company_email,
+    company_phone,
+    company_link,
+    company_location,
     about_company,
   } = req.body;
 
@@ -334,11 +334,11 @@ export const signup = async (req: Request, res: Response) => {
   const newUser = new UserModel(userData);
   await newUser.save();
 
-  // 🎓 لو المستخدم خريج (Graduated)
+  // 🎓 لو المستخدم خريج
   if (role === "Graduated") {
     let cvUrl = "";
 
-    // 📎 رفع الـ CV لو الملف موجود
+    // 📎 رفع CV لو موجود
     if (req.file) {
       try {
         const result = await cloudinary.uploader.upload(req.file.path, {
@@ -353,16 +353,13 @@ export const signup = async (req: Request, res: Response) => {
 
     await GraduatedModel.create({
       user: newUser._id,
-      name: newUser.name,
-      email: newUser.email,
-      BaseImage64: newUser.BaseImage64,
       cv: cvUrl || null,
       employment_status,
       job_title,
-      Company_email,
-      Company_phone,
-      Company_link,
-      Company_location,
+      company_email,
+      company_phone,
+      company_link,
+      company_location,
       about_company,
     });
   }
@@ -394,7 +391,6 @@ Your verification code is: ${code}
     201
   );
 };
-
 
 // ✅ Verify Email
 export const verifyEmail = async (req: Request, res: Response) => {
