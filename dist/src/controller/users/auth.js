@@ -213,23 +213,15 @@ exports.deleteProfile = deleteProfile;
 // ✅ Signup (مع رفع الصورة إلى Cloudinary)
 const signup = async (req, res) => {
     const { name, email, password, role, BaseImage64, level, department } = req.body;
-    // ✅ تحويل graduatedData من string إلى object لو جاي من FormData
-    let graduatedData = {};
-    if (req.body.graduatedData) {
-        try {
-            graduatedData = JSON.parse(req.body.graduatedData);
-        }
-        catch (err) {
-            console.error("Invalid graduatedData JSON:", err);
-        }
-    }
-    // تحقق من وجود المستخدم
+    // ✅ استلام بيانات الخريج من FormData مباشرة
+    const { employment_status, job_title, Company_email, Company_phone, Company_link, Company_location, about_company, } = req.body;
+    // 🧩 تحقق من وجود المستخدم
     const existing = await User_1.UserModel.findOne({ email });
     if (existing)
         throw new Errors_1.UniqueConstrainError("Email", "User already signed up with this email");
-    // تشفير الباسورد
+    // 🔒 تشفير الباسورد
     const hashedPassword = await bcrypt_1.default.hash(password, 10);
-    // رفع الصورة (Base64)
+    // 🖼️ رفع الصورة الشخصية (اختياري)
     let imageUrl = "";
     if (BaseImage64) {
         const imageData = BaseImage64.startsWith("data:")
@@ -237,7 +229,7 @@ const signup = async (req, res) => {
             : `data:image/png;base64,${BaseImage64}`;
         imageUrl = await (0, handleImages_1.saveBase64Image)(imageData, "graduates/users", new mongoose_1.default.Types.ObjectId().toString());
     }
-    // إعداد بيانات المستخدم
+    // 🧾 إعداد بيانات المستخدم
     const userData = {
         name,
         email,
@@ -253,9 +245,10 @@ const signup = async (req, res) => {
     }
     const newUser = new User_1.UserModel(userData);
     await newUser.save();
-    // 🎓 لو المستخدم خريج
+    // 🎓 لو المستخدم خريج (Graduated)
     if (role === "Graduated") {
         let cvUrl = "";
+        // 📎 رفع الـ CV لو الملف موجود
         if (req.file) {
             try {
                 const result = await cloudinary_1.default.uploader.upload(req.file.path, {
@@ -274,10 +267,16 @@ const signup = async (req, res) => {
             email: newUser.email,
             BaseImage64: newUser.BaseImage64,
             cv: cvUrl || null,
-            ...graduatedData, // ✅ إدخال بيانات الخريج المرسلة من الـ FormData
+            employment_status,
+            job_title,
+            Company_email,
+            Company_phone,
+            Company_link,
+            Company_location,
+            about_company,
         });
     }
-    // إرسال كود التفعيل
+    // ✉️ إرسال كود التفعيل
     const code = (0, crypto_1.randomInt)(100000, 999999).toString();
     const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
     await new emailVerifications_1.EmailVerificationModel({
