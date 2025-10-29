@@ -212,14 +212,24 @@ const deleteProfile = async (req, res) => {
 exports.deleteProfile = deleteProfile;
 // ✅ Signup (مع رفع الصورة إلى Cloudinary)
 const signup = async (req, res) => {
-    const { name, email, password, role, BaseImage64, graduatedData, level, department } = req.body;
-    // 🧩 تحقق من وجود المستخدم مسبقًا
+    const { name, email, password, role, BaseImage64, level, department } = req.body;
+    // ✅ تحويل graduatedData من string إلى object لو جاي من FormData
+    let graduatedData = {};
+    if (req.body.graduatedData) {
+        try {
+            graduatedData = JSON.parse(req.body.graduatedData);
+        }
+        catch (err) {
+            console.error("Invalid graduatedData JSON:", err);
+        }
+    }
+    // تحقق من وجود المستخدم
     const existing = await User_1.UserModel.findOne({ email });
     if (existing)
         throw new Errors_1.UniqueConstrainError("Email", "User already signed up with this email");
-    // 🔒 تشفير الباسورد
+    // تشفير الباسورد
     const hashedPassword = await bcrypt_1.default.hash(password, 10);
-    // 🖼️ رفع الصورة الشخصية (اختياري)
+    // رفع الصورة (Base64)
     let imageUrl = "";
     if (BaseImage64) {
         const imageData = BaseImage64.startsWith("data:")
@@ -227,7 +237,7 @@ const signup = async (req, res) => {
             : `data:image/png;base64,${BaseImage64}`;
         imageUrl = await (0, handleImages_1.saveBase64Image)(imageData, "graduates/users", new mongoose_1.default.Types.ObjectId().toString());
     }
-    // 🧾 إعداد بيانات المستخدم
+    // إعداد بيانات المستخدم
     const userData = {
         name,
         email,
@@ -243,15 +253,14 @@ const signup = async (req, res) => {
     }
     const newUser = new User_1.UserModel(userData);
     await newUser.save();
-    // 🎓 لو المستخدم خريج (Graduated)
+    // 🎓 لو المستخدم خريج
     if (role === "Graduated") {
         let cvUrl = "";
-        // 📎 رفع الـ CV لو الملف موجود
         if (req.file) {
             try {
                 const result = await cloudinary_1.default.uploader.upload(req.file.path, {
                     folder: "graduates/cv",
-                    resource_type: "raw", // لأن الملف PDF
+                    resource_type: "raw",
                 });
                 cvUrl = result.secure_url;
             }
@@ -265,10 +274,10 @@ const signup = async (req, res) => {
             email: newUser.email,
             BaseImage64: newUser.BaseImage64,
             cv: cvUrl || null,
-            ...(graduatedData ? graduatedData : {}),
+            ...graduatedData, // ✅ إدخال بيانات الخريج المرسلة من الـ FormData
         });
     }
-    // ✉️ إنشاء كود التفعيل وإرساله عبر البريد
+    // إرسال كود التفعيل
     const code = (0, crypto_1.randomInt)(100000, 999999).toString();
     const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
     await new emailVerifications_1.EmailVerificationModel({
