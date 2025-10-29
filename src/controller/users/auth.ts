@@ -219,15 +219,37 @@ export const completeProfileStudent = async (req: AuthenticatedRequest, res: Res
 export const getProfile = async (req: AuthenticatedRequest, res: Response) => {
   if (!req.user) throw new UnauthorizedError("Unauthorized");
 
+  // 🔍 جلب بيانات المستخدم بدون الباسورد
   const user = await UserModel.findById(req.user.id).select("-password");
   if (!user) throw new NotFound("User not found");
 
-  let graduated = null;
+  // 🎓 لو المستخدم خريج
   if (user.role === "Graduated") {
-    graduated = await GraduatedModel.findOne({ user: user._id });
+    const graduated = await GraduatedModel.findOne({ user: user._id }).lean();
+
+    if (!graduated) {
+      // لو مش لاقي بيانات الخريج
+      return SuccessResponse(res, { ...user.toObject(), graduated: null }, 200);
+    }
+
+    // دمج بيانات المستخدم + بيانات الخريج
+    const mergedProfile = {
+      ...user.toObject(),
+      cv: graduated.cv,
+      employment_status: graduated.employment_status,
+      job_title: graduated.job_title,
+      company_location: graduated.company_location,
+      company_email: graduated.company_email,
+      company_link: graduated.company_link,
+      company_phone: graduated.company_phone,
+      about_company: graduated.about_company,
+    };
+
+    return SuccessResponse(res, mergedProfile, 200);
   }
 
-  SuccessResponse(res, { user, graduated }, 200);
+  // 👨‍🎓 لو Student فقط
+  SuccessResponse(res, user, 200);
 };
 
 

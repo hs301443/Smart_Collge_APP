@@ -186,14 +186,33 @@ exports.completeProfileStudent = completeProfileStudent;
 const getProfile = async (req, res) => {
     if (!req.user)
         throw new Errors_1.UnauthorizedError("Unauthorized");
+    // 🔍 جلب بيانات المستخدم بدون الباسورد
     const user = await User_1.UserModel.findById(req.user.id).select("-password");
     if (!user)
         throw new Errors_1.NotFound("User not found");
-    let graduated = null;
+    // 🎓 لو المستخدم خريج
     if (user.role === "Graduated") {
-        graduated = await User_1.GraduatedModel.findOne({ user: user._id });
+        const graduated = await User_1.GraduatedModel.findOne({ user: user._id }).lean();
+        if (!graduated) {
+            // لو مش لاقي بيانات الخريج
+            return (0, response_1.SuccessResponse)(res, { ...user.toObject(), graduated: null }, 200);
+        }
+        // دمج بيانات المستخدم + بيانات الخريج
+        const mergedProfile = {
+            ...user.toObject(),
+            cv: graduated.cv,
+            employment_status: graduated.employment_status,
+            job_title: graduated.job_title,
+            company_location: graduated.company_location,
+            company_email: graduated.company_email,
+            company_link: graduated.company_link,
+            company_phone: graduated.company_phone,
+            about_company: graduated.about_company,
+        };
+        return (0, response_1.SuccessResponse)(res, mergedProfile, 200);
     }
-    (0, response_1.SuccessResponse)(res, { user, graduated }, 200);
+    // 👨‍🎓 لو Student فقط
+    (0, response_1.SuccessResponse)(res, user, 200);
 };
 exports.getProfile = getProfile;
 // ✅ Delete Profile
