@@ -215,11 +215,9 @@ export const completeProfileStudent = async (req: AuthenticatedRequest, res: Res
 };
 
 
-// ✅ Get Profile
 export const getProfile = async (req: AuthenticatedRequest, res: Response) => {
   if (!req.user) throw new UnauthorizedError("Unauthorized");
 
-  // 🔍 جلب بيانات المستخدم بدون الباسورد
   const user = await UserModel.findById(req.user.id).select("-password");
   if (!user) throw new NotFound("User not found");
 
@@ -227,31 +225,44 @@ export const getProfile = async (req: AuthenticatedRequest, res: Response) => {
   if (user.role === "Graduated") {
     const graduated = await GraduatedModel.findOne({ user: user._id }).lean();
 
+    // في حالة عدم وجود بيانات للخريج
     if (!graduated) {
-      // لو مش لاقي بيانات الخريج
-      return SuccessResponse(res, { ...user.toObject(), graduated: null }, 200);
+      return SuccessResponse(
+        res,
+        {
+          user: {
+            ...user.toObject(),
+            graduatedData: null,
+          },
+        },
+        200
+      );
     }
 
-    // دمج بيانات المستخدم + بيانات الخريج
+    // دمج بيانات المستخدم + بيانات الخريج بالكامل
     const mergedProfile = {
       ...user.toObject(),
-      cv: graduated.cv,
-      employment_status: graduated.employment_status,
-      job_title: graduated.job_title,
-      company_location: graduated.company_location,
-      company_email: graduated.company_email,
-      company_link: graduated.company_link,
-      company_phone: graduated.company_phone,
-      about_company: graduated.about_company,
+      graduatedData: {
+        _id: graduated._id,
+        cv: graduated.cv,
+        employment_status: graduated.employment_status,
+        job_title: graduated.job_title,
+        company_location: graduated.company_location,
+        company_email: graduated.company_email,
+        company_link: graduated.company_link,
+        company_phone: graduated.company_phone,
+        about_company: graduated.about_company,
+        createdAt: graduated.createdAt,
+        updatedAt: graduated.updatedAt,
+      },
     };
 
-    return SuccessResponse(res, mergedProfile, 200);
+    return SuccessResponse(res, { user: mergedProfile }, 200);
   }
 
   // 👨‍🎓 لو Student فقط
-  SuccessResponse(res, user, 200);
+  return SuccessResponse(res, { user }, 200);
 };
-
 
 // ✅ Delete Profile
 export const deleteProfile = async (req: AuthenticatedRequest, res: Response) => {
