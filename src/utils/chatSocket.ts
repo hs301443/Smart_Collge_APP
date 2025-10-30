@@ -45,7 +45,7 @@ export function initChatSocket(io: Server) {
     const userType = (socket as any).userType;
     const key = `${userType}:${user._id}`;
 
-    // سجل الأونلاين
+    // 🟢 سجل الأونلاين
     const set = onlineMap.get(key) ?? new Set();
     set.add(socket.id);
     onlineMap.set(key, set);
@@ -58,55 +58,62 @@ export function initChatSocket(io: Server) {
 
     console.log(`✅ ${userType} connected: ${user._id}`);
 
-    // 🎯 join chat
-    socket.on("join_chat", async () => {
+    // 🎯 join_chat
+    socket.on("join_chat", async ({ chatId, adminId }: { chatId?: string; adminId?: string }) => {
       try {
         let chat;
 
         if (userType === "user") {
-          const admin = await AdminModel.findOne();
-          if (!admin) return socket.emit("error", "No admin found");
+          if (!adminId) return socket.emit("error", "Admin ID is required for user.");
+
+          const admin = await AdminModel.findById(adminId);
+          if (!admin) return socket.emit("error", "Admin not found.");
 
           chat =
             (await ChatModel.findOne({ user: user._id, admin: admin._id })) ||
             (await ChatModel.create({ user: user._id, admin: admin._id }));
+        } else if (userType === "admin") {
+          if (!chatId) return socket.emit("error", "Chat ID is required for admin.");
 
-          socket.join(`chat_${chat._id}`);
-
-          const messages = await MessageModel.find({ chat: chat._id })
-            .sort({ createdAt: 1 })
-            .populate("sender");
-
-          socket.emit("chat_history", { chatId: chat._id, messages });
-        } else {
-          socket.emit("error", "Admin must specify chatId explicitly");
+          chat = await ChatModel.findById(chatId);
         }
+
+        if (!chat) return socket.emit("error", "Chat not found or could not be created.");
+
+        socket.join(`chat_${chat._id}`);
+
+        const messages = await MessageModel.find({ chat: chat._id })
+          .sort({ createdAt: 1 })
+          .populate("sender");
+
+        socket.emit("chat_history", { chatId: chat._id, messages });
       } catch (err) {
-        console.error(err);
+        console.error("Join chat failed:", err);
         socket.emit("error", "Join chat failed");
       }
     });
 
     // 🎯 send_message
-    socket.on("send_message", async ({ content, chatId }) => {
+    socket.on("send_message", async ({ content, chatId }: { content: string; chatId?: string }) => {
       try {
-        if (!content) return;
+        if (!content) return socket.emit("error", "Message content is required.");
 
         let chat;
 
         if (userType === "user") {
+          // المستخدم يتحدث مع الأدمن المحدد مسبقاً (أول أدمن هنا كمثال)
           const admin = await AdminModel.findOne();
-          if (!admin) return socket.emit("error", "No admin found");
+          if (!admin) return socket.emit("error", "No admin found.");
 
           chat =
             (await ChatModel.findOne({ user: user._id, admin: admin._id })) ||
             (await ChatModel.create({ user: user._id, admin: admin._id }));
-        } else {
-          if (!chatId) return socket.emit("error", "chatId is required for admin");
+        } else if (userType === "admin") {
+          if (!chatId) return socket.emit("error", "Chat ID is required for admin.");
           chat = await ChatModel.findById(chatId);
         }
 
-        if (!chat) return socket.emit("error", "Chat not found");
+        if (!chat) return socket.emit("error", "Chat not found.");
 
         const msg = await MessageModel.create({
           chat: chat._id,
@@ -118,10 +125,10 @@ export function initChatSocket(io: Server) {
 
         const populatedMsg = await msg.populate("sender");
 
-        // ✅ حل مشكلة 'chat' is possibly 'null'
-        io.to(`chat_${chat!._id}`).emit("message", populatedMsg);
+        // 🟢 إرسال الرسالة داخل الغرفة
+        io.to(`chat_${chat._id}`).emit("message", populatedMsg);
 
-        // 🔔 FCM Notification باسم المرسل
+        // 🔔 إشعار FCM
         let targetToken: string | null = null;
         if (userType === "user") {
           const admin = await AdminModel.findOne();
@@ -148,13 +155,13 @@ export function initChatSocket(io: Server) {
           });
         }
       } catch (err) {
-        console.error(err);
+        console.error("Send message failed:", err);
         socket.emit("error", "Send message failed");
       }
     });
 
-    // 🎯 typing
-    socket.on("typing", async ({ chatId, isTyping }) => {
+    // 🎯 typing indicator
+    socket.on("typing", async ({ chatId, isTyping }: { chatId: string; isTyping: boolean }) => {
       if (!chatId) return;
       socket.to(`chat_${chatId}`).emit("typing", { chatId, userId: user._id, isTyping });
     });
@@ -166,10 +173,11 @@ export function initChatSocket(io: Server) {
         set.delete(socket.id);
         if (set.size === 0) {
           onlineMap.delete(key);
+          const update = { isOnline: false, lastSeen: new Date() };
           if (userType === "user") {
-            UserModel.findByIdAndUpdate(user._id, { isOnline: false, lastSeen: new Date() }).exec();
+            UserModel.findByIdAndUpdate(user._id, update).exec();
           } else {
-            AdminModel.findByIdAndUpdate(user._id, { isOnline: false, lastSeen: new Date() }).exec();
+            AdminModel.findByIdAndUpdate(user._id, update).exec();
           }
         }
       }
