@@ -9,6 +9,22 @@ import { messaging } from "./firebase";
 
 const onlineMap = new Map<string, Set<string>>(); // userType:userId -> sockets
 
+// 🧩 Helper function to safely get or create chat
+async function getOrCreateChat(userId: string, adminId: string) {
+  let chat = await ChatModel.findOne({ user: userId, admin: adminId });
+  if (!chat) {
+    try {
+      chat = await ChatModel.create({ user: userId, admin: adminId });
+    } catch (err: any) {
+      // لو حصل Race Condition (duplicate)
+      if (err.code === 11000) {
+        chat = await ChatModel.findOne({ user: userId, admin: adminId });
+      } else throw err;
+    }
+  }
+  return chat;
+}
+
 export function initChatSocket(io: Server) {
   // ✅ مصادقة قبل الاتصال
   io.use(async (socket, next) => {
@@ -69,18 +85,19 @@ export function initChatSocket(io: Server) {
           const admin = await AdminModel.findById(adminId);
           if (!admin) return socket.emit("error", "Admin not found.");
 
-          chat =
-            (await ChatModel.findOne({ user: user._id, admin: admin._id })) ||
-            (await ChatModel.create({ user: user._id, admin: admin._id }));
+chat = await getOrCreateChat(user._id.toString(), admin._id.toString());
         } else if (userType === "admin") {
           if (!chatId) return socket.emit("error", "Chat ID is required for admin.");
-
           chat = await ChatModel.findById(chatId);
         }
 
         if (!chat) return socket.emit("error", "Chat not found or could not be created.");
 
+        // تأكد إن السوكت مش داخل نفس الغرفة بالفعل
+        if (socket.rooms.has(`chat_${chat._id}`)) return;
+
         socket.join(`chat_${chat._id}`);
+        console.log(`💬 ${userType} joined chat_${chat._id}`);
 
         const messages = await MessageModel.find({ chat: chat._id })
           .sort({ createdAt: 1 })
@@ -105,9 +122,7 @@ export function initChatSocket(io: Server) {
           const admin = await AdminModel.findOne();
           if (!admin) return socket.emit("error", "No admin found.");
 
-          chat =
-            (await ChatModel.findOne({ user: user._id, admin: admin._id })) ||
-            (await ChatModel.create({ user: user._id, admin: admin._id }));
+      chat = await getOrCreateChat(user._id.toString(), admin._id.toString());
         } else if (userType === "admin") {
           if (!chatId) return socket.emit("error", "Chat ID is required for admin.");
           chat = await ChatModel.findById(chatId);

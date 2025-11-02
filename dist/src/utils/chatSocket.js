@@ -11,6 +11,24 @@ const chat_1 = require("../models/shema/chat");
 const Message_1 = require("../models/shema/Message");
 const firebase_1 = require("./firebase");
 const onlineMap = new Map(); // userType:userId -> sockets
+// 🧩 Helper function to safely get or create chat
+async function getOrCreateChat(userId, adminId) {
+    let chat = await chat_1.ChatModel.findOne({ user: userId, admin: adminId });
+    if (!chat) {
+        try {
+            chat = await chat_1.ChatModel.create({ user: userId, admin: adminId });
+        }
+        catch (err) {
+            // لو حصل Race Condition (duplicate)
+            if (err.code === 11000) {
+                chat = await chat_1.ChatModel.findOne({ user: userId, admin: adminId });
+            }
+            else
+                throw err;
+        }
+    }
+    return chat;
+}
 function initChatSocket(io) {
     // ✅ مصادقة قبل الاتصال
     io.use(async (socket, next) => {
@@ -64,9 +82,7 @@ function initChatSocket(io) {
                     const admin = await Admin_1.AdminModel.findById(adminId);
                     if (!admin)
                         return socket.emit("error", "Admin not found.");
-                    chat =
-                        (await chat_1.ChatModel.findOne({ user: user._id, admin: admin._id })) ||
-                            (await chat_1.ChatModel.create({ user: user._id, admin: admin._id }));
+                    chat = await getOrCreateChat(user._id.toString(), admin._id.toString());
                 }
                 else if (userType === "admin") {
                     if (!chatId)
@@ -75,7 +91,11 @@ function initChatSocket(io) {
                 }
                 if (!chat)
                     return socket.emit("error", "Chat not found or could not be created.");
+                // تأكد إن السوكت مش داخل نفس الغرفة بالفعل
+                if (socket.rooms.has(`chat_${chat._id}`))
+                    return;
                 socket.join(`chat_${chat._id}`);
+                console.log(`💬 ${userType} joined chat_${chat._id}`);
                 const messages = await Message_1.MessageModel.find({ chat: chat._id })
                     .sort({ createdAt: 1 })
                     .populate("sender");
@@ -97,9 +117,7 @@ function initChatSocket(io) {
                     const admin = await Admin_1.AdminModel.findOne();
                     if (!admin)
                         return socket.emit("error", "No admin found.");
-                    chat =
-                        (await chat_1.ChatModel.findOne({ user: user._id, admin: admin._id })) ||
-                            (await chat_1.ChatModel.create({ user: user._id, admin: admin._id }));
+                    chat = await getOrCreateChat(user._id.toString(), admin._id.toString());
                 }
                 else if (userType === "admin") {
                     if (!chatId)
