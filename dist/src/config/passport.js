@@ -28,7 +28,9 @@ const verifyGoogleToken = async (req, res) => {
         const email = payload.email;
         const name = payload.name || "Unknown User";
         const googleId = payload.sub;
-        let user = await User_1.UserModel.findOne({ googleId }) || await User_1.UserModel.findOne({ email });
+        // 🔍 البحث عن المستخدم بالجوجل ID أو البريد
+        let user = (await User_1.UserModel.findOne({ googleId })) ||
+            (await User_1.UserModel.findOne({ email }));
         if (!user) {
             if (!role) {
                 return res.status(400).json({
@@ -62,7 +64,8 @@ const verifyGoogleToken = async (req, res) => {
                 await user.save();
             }
         }
-        const authToken = jsonwebtoken_1.default.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "7d" });
+        // ✅ توحيد شكل التوكن عشان الشات يتعرف عليه
+        const authToken = jsonwebtoken_1.default.sign({ id: user._id, userType: user.role, role: user.role }, process.env.JWT_SECRET, { expiresIn: "7d" });
         return res.json({
             success: true,
             token: authToken,

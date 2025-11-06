@@ -1,4 +1,3 @@
-// src/chatSocket.ts
 import { Server, Socket } from "socket.io";
 import jwt from "jsonwebtoken";
 import { UserModel } from "../models/shema/auth/User";
@@ -7,16 +6,15 @@ import { ChatModel } from "../models/shema/chat";
 import { MessageModel } from "../models/shema/Message";
 import { messaging } from "./firebase";
 
-const onlineMap = new Map<string, Set<string>>(); // userType:userId -> sockets
+const onlineMap = new Map<string, Set<string>>();
 
-// 🧩 Helper function to safely get or create chat
+// 🧩 Helper function
 async function getOrCreateChat(userId: string, adminId: string) {
   let chat = await ChatModel.findOne({ user: userId, admin: adminId });
   if (!chat) {
     try {
       chat = await ChatModel.create({ user: userId, admin: adminId });
     } catch (err: any) {
-      // لو حصل Race Condition (duplicate)
       if (err.code === 11000) {
         chat = await ChatModel.findOne({ user: userId, admin: adminId });
       } else throw err;
@@ -26,7 +24,6 @@ async function getOrCreateChat(userId: string, adminId: string) {
 }
 
 export function initChatSocket(io: Server) {
-  // ✅ مصادقة قبل الاتصال
   io.use(async (socket, next) => {
     try {
       const token = socket.handshake.auth?.token;
@@ -37,10 +34,13 @@ export function initChatSocket(io: Server) {
       let user: any = null;
       let userType: "user" | "admin" | null = null;
 
-      if (payload.userType === "Student" || payload.userType === "Graduated") {
+      // ✅ دعم الحالتين: userType أو role
+      const type = payload.userType || payload.role;
+
+      if (type === "Student" || type === "Graduated") {
         user = await UserModel.findById(payload.id);
         userType = "user";
-      } else if (payload.userType === "Admin" || payload.userType === "SuperAdmin") {
+      } else if (type === "Admin" || type === "SuperAdmin") {
         user = await AdminModel.findById(payload.id);
         userType = "admin";
       }
@@ -81,11 +81,9 @@ export function initChatSocket(io: Server) {
 
         if (userType === "user") {
           if (!adminId) return socket.emit("error", "Admin ID is required for user.");
-
           const admin = await AdminModel.findById(adminId);
           if (!admin) return socket.emit("error", "Admin not found.");
-
-chat = await getOrCreateChat(user._id.toString(), admin._id.toString());
+          chat = await getOrCreateChat(user._id.toString(), admin._id.toString());
         } else if (userType === "admin") {
           if (!chatId) return socket.emit("error", "Chat ID is required for admin.");
           chat = await ChatModel.findById(chatId);
@@ -93,7 +91,6 @@ chat = await getOrCreateChat(user._id.toString(), admin._id.toString());
 
         if (!chat) return socket.emit("error", "Chat not found or could not be created.");
 
-        // تأكد إن السوكت مش داخل نفس الغرفة بالفعل
         if (socket.rooms.has(`chat_${chat._id}`)) return;
 
         socket.join(`chat_${chat._id}`);
@@ -118,11 +115,9 @@ chat = await getOrCreateChat(user._id.toString(), admin._id.toString());
         let chat;
 
         if (userType === "user") {
-          // المستخدم يتحدث مع الأدمن المحدد مسبقاً (أول أدمن هنا كمثال)
           const admin = await AdminModel.findOne();
           if (!admin) return socket.emit("error", "No admin found.");
-
-      chat = await getOrCreateChat(user._id.toString(), admin._id.toString());
+          chat = await getOrCreateChat(user._id.toString(), admin._id.toString());
         } else if (userType === "admin") {
           if (!chatId) return socket.emit("error", "Chat ID is required for admin.");
           chat = await ChatModel.findById(chatId);
@@ -140,7 +135,6 @@ chat = await getOrCreateChat(user._id.toString(), admin._id.toString());
 
         const populatedMsg = await msg.populate("sender");
 
-        // 🟢 إرسال الرسالة داخل الغرفة
         io.to(`chat_${chat._id}`).emit("message", populatedMsg);
 
         // 🔔 إشعار FCM
