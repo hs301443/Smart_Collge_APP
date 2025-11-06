@@ -62,25 +62,22 @@ const getFcmToken = async (req, res) => {
     (0, response_1.SuccessResponse)(res, { message: "FCM token updated successfully" }, 200);
 };
 exports.getFcmToken = getFcmToken;
-// ✅ Send Reset Code
 const sendResetCode = async (req, res) => {
     const { email } = req.body;
     const user = await User_1.UserModel.findOne({ email });
     if (!user)
         throw new Errors_1.NotFound("User not found");
+    console.log("User found:", user.email);
     if (!user.isVerified)
-        throw new BadRequest_1.BadRequest("User is not verified");
+        console.log("⚠️ User not verified");
     const code = (0, crypto_1.randomInt)(100000, 999999).toString();
     await emailVerifications_1.EmailVerificationModel.deleteMany({ userId: user._id });
     const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
     await emailVerifications_1.EmailVerificationModel.create({ userId: user._id, verificationCode: code, expiresAt });
-    await (0, sendEmails_1.sendEmail)(email, "Reset Password Code", `Hello ${user.name},
-
-Your password reset code is: ${code}
-(This code is valid for 2 hours)
-
-Best regards,
-Smart College Team`);
+    console.log("Ready to send email...");
+    await (0, sendEmails_1.sendEmail)(email, "Reset Password Code", `Hello ${user.name || "User"},
+Your password reset code is: ${code}`);
+    console.log("✅ Email sent successfully!");
     (0, response_1.SuccessResponse)(res, { message: "Reset code sent to your email" }, 200);
 };
 exports.sendResetCode = sendResetCode;

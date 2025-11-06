@@ -76,33 +76,33 @@ export const getFcmToken = async (req: AuthenticatedRequest, res: Response) => {
 };
 
 
-// ✅ Send Reset Code
 export const sendResetCode = async (req: Request, res: Response) => {
-  const { email } = req.body;
-  const user = await UserModel.findOne({ email });
+    const { email } = req.body;
+    const user = await UserModel.findOne({ email });
 
-  if (!user) throw new NotFound("User not found");
-  if (!user.isVerified) throw new BadRequest("User is not verified");
+    if (!user) throw new NotFound("User not found");
+    console.log("User found:", user.email);
 
-  const code = randomInt(100000, 999999).toString();
-  await EmailVerificationModel.deleteMany({ userId: user._id });
+    if (!user.isVerified) console.log("⚠️ User not verified");
 
-  const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
-  await EmailVerificationModel.create({ userId: user._id, verificationCode: code, expiresAt });
+    const code = randomInt(100000, 999999).toString();
+    await EmailVerificationModel.deleteMany({ userId: user._id });
 
-  await sendEmail(
-    email,
-    "Reset Password Code",
-    `Hello ${user.name},
+    const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    await EmailVerificationModel.create({ userId: user._id, verificationCode: code, expiresAt });
 
-Your password reset code is: ${code}
-(This code is valid for 2 hours)
+    console.log("Ready to send email...");
 
-Best regards,
-Smart College Team`
-  );
+    await sendEmail(
+      email,
+      "Reset Password Code",
+      `Hello ${user.name || "User"},
+Your password reset code is: ${code}`
+    );
 
-  SuccessResponse(res, { message: "Reset code sent to your email" }, 200);
+    console.log("✅ Email sent successfully!");
+    SuccessResponse(res, { message: "Reset code sent to your email" }, 200);
+  
 };
 
 
